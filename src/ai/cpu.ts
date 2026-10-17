@@ -60,7 +60,7 @@ interface Tuning {
 const TUNING: Record<CpuLevel, Tuning> = {
   easy: { thinkMin: 1600, thinkSpan: 800, noise: 4.5, second: 0.1, missLethal: 0.35, random: 0.25, idle: 0.5, face: 0.6, trade: 0.4, defend: 0.3, skill: 0.6, save: 0 },
   normal: { thinkMin: 900, thinkSpan: 600, noise: 2.0, second: 0.3, missLethal: 0.05, random: 0.04, idle: 0.8, face: 0.8, trade: 0.9, defend: 0.8, skill: 0.8, save: 0.5 },
-  hard: { thinkMin: 400, thinkSpan: 300, noise: 1.0, second: 0.7, missLethal: 0, random: 0, idle: 0.0, face: 1.0, trade: 1.4, defend: 1.2, skill: 0.8, save: 1.0 },
+  hard: { thinkMin: 250, thinkSpan: 150, noise: 1.0, second: 0.7, missLethal: 0, random: 0, idle: 0.0, face: 1.0, trade: 1.4, defend: 1.2, skill: 0.2, save: 1.0 },
 };
 
 /** 受けるダメージの実際の値（結界は 0、鉄壁で減る）。 */

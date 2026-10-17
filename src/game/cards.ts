@@ -136,7 +136,7 @@ const spell = (id: CardId, name: string, summon: number, chip: string, effect: S
 export const CARDS: Record<CardId, CardDef> = {
   herald: unit('herald', '伝令', 1, 1, 2, '速攻', { haste: true }),
   miner: unit('miner', '採掘師', 2, 1, 2, '仲間', { onSummon: { kind: 'token' } }),
-  usurer: unit('usurer', '高利貸', 2, 2, 3, '遺言', { onDeath: { kind: 'face', amount: 2 } }),
+  usurer: unit('usurer', '高利貸', 2, 2, 2, '遺言', { onDeath: { kind: 'face', amount: 2 } }),
   spy: unit('spy', '買収者', 3, 2, 3, '奇襲', { faceBonus: 1 }),
   craftsman: unit('craftsman', '職人', 3, 2, 4, '討伐', { unitBonus: 2 }),
   guard: unit('guard', '衛兵', 2, 1, 5, '', { blocker: true }),
@@ -146,16 +146,16 @@ export const CARDS: Record<CardId, CardDef> = {
   double: unit('double', '影武者', 3, 2, 3, '結界', { barrier: true }),
   inspector: unit('inspector', '検査官', 4, 3, 4, '遠隔', { ranged: true }),
   blockader: unit('blockader', '封鎖者', 4, 2, 5, '鉄壁', { blocker: true, armor: 1 }),
-  architect: unit('architect', '建築家', 5, 4, 6, '修復', { onSummon: { kind: 'heal', amount: 3 } }),
+  architect: unit('architect', '建築家', 5, 4, 5, '修復', { onSummon: { kind: 'heal', amount: 3 } }),
   boss: unit('boss', '顔役', 5, 3, 6, '薙払', { sweep: true }),
   apprentice: { ...unit('apprentice', '見習い', 1, 1, 1, ''), token: true },
 
   wall: building('wall', '城壁', 2, 8, '', { blocker: true }),
   exchange: building('exchange', '取引所', 3, 5, '増収', { coinBoost: 0.3 }),
   tradingHouse: building('tradingHouse', '商館', 3, 5, '鼓舞', { rally: 1 }),
-  factory: building('factory', '工房', 4, 5, '生産', { pulse: { everyMs: 8000, kind: 'token' } }),
+  factory: building('factory', '工房', 4, 5, '生産', { pulse: { everyMs: 6000, kind: 'token' } }),
   cathedral: building('cathedral', '大聖堂', 4, 6, '祈り', { cooldownCut: 0.3 }),
-  fortress: building('fortress', '砦', 5, 8, '砲撃', { pulse: { everyMs: 5000, kind: 'snipe', amount: 1 } }),
+  fortress: building('fortress', '砦', 5, 8, '砲撃', { pulse: { everyMs: 6000, kind: 'snipe', amount: 1 } }),
 
   quarry: spell('quarry', '落石', 4, '単体', { kind: 'bolt', amount: 5 }),
   quake: spell('quake', '地鳴り', 4, '全体', { kind: 'blast', amount: 2 }),

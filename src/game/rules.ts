@@ -1,7 +1,7 @@
 // ルールの数値。ここ以外に書かない。変えたら npm run simulate で測り直す。
 
 /** プレイヤーの HP。 */
-export const PLAYER_HP = 20;
+export const PLAYER_HP = 30;
 /** 試合の長さ（ms）。 */
 export const MATCH_MS = 180_000;
 /** この時刻（ms）からコインが 2 倍速になる。 */
