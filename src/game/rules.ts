@@ -16,8 +16,8 @@ export const FIELD_SLOTS = 5;
 export const HAND_SIZE = 4;
 /** 召喚してから攻撃できるまでの時間（ms）。 */
 export const SUMMON_DELAY_MS = 1000;
-/** 攻撃してから次の攻撃ができるまでの時間（ms）。 */
-export const ATTACK_COOLDOWN_MS = 2000;
+/** クールタイム: 攻撃してから次の攻撃ができるまでの時間（ms）。攻撃を縛るのはこれだけ（コインは召喚にだけ使う）。 */
+export const ATTACK_COOLDOWN_MS = 5000;
 
 /** その時刻のコインのたまる速さ（枚/ms）。 */
 export function coinRate(timeMs: number): number {

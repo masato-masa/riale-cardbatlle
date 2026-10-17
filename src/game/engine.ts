@@ -1,7 +1,7 @@
 // ゲームの進行。純粋関数（同じ状態と操作から必ず同じ結果）。
 // 時間は tick で進め、召喚と攻撃は好きな時刻に差し込む。
 
-import { CARDS, isBlocker, needsTarget, type CardId } from './cards';
+import { CARDS, isBlocker, needsTarget, requiresTarget, type CardId } from './cards';
 import { makeRng, shuffle } from './rng';
 import {
   ATTACK_COOLDOWN_MS,
@@ -26,6 +26,8 @@ export interface Unit {
   readyAt: number;
   /** 結界がまだ残っているか。 */
   barrier: boolean;
+  /** 建築物が次に効く時刻（生産・砲撃）。無ければ null。 */
+  pulseAt: number | null;
 }
 
 export interface PlayerState {
@@ -48,6 +50,12 @@ export type GameEvent =
   | { id: number; kind: 'damage'; p: PlayerIndex; target: Target; amount: number; guard: 'barrier' | 'armor' | null }
   | { id: number; kind: 'heal'; p: PlayerIndex; amount: number }
   | { id: number; kind: 'stun'; p: PlayerIndex; uid: number }
+  /** クールタイムがなくなった（祝祭） */
+  | { id: number; kind: 'ready'; p: PlayerIndex; uid: number }
+  /** 呪文を使った。target は単体の呪文で選んだ相手のカード。 */
+  | { id: number; kind: 'spell'; p: PlayerIndex; card: CardId; target: number | null }
+  /** 建築物が効いた（生産・砲撃） */
+  | { id: number; kind: 'pulse'; p: PlayerIndex; uid: number }
   | { id: number; kind: 'death'; p: PlayerIndex; uid: number; card: CardId; slot: number }
   | { id: number; kind: 'end' };
 
@@ -72,7 +80,8 @@ export interface GameState {
 
 export type Action =
   | { type: 'tick'; dt: number }
-  /** target は「狙撃」「足止」のカードで選んだ相手のカード。無ければ能力は空振り。 */
+  /** target は「狙撃」「足止」・単体の呪文で選んだ相手のカード。狙撃・足止は無ければ空振り。
+   *  呪文は場に出ないので slot は見ない（-1 でよい）。 */
   | { type: 'summon'; p: PlayerIndex; handIndex: number; slot: number; target?: number }
   | { type: 'attack'; p: PlayerIndex; uid: number; target: Target };
 
@@ -120,8 +129,9 @@ export function isWalled(player: PlayerState): boolean {
   return player.field.every((u) => !!u);
 }
 
-/** 鼓舞を含めた攻撃力。 */
+/** 鼓舞を含めた攻撃力。建築物は 0。 */
 export function attackOf(player: PlayerState, unit: Unit): number {
+  if (CARDS[unit.card].type !== 'unit') return 0;
   let rally = 0;
   for (const u of player.field) if (u && u.uid !== unit.uid) rally += CARDS[u.card].ab.rally ?? 0;
   return CARDS[unit.card].atk + rally;
@@ -151,27 +161,44 @@ export function isLegalTarget(state: GameState, p: PlayerIndex, target: Target):
   );
 }
 
-export type SummonBlock = 'coins' | 'slot' | 'over' | null;
+/** そのプレイヤーのユニットのクールタイム（祈りで縮む。最短で 40%）。 */
+export function cooldownOf(player: PlayerState): number {
+  let cut = 0;
+  for (const u of player.field) if (u) cut += CARDS[u.card].ab.cooldownCut ?? 0;
+  return Math.round(ATTACK_COOLDOWN_MS * Math.max(0.4, 1 - cut));
+}
 
-export function summonBlock(state: GameState, p: PlayerIndex, handIndex: number, slot: number): SummonBlock {
+export type SummonBlock = 'coins' | 'slot' | 'target' | 'over' | null;
+
+export function summonBlock(
+  state: GameState,
+  p: PlayerIndex,
+  handIndex: number,
+  slot: number,
+  target?: number,
+): SummonBlock {
   if (state.result) return 'over';
   const pl = state.players[p];
   const card = pl.hand[handIndex];
   if (!card) return 'over';
-  if (slot < 0 || slot >= FIELD_SLOTS || pl.field[slot]) return 'slot';
   if (pl.coins < CARDS[card].summon) return 'coins';
+  if (CARDS[card].type === 'spell') {
+    if (requiresTarget(card) && (target === undefined || !findUnit(state.players[other(p)], target))) return 'target';
+    return null;
+  }
+  if (slot < 0 || slot >= FIELD_SLOTS || pl.field[slot]) return 'slot';
   return null;
 }
 
-export type AttackBlock = 'coins' | 'cooldown' | 'target' | 'over' | null;
+export type AttackBlock = 'building' | 'cooldown' | 'target' | 'over' | null;
 
 export function attackBlock(state: GameState, p: PlayerIndex, uid: number, target?: Target): AttackBlock {
   if (state.result) return 'over';
   const pl = state.players[p];
   const found = findUnit(pl, uid);
   if (!found) return 'over';
+  if (CARDS[found.unit.card].type !== 'unit') return 'building';
   if (state.time < found.unit.readyAt) return 'cooldown';
-  if (pl.coins < CARDS[found.unit.card].attackCost) return 'coins';
   if (target && !isLegalTarget(state, p, target)) return 'target';
   return null;
 }
@@ -240,6 +267,7 @@ function place(d: Draft, p: PlayerIndex, card: CardId, slot: number, token: bool
     hp: CARDS[card].hp,
     readyAt: ab.haste ? d.time : d.time + SUMMON_DELAY_MS,
     barrier: !!ab.barrier,
+    pulseAt: ab.pulse ? d.time + ab.pulse.everyMs : null,
   };
   d.players[p].field[slot] = unit;
   d.events.push({ kind: 'summon', p, uid: unit.uid, slot, card, token });
@@ -278,7 +306,11 @@ function tick(state: GameState, dt: number): GameState {
     ...pl,
     coins: Math.min(COIN_MAX, pl.coins + base * coinBoostOf(pl)),
   })) as GameState['players'];
-  const next: GameState = { ...state, time: end, players };
+  let next: GameState = { ...state, time: end, players };
+  if (players.some((pl) => pl.field.some((u) => u && u.pulseAt !== null && u.pulseAt <= end))) {
+    next = pulses(next);
+    if (next.result) return next;
+  }
   if (end < MATCH_MS) return next;
   const [a, b] = players;
   const winner: PlayerIndex | null = a.hp === b.hp ? null : a.hp > b.hp ? 0 : 1;
@@ -291,8 +323,71 @@ function tick(state: GameState, dt: number): GameState {
   };
 }
 
+/** 建築物の生産・砲撃。時刻が来たものを順に起こす。 */
+function pulses(state: GameState): GameState {
+  const d = draftOf(state);
+  for (const p of [0, 1] as const) {
+    const pl = d.players[p];
+    for (const b of [...pl.field]) {
+      const pulse = b ? CARDS[b.card].ab.pulse : undefined;
+      if (!b || !pulse || b.pulseAt === null) continue;
+      while (b.pulseAt !== null && b.pulseAt <= d.time && b.hp > 0) {
+        b.pulseAt += pulse.everyMs;
+        d.events.push({ kind: 'pulse', p, uid: b.uid });
+        if (pulse.kind === 'token') {
+          const empty = pl.field.findIndex((u) => !u);
+          if (empty >= 0) place(d, p, 'apprentice', empty, true);
+        } else {
+          const q = other(p);
+          const weakest = units(d.players[q])
+            .filter((u) => u.hp > 0)
+            .reduce<Unit | null>((m, u) => (!m || u.hp < m.hp ? u : m), null);
+          if (weakest) hurtUnit(d, q, weakest, pulse.amount);
+        }
+      }
+    }
+  }
+  sweepDead(d);
+  return finish(state, d);
+}
+
+function castSpell(state: GameState, p: PlayerIndex, handIndex: number, target?: number): GameState {
+  const d = draftOf(state);
+  const pl = d.players[p];
+  const card = pl.hand[handIndex]!;
+  const [drawn, ...rest] = pl.queue;
+  pl.hand[handIndex] = drawn!;
+  pl.queue = [...rest, card];
+  pl.coins -= CARDS[card].summon;
+  const q = other(p);
+  const foe = d.players[q];
+  const effect = CARDS[card].ab.spell!;
+  d.events.push({ kind: 'spell', p, card, target: effect.kind === 'bolt' ? (target ?? null) : null });
+  if (effect.kind === 'bolt') {
+    const hit = findUnit(foe, target!);
+    if (hit) hurtUnit(d, q, hit.unit, effect.amount);
+  } else if (effect.kind === 'blast') {
+    for (const u of units(foe)) hurtUnit(d, q, u, effect.amount);
+  } else if (effect.kind === 'freeze') {
+    for (const u of units(foe)) {
+      if (CARDS[u.card].type !== 'unit') continue;
+      u.readyAt = Math.max(u.readyAt, d.time) + effect.ms;
+      d.events.push({ kind: 'stun', p: q, uid: u.uid });
+    }
+  } else {
+    for (const u of units(pl)) {
+      if (CARDS[u.card].type !== 'unit' || u.readyAt <= d.time) continue;
+      u.readyAt = d.time;
+      d.events.push({ kind: 'ready', p, uid: u.uid });
+    }
+  }
+  sweepDead(d);
+  return finish(state, d);
+}
+
 function summon(state: GameState, p: PlayerIndex, handIndex: number, slot: number, target?: number): GameState {
-  if (summonBlock(state, p, handIndex, slot)) return state;
+  if (summonBlock(state, p, handIndex, slot, target)) return state;
+  if (CARDS[state.players[p].hand[handIndex]!].type === 'spell') return castSpell(state, p, handIndex, target);
   const d = draftOf(state);
   const pl = d.players[p];
   const card = pl.hand[handIndex]!;
@@ -334,8 +429,7 @@ function attack(state: GameState, p: PlayerIndex, uid: number, target: Target): 
   const { unit } = findUnit(me, uid)!;
   const ab = CARDS[unit.card].ab;
   const atk = attackOf(me, unit);
-  me.coins -= CARDS[unit.card].attackCost;
-  unit.readyAt = d.time + ATTACK_COOLDOWN_MS;
+  unit.readyAt = d.time + cooldownOf(me);
   d.events.push({ kind: 'attack', p, uid, target });
 
   if (target.kind === 'player') {
