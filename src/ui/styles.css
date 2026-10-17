@@ -4,8 +4,9 @@
   --ink: #0b1520;
   --coin: #f5b81c;
   --coin-deep: #c98a00;
-  --atk: #f08a24;
-  --hp: #e5484d;
+  --atk: #e5484d;
+  --hp: #2fa84f;
+  --danger: #e5484d;
   --attack-cost: #8f6ad8;
   --arena-w: 420px;
 }
@@ -161,12 +162,12 @@ body {
 
 .unit.is-target,
 .hero.is-target {
-  box-shadow: 0 0 0 2px var(--hp), 0 0 12px 2px rgb(229 72 77 / 0.6);
+  box-shadow: 0 0 0 2px var(--danger), 0 0 12px 2px rgb(229 72 77 / 0.6);
 }
 
 .unit.is-over,
 .hero.is-over {
-  box-shadow: 0 0 0 3px #fff, 0 0 0 6px var(--hp), 0 0 18px 6px rgb(229 72 77 / 0.7);
+  box-shadow: 0 0 0 3px #fff, 0 0 0 6px var(--danger), 0 0 18px 6px rgb(229 72 77 / 0.7);
 }
 
 .unit.is-off,
@@ -233,7 +234,7 @@ body {
 }
 
 .hero-badge.is-low .hero-hp b {
-  color: var(--hp);
+  color: var(--danger);
 }
 
 .hero-coins {
@@ -519,7 +520,7 @@ body {
 
 .pip-hp.is-hurt {
   background: #fff;
-  color: var(--hp);
+  color: var(--danger);
   text-shadow: none;
 }
 
@@ -568,7 +569,7 @@ body {
 }
 
 .pip-atk.is-up {
-  background: #2fb36a;
+  box-shadow: 0 0 0 2px #ffd84a, 0 0 8px #ffd84a;
 }
 
 .face.is-small .face-name {
@@ -599,7 +600,7 @@ body {
 }
 
 .aim-line {
-  stroke: var(--hp);
+  stroke: var(--danger);
   stroke-width: 6;
   stroke-linecap: round;
   stroke-dasharray: 2 12;
@@ -607,7 +608,7 @@ body {
 }
 
 .aim-dot {
-  fill: var(--hp);
+  fill: var(--danger);
   stroke: #fff;
   stroke-width: 3;
 }
