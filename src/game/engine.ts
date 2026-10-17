@@ -1,7 +1,7 @@
 // ゲームの進行。純粋関数（同じ状態と操作から必ず同じ結果）。
 // 時間は tick で進め、召喚と攻撃は好きな時刻に差し込む。
 
-import { CARDS, isBlocker, type CardId } from './cards';
+import { CARDS, isBlocker, needsTarget, type CardId } from './cards';
 import { makeRng, shuffle } from './rng';
 import {
   ATTACK_COOLDOWN_MS,
@@ -24,6 +24,8 @@ export interface Unit {
   hp: number;
   /** この時刻（ms）から攻撃できる。 */
   readyAt: number;
+  /** 結界がまだ残っているか。 */
+  barrier: boolean;
 }
 
 export interface PlayerState {
@@ -40,18 +42,12 @@ export interface PlayerState {
 export type Target = { kind: 'player' } | { kind: 'unit'; uid: number };
 
 export type GameEvent =
-  | { id: number; kind: 'summon'; p: PlayerIndex; uid: number; slot: number }
-  | {
-      id: number;
-      kind: 'attack';
-      p: PlayerIndex;
-      uid: number;
-      target: Target;
-      /** 与えたダメージ（攻撃した側 → 受けた側） */
-      dealt: number;
-      /** 反撃で受けたダメージ（カード同士のときだけ） */
-      taken: number;
-    }
+  | { id: number; kind: 'summon'; p: PlayerIndex; uid: number; slot: number; card: CardId; token: boolean }
+  | { id: number; kind: 'attack'; p: PlayerIndex; uid: number; target: Target }
+  /** p は受けた側。amount は実際に減った HP。guard は防いだ理由。 */
+  | { id: number; kind: 'damage'; p: PlayerIndex; target: Target; amount: number; guard: 'barrier' | 'armor' | null }
+  | { id: number; kind: 'heal'; p: PlayerIndex; amount: number }
+  | { id: number; kind: 'stun'; p: PlayerIndex; uid: number }
   | { id: number; kind: 'death'; p: PlayerIndex; uid: number; card: CardId; slot: number }
   | { id: number; kind: 'end' };
 
@@ -76,10 +72,11 @@ export interface GameState {
 
 export type Action =
   | { type: 'tick'; dt: number }
-  | { type: 'summon'; p: PlayerIndex; handIndex: number; slot: number }
+  /** target は「狙撃」「足止」のカードで選んだ相手のカード。無ければ能力は空振り。 */
+  | { type: 'summon'; p: PlayerIndex; handIndex: number; slot: number; target?: number }
   | { type: 'attack'; p: PlayerIndex; uid: number; target: Target };
 
-const EVENT_KEEP = 40;
+const EVENT_KEEP = 60;
 
 function makePlayer(deck: readonly CardId[], rand: () => number): PlayerState {
   const order = shuffle(deck, rand);
@@ -114,13 +111,38 @@ export function findUnit(player: PlayerState, uid: number): { unit: Unit; slot: 
   return null;
 }
 
-/** p から見て、いま攻撃対象に選べる相手（ブロッカーがいればブロッカーだけ）。 */
+export function units(player: PlayerState): Unit[] {
+  return player.field.filter((u): u is Unit => !!u);
+}
+
+/** 場が全部うまっている（壁）。 */
+export function isWalled(player: PlayerState): boolean {
+  return player.field.every((u) => !!u);
+}
+
+/** 鼓舞を含めた攻撃力。 */
+export function attackOf(player: PlayerState, unit: Unit): number {
+  let rally = 0;
+  for (const u of player.field) if (u && u.uid !== unit.uid) rally += CARDS[u.card].ab.rally ?? 0;
+  return CARDS[unit.card].atk + rally;
+}
+
+/** コインのたまる速さの倍率（増収を含む）。 */
+export function coinBoostOf(player: PlayerState): number {
+  let boost = 1;
+  for (const u of player.field) if (u) boost += CARDS[u.card].ab.coinBoost ?? 0;
+  return boost;
+}
+
+/** p から見て、いま攻撃対象に選べる相手。ブロッカーがいればブロッカーだけ、壁ならプレイヤーは選べない。 */
 export function legalTargets(state: GameState, p: PlayerIndex): Target[] {
   const foe = state.players[other(p)];
-  const units = foe.field.filter((u): u is Unit => !!u);
-  const blockers = units.filter((u) => isBlocker(u.card));
+  const all = units(foe);
+  const blockers = all.filter((u) => isBlocker(u.card));
   if (blockers.length > 0) return blockers.map((u) => ({ kind: 'unit', uid: u.uid }));
-  return [{ kind: 'player' }, ...units.map((u) => ({ kind: 'unit' as const, uid: u.uid }))];
+  const list: Target[] = all.map((u) => ({ kind: 'unit' as const, uid: u.uid }));
+  if (!isWalled(foe)) list.unshift({ kind: 'player' });
+  return list;
 }
 
 export function isLegalTarget(state: GameState, p: PlayerIndex, target: Target): boolean {
@@ -154,97 +176,180 @@ export function attackBlock(state: GameState, p: PlayerIndex, uid: number, targe
   return null;
 }
 
-function withEvents(state: GameState, events: NewEvent[]): Pick<GameState, 'events' | 'nextEventId'> {
+// ---------------------------------------------------------------------------
+// 1 つの操作の中だけで使う、書き換えてよい写し
+
+interface Draft {
+  time: number;
+  players: [PlayerState, PlayerState];
+  nextUid: number;
+  events: NewEvent[];
+}
+
+function draftOf(state: GameState): Draft {
+  const copy = (pl: PlayerState): PlayerState => ({
+    ...pl,
+    hand: [...pl.hand],
+    queue: [...pl.queue],
+    field: pl.field.map((u) => (u ? { ...u } : null)),
+  });
+  return { time: state.time, players: [copy(state.players[0]), copy(state.players[1])], nextUid: state.nextUid, events: [] };
+}
+
+/** カードにダメージを与える（結界・鉄壁を通す）。 */
+function hurtUnit(d: Draft, p: PlayerIndex, unit: Unit, amount: number): void {
+  if (amount <= 0) return;
+  if (unit.barrier) {
+    unit.barrier = false;
+    d.events.push({ kind: 'damage', p, target: { kind: 'unit', uid: unit.uid }, amount: 0, guard: 'barrier' });
+    return;
+  }
+  const armor = CARDS[unit.card].ab.armor ?? 0;
+  const dealt = Math.max(0, amount - armor);
+  unit.hp -= dealt;
+  d.events.push({ kind: 'damage', p, target: { kind: 'unit', uid: unit.uid }, amount: dealt, guard: armor > 0 ? 'armor' : null });
+}
+
+function hurtPlayer(d: Draft, p: PlayerIndex, amount: number): void {
+  if (amount <= 0) return;
+  const pl = d.players[p];
+  const dealt = Math.min(pl.hp, amount);
+  pl.hp -= dealt;
+  d.events.push({ kind: 'damage', p, target: { kind: 'player' }, amount: dealt, guard: null });
+}
+
+/** HP が 0 になったカードを場から除き、遺言を起こす。遺言で倒れるカードは無いので 1 回で済む。 */
+function sweepDead(d: Draft): void {
+  for (const p of [0, 1] as const) {
+    const pl = d.players[p];
+    pl.field.forEach((u, slot) => {
+      if (!u || u.hp > 0) return;
+      pl.field[slot] = null;
+      d.events.push({ kind: 'death', p, uid: u.uid, card: u.card, slot });
+      const od = CARDS[u.card].ab.onDeath;
+      if (od?.kind === 'face') hurtPlayer(d, other(p), od.amount);
+    });
+  }
+}
+
+function place(d: Draft, p: PlayerIndex, card: CardId, slot: number, token: boolean): Unit {
+  const ab = CARDS[card].ab;
+  const unit: Unit = {
+    uid: d.nextUid++,
+    card,
+    hp: CARDS[card].hp,
+    readyAt: ab.haste ? d.time : d.time + SUMMON_DELAY_MS,
+    barrier: !!ab.barrier,
+  };
+  d.players[p].field[slot] = unit;
+  d.events.push({ kind: 'summon', p, uid: unit.uid, slot, card, token });
+  return unit;
+}
+
+function finish(state: GameState, d: Draft): GameState {
   let id = state.nextEventId;
+  const [a, b] = d.players;
+  let result = state.result;
+  const events = [...d.events];
+  if (!result && (a.hp <= 0 || b.hp <= 0)) {
+    const winner: PlayerIndex | null = a.hp <= 0 && b.hp <= 0 ? null : a.hp <= 0 ? 1 : 0;
+    result = { winner, reason: 'hp' };
+    events.push({ kind: 'end' });
+  }
   const added = events.map((e) => ({ ...e, id: id++ }) as GameEvent);
-  return { events: [...state.events, ...added].slice(-EVENT_KEEP), nextEventId: id };
+  return {
+    time: d.time,
+    players: d.players,
+    nextUid: d.nextUid,
+    nextEventId: id,
+    events: [...state.events, ...added].slice(-EVENT_KEEP),
+    result,
+  };
 }
 
-function setPlayer(players: GameState['players'], p: PlayerIndex, next: PlayerState): GameState['players'] {
-  return p === 0 ? [next, players[1]] : [players[0], next];
-}
-
-/** HP による決着を確かめる。 */
-function settle(state: GameState): GameState {
-  if (state.result) return state;
-  const [a, b] = state.players;
-  if (a.hp > 0 && b.hp > 0) return state;
-  const winner: PlayerIndex | null = a.hp <= 0 && b.hp <= 0 ? null : a.hp <= 0 ? 1 : 0;
-  return { ...state, result: { winner, reason: 'hp' }, ...withEvents(state, [{ kind: 'end' }]) };
-}
+// ---------------------------------------------------------------------------
 
 function tick(state: GameState, dt: number): GameState {
   if (state.result || dt <= 0) return state;
   const end = Math.min(MATCH_MS, state.time + dt);
-  // 2 倍速の境目をまたぐときは分けて足す
   const split = state.time < DOUBLE_COIN_FROM_MS && end > DOUBLE_COIN_FROM_MS ? DOUBLE_COIN_FROM_MS : end;
-  const grow = (coins: number): number =>
-    Math.min(COIN_MAX, coins + (split - state.time) * coinRate(state.time) + (end - split) * coinRate(split));
-  const players = state.players.map((pl) => ({ ...pl, coins: grow(pl.coins) })) as GameState['players'];
+  const base = (split - state.time) * coinRate(state.time) + (end - split) * coinRate(split);
+  const players = state.players.map((pl) => ({
+    ...pl,
+    coins: Math.min(COIN_MAX, pl.coins + base * coinBoostOf(pl)),
+  })) as GameState['players'];
   const next: GameState = { ...state, time: end, players };
   if (end < MATCH_MS) return next;
   const [a, b] = players;
   const winner: PlayerIndex | null = a.hp === b.hp ? null : a.hp > b.hp ? 0 : 1;
-  return { ...next, result: { winner, reason: 'time' }, ...withEvents(next, [{ kind: 'end' }]) };
+  const id = state.nextEventId;
+  return {
+    ...next,
+    result: { winner, reason: 'time' },
+    events: [...state.events, { id, kind: 'end' } as GameEvent].slice(-EVENT_KEEP),
+    nextEventId: id + 1,
+  };
 }
 
-function summon(state: GameState, p: PlayerIndex, handIndex: number, slot: number): GameState {
+function summon(state: GameState, p: PlayerIndex, handIndex: number, slot: number, target?: number): GameState {
   if (summonBlock(state, p, handIndex, slot)) return state;
-  const pl = state.players[p];
+  const d = draftOf(state);
+  const pl = d.players[p];
   const card = pl.hand[handIndex]!;
   const [drawn, ...rest] = pl.queue;
-  const hand = [...pl.hand];
-  hand[handIndex] = drawn!;
-  const field = [...pl.field];
-  const uid = state.nextUid;
-  field[slot] = { uid, card, hp: CARDS[card].hp, readyAt: state.time + SUMMON_DELAY_MS };
-  const next: PlayerState = {
-    ...pl,
-    coins: pl.coins - CARDS[card].summon,
-    hand,
-    queue: [...rest, card],
-    field,
-  };
-  return {
-    ...state,
-    players: setPlayer(state.players, p, next),
-    nextUid: uid + 1,
-    ...withEvents(state, [{ kind: 'summon', p, uid, slot }]),
-  };
+  pl.hand[handIndex] = drawn!;
+  pl.queue = [...rest, card];
+  pl.coins -= CARDS[card].summon;
+  place(d, p, card, slot, false);
+
+  const os = CARDS[card].ab.onSummon;
+  const q = other(p);
+  if (os?.kind === 'token') {
+    const empty = pl.field.findIndex((u) => !u);
+    if (empty >= 0) place(d, p, 'apprentice', empty, true);
+  } else if (os?.kind === 'heal') {
+    const healed = Math.min(PLAYER_HP - pl.hp, os.amount);
+    if (healed > 0) {
+      pl.hp += healed;
+      d.events.push({ kind: 'heal', p, amount: healed });
+    }
+  } else if (needsTarget(card) && target !== undefined) {
+    const hit = findUnit(d.players[q], target);
+    if (hit && os?.kind === 'strike') hurtUnit(d, q, hit.unit, os.amount);
+    if (hit && os?.kind === 'stun') {
+      hit.unit.readyAt = Math.max(hit.unit.readyAt, d.time) + os.ms;
+      d.events.push({ kind: 'stun', p: q, uid: hit.unit.uid });
+    }
+  }
+  sweepDead(d);
+  return finish(state, d);
 }
 
 function attack(state: GameState, p: PlayerIndex, uid: number, target: Target): GameState {
   if (attackBlock(state, p, uid, target)) return state;
+  const d = draftOf(state);
   const q = other(p);
-  const me = state.players[p];
-  const foe = state.players[q];
-  const { unit, slot } = findUnit(me, uid)!;
-  const def = CARDS[unit.card];
-  const meField = [...me.field];
-  const foeField = [...foe.field];
-  let foeHp = foe.hp;
-  let taken = 0;
-  const events: NewEvent[] = [];
+  const me = d.players[p];
+  const foe = d.players[q];
+  const { unit } = findUnit(me, uid)!;
+  const ab = CARDS[unit.card].ab;
+  const atk = attackOf(me, unit);
+  me.coins -= CARDS[unit.card].attackCost;
+  unit.readyAt = d.time + ATTACK_COOLDOWN_MS;
+  d.events.push({ kind: 'attack', p, uid, target });
 
   if (target.kind === 'player') {
-    foeHp = Math.max(0, foe.hp - def.atk);
-    meField[slot] = { ...unit, readyAt: state.time + ATTACK_COOLDOWN_MS };
-    events.push({ kind: 'attack', p, uid, target, dealt: def.atk, taken: 0 });
+    hurtPlayer(d, q, atk + (ab.faceBonus ?? 0));
   } else {
-    const hit = findUnit(foe, target.uid)!;
-    taken = CARDS[hit.unit.card].atk;
-    const myHp = unit.hp - taken;
-    const theirHp = hit.unit.hp - def.atk;
-    events.push({ kind: 'attack', p, uid, target, dealt: def.atk, taken });
-    foeField[hit.slot] = theirHp > 0 ? { ...hit.unit, hp: theirHp } : null;
-    meField[slot] = myHp > 0 ? { ...unit, hp: myHp, readyAt: state.time + ATTACK_COOLDOWN_MS } : null;
-    if (theirHp <= 0) events.push({ kind: 'death', p: q, uid: hit.unit.uid, card: hit.unit.card, slot: hit.slot });
-    if (myHp <= 0) events.push({ kind: 'death', p, uid, card: unit.card, slot });
+    const hit = findUnit(foe, target.uid)!.unit;
+    // 反撃は殴られる前の値で決まる（同時にぶつかる）
+    const back = attackOf(foe, hit) + (CARDS[hit.card].ab.unitBonus ?? 0);
+    const victims = ab.sweep ? units(foe) : [hit];
+    for (const v of victims) hurtUnit(d, q, v, atk + (ab.unitBonus ?? 0));
+    if (!ab.ranged) hurtUnit(d, p, unit, back);
   }
-
-  let players = setPlayer(state.players, p, { ...me, coins: me.coins - def.attackCost, field: meField });
-  players = setPlayer(players, q, { ...foe, hp: foeHp, field: foeField });
-  return settle({ ...state, players, ...withEvents(state, events) });
+  sweepDead(d);
+  return finish(state, d);
 }
 
 export function step(state: GameState, action: Action): GameState {
@@ -252,7 +357,7 @@ export function step(state: GameState, action: Action): GameState {
     case 'tick':
       return tick(state, action.dt);
     case 'summon':
-      return summon(state, action.p, action.handIndex, action.slot);
+      return summon(state, action.p, action.handIndex, action.slot, action.target);
     case 'attack':
       return attack(state, action.p, action.uid, action.target);
   }
