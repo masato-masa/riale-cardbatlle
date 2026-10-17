@@ -1,0 +1,703 @@
+/* このゲームだけの見た目。共通の部分（ヘッダー・シート・ホーム）は shared/chrome.css。 */
+
+:root {
+  --ink: #0b1520;
+  --coin: #f5b81c;
+  --coin-deep: #c98a00;
+  --atk: #f08a24;
+  --hp: #e5484d;
+  --attack-cost: #8f6ad8;
+  --arena-w: 420px;
+}
+
+body {
+  overscroll-behavior: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.icon-btn svg {
+  width: 20px;
+  height: 20px;
+}
+
+.icon-q {
+  font-size: 18px;
+  font-weight: 700;
+}
+
+/* ---- ホーム ---- */
+
+.home-fan {
+  position: relative;
+  width: 220px;
+  height: 140px;
+}
+
+.fan-card {
+  position: absolute;
+  top: 10px;
+  left: 50%;
+  width: 88px;
+  aspect-ratio: 68 / 84;
+  margin-left: -44px;
+}
+
+.fan-l {
+  transform: translateX(-62px) rotate(-12deg);
+}
+
+.fan-r {
+  transform: translateX(62px) rotate(12deg);
+}
+
+.fan-c {
+  top: 0;
+  z-index: 1;
+}
+
+/* ---- プレイ画面 ---- */
+
+.app-game {
+  gap: 8px;
+  padding-bottom: calc(12px + env(safe-area-inset-bottom));
+}
+
+.battle {
+  gap: 8px;
+  justify-content: flex-start;
+  align-self: stretch;
+  margin: 0 auto;
+  width: 100%;
+  max-width: var(--arena-w);
+  position: relative;
+}
+
+.stat.is-urgent .stat-num {
+  color: var(--warn);
+}
+
+.stat-double {
+  background: var(--coin);
+  color: var(--ink);
+}
+
+/* 盤面。行も列も明示して、中身が変わっても 1px も動かない。 */
+.arena {
+  width: 100%;
+  display: grid;
+  flex: 1;
+  max-height: 480px;
+  grid-template-rows: auto auto minmax(10px, 1fr) auto auto;
+  align-content: stretch;
+  gap: 10px;
+  padding: 10px;
+  border-radius: var(--card-radius);
+  background-size: cover;
+  background-position: center;
+  box-shadow: inset 0 0 0 2px rgb(11 21 32 / 0.25), var(--shadow-lg);
+}
+
+.field {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.slot {
+  position: relative;
+  min-width: 0;
+  min-height: 0;
+  aspect-ratio: 68 / 84;
+  border-radius: 9px;
+  background: rgb(255 255 255 / 0.22);
+  box-shadow: inset 0 0 0 1.5px rgb(255 255 255 / 0.45);
+  transition: box-shadow 0.12s var(--ease), background-color 0.12s var(--ease);
+}
+
+.field-foe .slot {
+  background: rgb(11 21 32 / 0.16);
+  box-shadow: inset 0 0 0 1.5px rgb(11 21 32 / 0.18);
+}
+
+.slot.is-drop {
+  background: rgb(255 216 74 / 0.45);
+  box-shadow: inset 0 0 0 2px #ffd84a, 0 0 14px rgb(255 216 74 / 0.8);
+}
+
+.midline {
+  align-self: center;
+  height: 2px;
+  border-radius: 2px;
+  background: rgb(255 255 255 / 0.55);
+}
+
+.unit-wrap {
+  position: absolute;
+  inset: 0;
+}
+
+.unit {
+  position: absolute;
+  inset: 0;
+  touch-action: none;
+  border-radius: 9px;
+  transition: filter 0.15s var(--ease), box-shadow 0.15s var(--ease);
+}
+
+.field-me .unit {
+  cursor: grab;
+}
+
+/* 攻撃できる（待ちが明けていて、コインも足りる）。 */
+.unit.is-ready {
+  box-shadow: 0 0 0 2px #ffd84a, 0 0 12px 2px rgb(255 216 74 / 0.75);
+}
+
+.unit.is-aiming {
+  box-shadow: 0 0 0 3px #fff, 0 0 16px 4px rgb(255 255 255 / 0.8);
+}
+
+.unit.is-target,
+.hero.is-target {
+  box-shadow: 0 0 0 2px var(--hp), 0 0 12px 2px rgb(229 72 77 / 0.6);
+}
+
+.unit.is-over,
+.hero.is-over {
+  box-shadow: 0 0 0 3px #fff, 0 0 0 6px var(--hp), 0 0 18px 6px rgb(229 72 77 / 0.7);
+}
+
+.unit.is-off,
+.hero.is-off {
+  filter: brightness(0.55) saturate(0.6);
+}
+
+/* 攻撃待ち。残りを扇で暗くする。 */
+.unit-cd {
+  position: absolute;
+  inset: 0;
+  border-radius: 9px;
+  background: conic-gradient(rgb(11 21 32 / 0.55) var(--cd), transparent 0);
+  pointer-events: none;
+}
+
+/* ---- プレイヤー ---- */
+
+.hero {
+  justify-self: center;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 6px;
+  border-radius: 999px;
+  transition: filter 0.15s var(--ease), box-shadow 0.15s var(--ease);
+}
+
+.hero-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 12px 4px 14px;
+  border-radius: 999px;
+  border: 2px solid var(--ink);
+  background: var(--surface);
+  box-shadow: 0 3px 0 rgb(0 0 0 / 0.35);
+}
+
+.hero-foe .hero-badge {
+  background: #ffe9e6;
+}
+
+.hero-label {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--muted);
+}
+
+.hero-hp {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 22px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+  min-width: 2.6em;
+}
+
+.hero-hp svg {
+  width: 22px;
+  height: 22px;
+}
+
+.hero-badge.is-low .hero-hp b {
+  color: var(--hp);
+}
+
+.hero-coins {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 2px 8px 2px 3px;
+  border-radius: 999px;
+  background: rgb(11 21 32 / 0.6);
+  color: #fff;
+  font-size: 14px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  min-width: 3.4em;
+}
+
+.hero-coins img {
+  width: 18px;
+  height: 18px;
+}
+
+/* ---- コインのゲージ ---- */
+
+.coin-gauge {
+  margin-top: auto;
+  width: 100%;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  gap: 8px;
+}
+
+.coin-count {
+  position: relative;
+  width: 40px;
+  height: 40px;
+  display: grid;
+  place-items: center;
+}
+
+.coin-count img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.coin-count b {
+  position: relative;
+  font-size: 18px;
+  font-weight: 800;
+  color: #fff;
+  text-shadow: 0 0 3px var(--ink), 0 1px 0 var(--ink), 0 -1px 0 var(--ink), 1px 0 0 var(--ink), -1px 0 0 var(--ink);
+}
+
+.coin-cells {
+  display: grid;
+  grid-template-columns: repeat(10, minmax(0, 1fr));
+  gap: 3px;
+  height: 16px;
+  padding: 3px;
+  border-radius: 999px;
+  background: var(--ink);
+}
+
+.coin-cell {
+  position: relative;
+  overflow: hidden;
+  border-radius: 3px;
+  background: rgb(255 255 255 / 0.14);
+}
+
+.coin-cell:first-child {
+  border-radius: 999px 3px 3px 999px;
+}
+
+.coin-cell:last-child {
+  border-radius: 3px 999px 999px 3px;
+}
+
+.coin-fill {
+  position: absolute;
+  inset: 0;
+  transform-origin: left center;
+  background: linear-gradient(var(--coin), var(--coin-deep));
+}
+
+/* ---- 手札 ---- */
+
+.hand-row {
+  width: 100%;
+  display: grid;
+  grid-template-columns: 46px 1fr;
+  align-items: end;
+  gap: 8px;
+}
+
+.next-card {
+  display: grid;
+  justify-items: center;
+  gap: 2px;
+}
+
+.next-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--muted);
+}
+
+.next-slot {
+  position: relative;
+  width: 46px;
+  aspect-ratio: 68 / 84;
+  opacity: 0.85;
+}
+
+.hand {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 76px));
+  justify-content: center;
+  gap: 6px;
+}
+
+.hand-slot {
+  position: relative;
+  min-width: 0;
+  min-height: 0;
+  aspect-ratio: 68 / 84;
+}
+
+.hand-card {
+  position: absolute;
+  inset: 0;
+  touch-action: none;
+  cursor: grab;
+}
+
+.hand-card.is-lifted {
+  opacity: 0.3;
+}
+
+/* まだコインが足りない。足りないぶんだけ上から暗くする（たまるのが見える）。 */
+.hand-wait {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  border-radius: 9px 9px 0 0;
+  background: rgb(11 21 32 / 0.5);
+  pointer-events: none;
+}
+
+.hand-card.is-affordable .face {
+  box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.28), 0 3px 0 rgb(0 0 0 / 0.45), 0 0 0 2px rgb(255 216 74 / 0.8);
+}
+
+.hint {
+  position: absolute;
+  left: 50%;
+  bottom: 118px;
+  translate: -50% 0;
+  padding: 6px 14px;
+  border-radius: 999px;
+  background: rgb(11 21 32 / 0.85);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 700;
+  white-space: nowrap;
+  pointer-events: none;
+  z-index: 5;
+}
+
+/* ---- カードの面 ---- */
+
+.face {
+  position: absolute;
+  inset: 0;
+  border: 2px solid var(--ink);
+  border-radius: 9px;
+  background: #3a4a5c;
+  box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.28), 0 3px 0 rgb(0 0 0 / 0.45);
+  container-type: inline-size;
+}
+
+.face.is-blocker {
+  border-color: #1b4f8f;
+}
+
+.face-body {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  border-radius: 7px;
+}
+
+.face-art {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  pointer-events: none;
+  -webkit-user-drag: none;
+}
+
+.face-name {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  padding: 10% 2px 3%;
+  background: linear-gradient(transparent, rgb(11 21 32 / 0.85) 45%);
+  color: #fff;
+  font-size: max(9px, 15cqw);
+  font-weight: 700;
+  text-align: center;
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+/* 四隅の数字。カードの幅に合わせて大きさを変える（場・手札・次で同じ見た目）。 */
+.pip {
+  position: absolute;
+  width: 34cqw;
+  height: 34cqw;
+  min-width: 15px;
+  min-height: 15px;
+  display: grid;
+  place-items: center;
+  border: 1.5px solid var(--ink);
+  border-radius: 999px;
+  color: #fff;
+  font-size: max(10px, 22cqw);
+  font-weight: 800;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  text-shadow: 0 1px 0 rgb(0 0 0 / 0.55);
+  z-index: 1;
+}
+
+.pip-summon {
+  top: -6%;
+  left: -8%;
+  background: radial-gradient(circle at 35% 30%, #ffe28a, var(--coin) 55%, var(--coin-deep));
+  color: var(--ink);
+  text-shadow: none;
+}
+
+.pip-attack {
+  top: -6%;
+  right: -8%;
+  background: radial-gradient(circle at 35% 30%, #c9b2ff, var(--attack-cost) 60%, #5b3aa6);
+}
+
+.pip-atk {
+  bottom: -6%;
+  left: -8%;
+  border-radius: 6px;
+  background: var(--atk);
+}
+
+.pip-atk,
+.pip-hp {
+  width: 30cqw;
+  height: 30cqw;
+}
+
+.pip-hp {
+  bottom: -6%;
+  right: -8%;
+  background: var(--hp);
+}
+
+.pip-hp.is-hurt {
+  background: #fff;
+  color: var(--hp);
+  text-shadow: none;
+}
+
+.face-shield {
+  position: absolute;
+  top: -4%;
+  left: 50%;
+  width: 30cqw;
+  translate: -50% 0;
+  z-index: 1;
+}
+
+.face-shield svg {
+  display: block;
+  width: 100%;
+}
+
+.face.is-small .face-name {
+  display: none;
+}
+
+/* ---- ドラッグ ---- */
+
+.drag-ghost {
+  position: fixed;
+  width: 76px;
+  aspect-ratio: 68 / 84;
+  translate: -50% -60%;
+  rotate: -4deg;
+  scale: 1.08;
+  pointer-events: none;
+  z-index: 20;
+  filter: drop-shadow(0 10px 14px rgb(0 0 0 / 0.35));
+}
+
+.aim {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100dvh;
+  pointer-events: none;
+  z-index: 20;
+}
+
+.aim-line {
+  stroke: var(--hp);
+  stroke-width: 6;
+  stroke-linecap: round;
+  stroke-dasharray: 2 12;
+  filter: drop-shadow(0 0 3px rgb(255 255 255 / 0.9));
+}
+
+.aim-dot {
+  fill: var(--hp);
+  stroke: #fff;
+  stroke-width: 3;
+}
+
+.aim-line.is-blocked {
+  stroke: #8a8f98;
+}
+
+.aim-dot.is-blocked {
+  fill: #8a8f98;
+}
+
+/* ---- ダメージの数字 ---- */
+
+.popups {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 30;
+}
+
+.popup {
+  position: absolute;
+  translate: -50% -50%;
+  font-size: 24px;
+  font-weight: 900;
+  color: #fff;
+  -webkit-text-stroke: 1.5px var(--ink);
+  paint-order: stroke fill;
+  text-shadow: 0 2px 0 var(--ink);
+}
+
+.popup-face {
+  font-size: 32px;
+  color: #ffd84a;
+}
+
+/* ---- 決着 ---- */
+
+.result {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  background: rgb(11 21 32 / 0.45);
+  z-index: 40;
+}
+
+.result-card {
+  width: min(100%, 340px);
+  display: grid;
+  justify-items: center;
+  gap: 10px;
+  padding: 24px 20px 20px;
+  border-radius: var(--sheet-radius);
+  background: var(--surface);
+  box-shadow: var(--shadow-lg);
+}
+
+.result-title {
+  margin: 0;
+  font-size: 36px;
+  font-weight: 900;
+}
+
+.result-title.is-win {
+  color: var(--coin-deep);
+}
+
+.result-title.is-lose {
+  color: var(--muted);
+}
+
+.result-sub {
+  margin: 0;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.result-buttons {
+  width: 100%;
+  display: grid;
+  gap: 8px;
+  margin-top: 6px;
+}
+
+.result-buttons .home-btn {
+  width: 100%;
+}
+
+/* ---- シートの中身 ---- */
+
+.sheet-buttons {
+  display: grid;
+  gap: 8px;
+}
+
+.card-detail {
+  display: grid;
+  grid-template-columns: 96px 1fr;
+  gap: 8px 16px;
+  align-items: center;
+}
+
+.card-detail-face {
+  position: relative;
+  width: 96px;
+  aspect-ratio: 68 / 84;
+}
+
+.card-detail-stats {
+  margin: 0;
+  display: grid;
+  grid-template-columns: auto auto;
+  gap: 4px 12px;
+  font-size: 14px;
+}
+
+.card-detail-stats dt {
+  color: var(--muted);
+}
+
+.card-detail-stats dd {
+  margin: 0;
+  font-weight: 700;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.card-detail-text {
+  grid-column: 1 / -1;
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--pill-fg);
+}

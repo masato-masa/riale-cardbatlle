@@ -15,8 +15,6 @@
 // 音は互いにぶつかる。直前に鳴らした音から一定時間内は次を間引き、
 // 3 つ以上が同時に濁るのを防ぐ（勝ち負け・手番の合図だけは必ず鳴らす）。
 
-import type { CardId } from '@/game/types';
-
 import { getGraph, whenGraphCreated } from './audio-graph';
 import { duckBgm, stopBgm } from './bgm';
 import { isSoundEnabled } from './settings';
@@ -326,61 +324,38 @@ export function playSelect(): void {
   });
 }
 
-// カードを使ったときの音。投資系は明るいきらめき、妨害系は暗い一撃、
-// 封鎖者は鎖、衛兵は盾、伝令はラッパ。
-const CARD_SAMPLE: Record<CardId, string> = {
-  banker: 'cardBuff',
-  miner: 'cardBuff',
-  festival: 'cardBuff',
-  architect: 'cardBuff',
-  usurer: 'cardBuff',
-  spy: 'cardAttack',
-  taxman: 'cardAttack',
-  blockader: 'chain',
-  guard: 'shield',
-  herald: 'horn',
-  // 新しいカード（まだ専用の音は無い）。職人は上げて固める＝投資系のきらめき、検査官は相手を削る＝一撃
-  craftsman: 'cardBuff',
-  inspector: 'cardAttack',
-  // 2 段目: 顔役（称号を奪う）・密告者（相手の手順を崩す）は一撃、番頭（即金）は投資系、影武者は写した札の音（playUseCard）
-  boss: 'cardAttack',
-  informer: 'cardAttack',
-  double: 'cardBuff',
-  clerk: 'cardBuff',
-};
-
-// 合成音で代わりに鳴らすときの高さ。投資系は明るく高く、妨害系は低く沈める。
-const CARD_BASE_FREQ: Record<CardId, number> = {
-  banker: 720,
-  miner: 660,
-  festival: 640,
-  architect: 560,
-  guard: 520,
-  herald: 470,
-  usurer: 420,
-  spy: 360,
-  taxman: 330,
-  blockader: 300,
-  craftsman: 600,
-  inspector: 340,
-  boss: 350,
-  informer: 380,
-  double: 500,
-  clerk: 620,
-};
-
-/** カードを使う。カードの種類で音を変える（徴税官は相手のコインがこぼれる音を少し遅らせて重ねる）。 */
-export function playUseCard(card: CardId): void {
+/** カードを召喚する: 据わる音。大きいカード（コスト 5 以上）は低い層を重ねる。 */
+export function playSummon(cost: number): void {
   play(false, (c) => {
-    // 妨害の 2 枚（徴税官・封鎖者）は衝撃が大きいので、カチとドンを重ねる
-    if (card === 'taxman' || card === 'blockader') layers(c, card);
-    if (sample(c, CARD_SAMPLE[card])) {
-      if (card === 'taxman') sample(c, 'coinLose', 0.05, 0.22);
-      return;
-    }
-    const base = CARD_BASE_FREQ[card];
-    tone(c, { freq: base, freqEnd: base * 1.7, duration: 0.14, type: 'sine', gain: 0.16 });
-    tone(c, { freq: base * 2, freqEnd: base * 2.6, duration: 0.1, type: 'sine', gain: 0.05, delay: 0.02 });
+    if (cost >= 5) layers(c, 'build');
+    if (sample(c, cost >= 5 ? 'build' : 'select', 0.06)) return;
+    tone(c, { freq: 300, freqEnd: 520, duration: 0.14, type: 'triangle', gain: 0.14 });
+  });
+}
+
+/** 攻撃が当たる。相手がブロッカーなら盾の音、プレイヤーへの直撃は重い一撃。 */
+export function playHit(kind: 'unit' | 'blocker' | 'player'): void {
+  play(false, (c) => {
+    if (kind === 'player') layers(c, 'taxman');
+    const name = kind === 'blocker' ? 'shield' : 'cardAttack';
+    if (sample(c, name, 0.08)) return;
+    tone(c, { freq: kind === 'player' ? 160 : 260, freqEnd: 90, duration: 0.18, type: 'sine', gain: 0.2 });
+  });
+}
+
+/** カードが倒れる: 鎖がほどける音を低めに。 */
+export function playDeath(): void {
+  play(true, (c) => {
+    if (sample(c, 'coinLose', 0.05, 0.08)) return;
+    tone(c, { freq: 420, freqEnd: 120, duration: 0.3, type: 'sine', gain: 0.12, delay: 0.08 });
+  });
+}
+
+/** 残り時間が少ない・2 倍速に入った合図。 */
+export function playHorn(): void {
+  play(true, (c) => {
+    if (sample(c, 'horn')) return;
+    tone(c, { freq: 440, duration: 0.3, type: 'sawtooth', gain: 0.06 });
   });
 }
 
