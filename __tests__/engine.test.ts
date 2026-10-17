@@ -10,6 +10,7 @@ import {
   isWalled,
   legalTargets,
   step,
+  summonBlock,
   type GameState,
   type PlayerIndex,
   type Target,
@@ -56,7 +57,9 @@ function withHand(hand: CardId[], coins = COIN_MAX): GameState {
 
 /** 場へ直接置く（召喚の待ち時間なしで攻撃できる）。 */
 function place(s: GameState, p: PlayerIndex, slot: number, card: CardId, hp?: number, readyAt = 0): [GameState, Unit] {
-  const unit: Unit = { uid: s.nextUid, card, hp: hp ?? CARDS[card].hp, readyAt, barrier: !!CARDS[card].ab.barrier };
+  const unit: Unit = { uid: s.nextUid, card, hp: hp ?? CARDS[card].hp, readyAt, barrier: !!CARDS[card].ab.barrier,
+    pulseAt: CARDS[card].ab.pulse ? s.time + CARDS[card].ab.pulse!.everyMs : null,
+  };
   const field = [...s.players[p].field];
   field[slot] = unit;
   const pl = { ...s.players[p], field };
@@ -139,13 +142,10 @@ describe('召喚', () => {
   });
   it('5 枠すべて埋めると 6 体目は出せない', () => {
     let s = withHand(['herald', 'herald', 'herald', 'herald']);
-    for (let i = 0; i < FIELD_SLOTS; i++) {
-      s = { ...s, players: [{ ...s.players[0], coins: COIN_MAX }, s.players[1]] };
-      s = step(s, { type: 'summon', p: 0, handIndex: 0, slot: i });
-    }
+    for (let i = 0; i < FIELD_SLOTS; i++) [s] = place(s, 0, i, 'guard');
     expect(s.players[0].field.every(Boolean)).toBe(true);
-    const again = step({ ...s, players: [{ ...s.players[0], coins: COIN_MAX }, s.players[1]] }, { type: 'summon', p: 0, handIndex: 0, slot: 0 });
-    expect(again.players[0].field.filter(Boolean)).toHaveLength(FIELD_SLOTS);
+    expect(summonBlock(s, 0, 0, 0)).toBe('slot');
+    expect(step(s, { type: 'summon', p: 0, handIndex: 0, slot: 0 })).toBe(s);
   });
   it('デッキの枚数は保たれる（手札 + queue = 10）', () => {
     let s = withHand(['herald', 'herald', 'herald', 'herald']);
@@ -167,12 +167,13 @@ describe('攻撃', () => {
     const landed = step(s, { type: 'attack', p: 0, uid, target: { kind: 'player' } });
     expect(landed.players[1].hp).toBe(PLAYER_HP - CARDS.guard.atk);
   });
-  it('攻撃後 2 秒は次の攻撃ができず、アタックコストを払う', () => {
+  it('攻撃してもコインは減らない（アタックコストは無い）。攻撃後はクールタイムの間だけ攻撃できない', () => {
     let [s, u] = place(withHand(['herald', 'herald', 'herald', 'herald']), 0, 0, 'craftsman');
     const coins = s.players[0].coins;
     s = step(s, { type: 'attack', p: 0, uid: u.uid, target: { kind: 'player' } });
-    expect(s.players[0].coins).toBe(coins - CARDS.craftsman.attackCost);
+    expect(s.players[0].coins).toBe(coins);
     expect(s.players[1].hp).toBe(PLAYER_HP - CARDS.craftsman.atk);
+    expect('attackCost' in CARDS.craftsman).toBe(false);
     const blocked = step(s, { type: 'attack', p: 0, uid: u.uid, target: { kind: 'player' } });
     expect(blocked).toBe(s);
     s = tick(s, ATTACK_COOLDOWN_MS - 1);
@@ -181,9 +182,9 @@ describe('攻撃', () => {
     const again = step(s, { type: 'attack', p: 0, uid: u.uid, target: { kind: 'player' } });
     expect(again.players[1].hp).toBe(PLAYER_HP - 2 * CARDS.craftsman.atk);
   });
-  it('アタックコストが足りないと攻撃できない', () => {
-    const [s, u] = place(withHand(['herald', 'herald', 'herald', 'herald'], 2), 0, 0, 'architect');
-    expect(step(s, { type: 'attack', p: 0, uid: u.uid, target: { kind: 'player' } })).toBe(s);
+  it('コインが 0 でも攻撃できる', () => {
+    const [s, u] = place(withHand(HAND4, 0), 0, 0, 'architect');
+    expect(step(s, { type: 'attack', p: 0, uid: u.uid, target: { kind: 'player' } })).not.toBe(s);
   });
   it('カード同士は相互ダメージ。死んだカードは場から消える', () => {
     let s = withHand(['herald', 'herald', 'herald', 'herald']);
@@ -447,31 +448,24 @@ describe('能力: 攻撃まわり', () => {
     expect(hpOf(n, 1, m.uid)).toBe(CARDS.miner.hp);
   });
 
-  it('鼓舞: ほかの味方の攻撃力 +1。自分には乗らない', () => {
-    let [s, f] = place(withHand(HAND4), 0, 0, 'festival');
+  it('鼓舞: 商館（建築物）は攻撃力 0 のまま、ほかの味方ユニットの攻撃力 +1', () => {
+    let [s, f] = place(withHand(HAND4), 0, 0, 'tradingHouse');
     let h: Unit;
     [s, h] = place(s, 0, 1, 'spy');
-    expect(attackOf(s.players[0], f)).toBe(CARDS.festival.atk);
+    expect(attackOf(s.players[0], f)).toBe(0);
     expect(attackOf(s.players[0], h)).toBe(CARDS.spy.atk + 1);
     expect(hit(s, 0, h.uid, FACE).players[1].hp).toBe(PLAYER_HP - CARDS.spy.atk - 1 - 1); // 鼓舞 + 奇襲
-    expect(hit(s, 0, f.uid, FACE).players[1].hp).toBe(PLAYER_HP - CARDS.festival.atk);
   });
 
-  it('鼓舞: 反撃にも乗る。楽団が 2 枚なら互いに +1、重ねがけは足される', () => {
-    let [s, f] = place(withHand(HAND4), 1, 0, 'festival');
+  it('鼓舞: 反撃にも乗る。商館が 2 枚なら足される', () => {
+    let [s] = place(withHand(HAND4), 1, 0, 'tradingHouse');
     let h: Unit, att: Unit;
     [s, h] = place(s, 1, 1, 'spy');
     [s, att] = place(s, 0, 0, 'guard');
-    // 衛兵はブロッカーなので、狙われる側にもブロッカーはいない。spy を殴る
     const n = hit(s, 0, att.uid, U(h.uid));
     expect(hpOf(n, 0, att.uid)).toBe(CARDS.guard.hp - (CARDS.spy.atk + 1));
-
-    let f2: Unit, h2: Unit;
-    [s, f2] = place(s, 1, 2, 'festival');
-    [s, h2] = place(s, 1, 3, 'herald');
-    expect(attackOf(s.players[1], f)).toBe(CARDS.festival.atk + 1);
-    expect(attackOf(s.players[1], f2)).toBe(CARDS.festival.atk + 1);
-    expect(attackOf(s.players[1], h2)).toBe(CARDS.herald.atk + 2);
+    [s] = place(s, 1, 2, 'tradingHouse');
+    expect(attackOf(s.players[1], h)).toBe(CARDS.spy.atk + 2);
   });
 });
 
@@ -506,7 +500,7 @@ describe('能力: 召喚時・コイン・遺言', () => {
     const f = s.players[0].field;
     expect(f[1]!.card).toBe('miner');
     expect(f[0]).toMatchObject({ card: 'apprentice', hp: 1 });
-    expect(CARDS.apprentice).toMatchObject({ atk: 1, hp: 1, summon: 1, attackCost: 1 });
+    expect(CARDS.apprentice).toMatchObject({ atk: 1, hp: 1, summon: 1, type: 'unit' });
     expect(s.events.some((e) => e.kind === 'summon' && e.token && e.card === 'apprentice')).toBe(true);
     expect(s.players[0].hand.length + s.players[0].queue.length).toBe(10);
     expect(s.players[0].queue.includes('apprentice')).toBe(false);

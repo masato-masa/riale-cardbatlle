@@ -312,13 +312,14 @@ function tick(state: GameState, dt: number): GameState {
     if (next.result) return next;
   }
   if (end < MATCH_MS) return next;
-  const [a, b] = players;
+  // 砲撃・遺言で HP が動いていることがあるので、pulses 後の盤面で判定する
+  const [a, b] = next.players;
   const winner: PlayerIndex | null = a.hp === b.hp ? null : a.hp > b.hp ? 0 : 1;
-  const id = state.nextEventId;
+  const id = next.nextEventId;
   return {
     ...next,
     result: { winner, reason: 'time' },
-    events: [...state.events, { id, kind: 'end' } as GameEvent].slice(-EVENT_KEEP),
+    events: [...next.events, { id, kind: 'end' } as GameEvent].slice(-EVENT_KEEP),
     nextEventId: id + 1,
   };
 }

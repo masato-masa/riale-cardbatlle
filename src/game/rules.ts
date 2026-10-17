@@ -17,7 +17,11 @@ export const HAND_SIZE = 4;
 /** 召喚してから攻撃できるまでの時間（ms）。 */
 export const SUMMON_DELAY_MS = 1000;
 /** クールタイム: 攻撃してから次の攻撃ができるまでの時間（ms）。攻撃を縛るのはこれだけ（コインは召喚にだけ使う）。 */
-export const ATTACK_COOLDOWN_MS = 5000;
+export let ATTACK_COOLDOWN_MS = 6000;
+/** バランス測定（scripts/simulate.ts の cd=）専用。ゲーム本体は呼ばない。 */
+export function overrideAttackCooldownForSimulation(ms: number): void {
+  ATTACK_COOLDOWN_MS = ms;
+}
 
 /** その時刻のコインのたまる速さ（枚/ms）。 */
 export function coinRate(timeMs: number): number {
