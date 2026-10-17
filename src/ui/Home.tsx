@@ -8,7 +8,7 @@ import { SettingsIcon } from './icons';
 import { SettingsSheet } from './SettingsSheet';
 import { playUiTap, primeAudio } from './sound';
 
-export function Home({ onStart }: { onStart: (level: CpuLevel) => void }) {
+export function Home({ onStart, onDeck }: { onStart: (level: CpuLevel) => void; onDeck: () => void }) {
   const [settings, setSettings] = useState(false);
   const start = (level: CpuLevel) => {
     primeAudio();
@@ -46,6 +46,15 @@ export function Home({ onStart }: { onStart: (level: CpuLevel) => void }) {
         <div className="home-buttons">
           <button className="home-btn primary" onClick={() => start('normal')}>
             CPU と対戦（ふつう）
+          </button>
+          <button
+            className="home-btn"
+            onClick={() => {
+              playUiTap();
+              onDeck();
+            }}
+          >
+            デッキ・カード一覧
           </button>
           <button className="home-btn" onClick={() => start('easy')}>
             よわい CPU

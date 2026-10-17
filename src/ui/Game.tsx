@@ -9,7 +9,6 @@ import {
   needsTarget,
   requiresTarget,
   RIVAL_DECK,
-  STARTER_DECK,
   type CardId,
 } from '@/game/cards';
 import {
@@ -58,7 +57,6 @@ const HIT_AT_MS = 150;
 /** 狙撃・呪文・砲撃の弾が届くまでの時間（ms）。 */
 const SHOT_AT_MS = 240;
 
-const DECKS: [CardId[], CardId[]] = [STARTER_DECK, RIVAL_DECK];
 
 type Press =
   | { kind: 'hand'; index: number; x0: number; y0: number; timer: number }
@@ -115,9 +113,10 @@ function centerOf(el: Element | null): { x: number; y: number } | null {
 const unitEl = (uid: number) => document.querySelector(`[data-uid="${uid}"]`);
 const heroEl = (p: 0 | 1) => document.querySelector(`[data-player="${p}"]`);
 
-export function Game({ level, onExit }: { level: CpuLevel; onExit: () => void }) {
+export function Game({ level, deck, onExit }: { level: CpuLevel; deck: CardId[]; onExit: () => void }) {
+  const decks: [CardId[], CardId[]] = [deck, RIVAL_DECK];
   const [seed, setSeed] = useState(() => (Date.now() & 0x7fffffff) >>> 0);
-  const [game, setGame] = useState<GameState>(() => createGame(DECKS, seed));
+  const [game, setGame] = useState<GameState>(() => createGame(decks, seed));
   const gameRef = useRef(game);
   const brainRef = useRef(createBrain());
   const randRef = useRef(makeRng(seed ^ 0x9e3779b9));
@@ -529,7 +528,7 @@ export function Game({ level, onExit }: { level: CpuLevel; onExit: () => void })
     cdFrom.current.clear();
     setStunned(new Set());
     setSeed(next);
-    commit(createGame(DECKS, next));
+    commit(createGame(decks, next));
   };
 
   const renderUnit = (u: Unit, side: 0 | 1) => {
