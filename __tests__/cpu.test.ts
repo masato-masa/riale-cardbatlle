@@ -135,14 +135,14 @@ describe('CPU の新しいルール（建築物・呪文・クールタイム）
 
   it('遅延の呪文は攻撃が明けそうな相手が多いときに使う', () => {
     const many = setup(['roadblock', 'herald', 'herald', 'herald'], [], [['spy'], ['craftsman'], ['taxman']]);
-    expect(cast(firstActions(many, 0), 0).length).toBeGreaterThan(0);
+    expect(cast(firstActions(many, 0, 'normal'), 0).length).toBeGreaterThan(0);
     const none = setup(['roadblock', 'herald', 'herald', 'herald'], [], [['guard']]);
     expect(cast(firstActions(none, 0), 0)).toHaveLength(0);
   });
 
   it('再動の呪文は味方がクールタイム中のときだけ使う', () => {
     const base = setup(['festival', 'herald', 'herald', 'herald'], ['spy', 'craftsman', 'taxman'], [['guard']]);
-    expect(cast(firstActions(withReady(base, 15_000), 0), 0).length).toBeGreaterThan(0);
+    expect(cast(firstActions(withReady(base, 15_000), 0, 'normal'), 0).length).toBeGreaterThan(0);
     expect(cast(actionsOf(base, 0), 0)).toHaveLength(0);
   });
 

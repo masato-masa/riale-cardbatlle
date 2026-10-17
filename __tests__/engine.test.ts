@@ -515,12 +515,12 @@ describe('能力: 召喚時・コイン・遺言', () => {
     expect(s.events.some((e) => e.kind === 'summon' && e.token)).toBe(false);
   });
 
-  it('修復: 自分の HP を 3 回復。上限 20 を超えない。満タンなら出来事も出ない', () => {
+  it('修復: 自分の HP を 3 回復。上限 PLAYER_HP を超えない。満タンなら出来事も出ない', () => {
     const base = withHand(['architect', 'herald', 'herald', 'herald']);
-    const a = step(withHp(base, 0, 10), { type: 'summon', p: 0, handIndex: 0, slot: 0 });
-    expect(a.players[0].hp).toBe(13);
+    const a = step(withHp(base, 0, PLAYER_HP - 10), { type: 'summon', p: 0, handIndex: 0, slot: 0 });
+    expect(a.players[0].hp).toBe(PLAYER_HP - 7);
     expect(a.events.find((e) => e.kind === 'heal')).toMatchObject({ p: 0, amount: 3 });
-    const b = step(withHp(base, 0, 19), { type: 'summon', p: 0, handIndex: 0, slot: 0 });
+    const b = step(withHp(base, 0, PLAYER_HP - 1), { type: 'summon', p: 0, handIndex: 0, slot: 0 });
     expect(b.players[0].hp).toBe(PLAYER_HP);
     expect(b.events.find((e) => e.kind === 'heal')).toMatchObject({ amount: 1 });
     const c = step(base, { type: 'summon', p: 0, handIndex: 0, slot: 0 });
