@@ -1,20 +1,24 @@
 // CPU。候補（召喚・攻撃・待つ）にスコアを付けて最大を選ぶ。
 // 人間らしく、一定の間隔をあけて考える。state は変更しない。
 
-import { CARDS, isBlocker, type CardId } from '../game/cards';
+import { CARDS, isBlocker, needsTarget, type CardId } from '../game/cards';
 import {
   attackBlock,
+  attackOf,
   firstEmptySlot,
+  isWalled,
   other,
   step,
   summonBlock,
+  units,
   type Action,
   type GameState,
   type PlayerIndex,
+  type PlayerState,
   type Target,
   type Unit,
 } from '../game/engine';
-import { COIN_MAX, FIELD_SLOTS } from '../game/rules';
+import { COIN_MAX, FIELD_SLOTS, MATCH_MS, PLAYER_HP } from '../game/rules';
 
 export type CpuLevel = 'easy' | 'normal' | 'hard';
 
@@ -45,25 +49,68 @@ interface Tuning {
   face: number;
   /** 損得を考える度合い（交換の評価倍率）。 */
   trade: number;
-  /** 脅威に備えてブロッカーを出す度合い。 */
+  /** 脅威に備えてブロッカー・壁を作る度合い。 */
   defend: number;
+  /** 能力（狙撃・足止・増収・薙払など）を使いこなす度合い。 */
+  skill: number;
+  /** 高いカードのために、安い操作を我慢する度合い。 */
+  save: number;
 }
 
 const TUNING: Record<CpuLevel, Tuning> = {
-  easy: { thinkMin: 1600, thinkSpan: 800, noise: 4.5, second: 0.1, missLethal: 0.35, random: 0.25, idle: 0.5, face: 0.6, trade: 0.4, defend: 0.3 },
-  normal: { thinkMin: 900, thinkSpan: 600, noise: 1.6, second: 0.3, missLethal: 0.05, random: 0.04, idle: 0.8, face: 0.8, trade: 0.9, defend: 0.8 },
-  hard: { thinkMin: 500, thinkSpan: 400, noise: 0.5, second: 0.5, missLethal: 0, random: 0, idle: 0.0, face: 1.0, trade: 1.2, defend: 1.2 },
+  easy: { thinkMin: 1600, thinkSpan: 800, noise: 4.5, second: 0.1, missLethal: 0.35, random: 0.25, idle: 0.5, face: 0.6, trade: 0.4, defend: 0.3, skill: 0.6, save: 0 },
+  normal: { thinkMin: 900, thinkSpan: 600, noise: 2.0, second: 0.3, missLethal: 0.05, random: 0.04, idle: 0.8, face: 0.8, trade: 0.9, defend: 0.8, skill: 0.8, save: 0.5 },
+  hard: { thinkMin: 400, thinkSpan: 300, noise: 0.3, second: 0.7, missLethal: 0, random: 0, idle: 0.0, face: 1.0, trade: 1.2, defend: 1.2, skill: 0.8, save: 1.0 },
 };
 
-/** カードの強さの目安（盤面に残る価値）。 */
-function cardValue(card: CardId): number {
-  const d = CARDS[card];
-  return d.atk * 1.1 + d.hp * 0.7 + (isBlocker(card) ? 1.5 : 0);
+/** 受けるダメージの実際の値（結界は 0、鉄壁で減る）。 */
+function effective(u: Unit, amount: number): number {
+  if (amount <= 0 || u.barrier) return 0;
+  return Math.max(0, amount - (CARDS[u.card].ab.armor ?? 0));
 }
 
-function unitValue(u: Unit): number {
-  const d = CARDS[u.card];
-  return d.atk * 1.1 + u.hp * 0.7 + (isBlocker(u.card) ? 1.5 : 0);
+/** カードの強さの目安（盤面に残る価値）。allies はそのカードを除いた味方の数（鼓舞の価値に使う）。 */
+function worth(card: CardId, hp: number, atk: number, allies: number, barrier: boolean): number {
+  const ab = CARDS[card].ab;
+  let v = atk * 1.1 + hp * 0.7 + (isBlocker(card) ? 1.5 : 0);
+  if (barrier) v += 1.0;
+  if (ab.armor) v += ab.armor * 0.8;
+  if (ab.ranged) v += 0.9;
+  if (ab.sweep) v += 1.5;
+  if (ab.unitBonus) v += ab.unitBonus * 0.35;
+  if (ab.rally) v += ab.rally * (0.5 + allies * 0.5);
+  if (ab.coinBoost) v += ab.coinBoost * 5;
+  if (ab.onDeath) v += ab.onDeath.amount * 0.3;
+  return v;
+}
+
+function unitWorth(owner: PlayerState, u: Unit): number {
+  const allies = units(owner).length - 1;
+  return worth(u.card, u.hp, attackOf(owner, u), allies, u.barrier);
+}
+
+function cardWorth(card: CardId, allies: number): number {
+  const d = CARDS[card];
+  return worth(card, d.hp, d.atk, allies, !!d.ab.barrier);
+}
+
+/** 倒すと遺言で受けるダメージ（その分だけ損）。 */
+function deathCost(u: Unit): number {
+  const od = CARDS[u.card].ab.onDeath;
+  return od ? od.amount * 0.45 : 0;
+}
+
+/** 手札に高いカード（コスト 5 以上）があって、あと少しで払えるとき、ほかの操作に使うコインへの罰。 */
+function savePenalty(me: PlayerState, cost: number, self: CardId | null, t: Tuning): number {
+  if (t.save <= 0) return 0;
+  let big = 0;
+  for (const c of me.hand) {
+    const sc = CARDS[c].summon;
+    if (c === self || sc < 5 || sc <= me.coins || sc > me.coins + 3) continue;
+    big = Math.max(big, sc);
+  }
+  if (big === 0 || me.coins - cost >= big) return 0;
+  return Math.min(1.6, cost * 0.5) * t.save;
 }
 
 interface Candidate {
@@ -73,32 +120,86 @@ interface Candidate {
   lethal: boolean;
 }
 
+/** 場の圧力: 相手の攻撃力の合計が自分の HP に対してどれだけ大きいか（0〜2）。 */
+function pressure(me: PlayerState, foe: PlayerState): number {
+  const foeAtk = units(foe).reduce((n, u) => n + attackOf(foe, u) + (CARDS[u.card].ab.faceBonus ?? 0), 0);
+  return Math.min(2, foeAtk / Math.max(4, me.hp));
+}
+
+/** 狙撃で相手のカード u に与える損得。 */
+function strikeValue(foe: PlayerState, u: Unit, amount: number, t: Tuning): number {
+  const eff = effective(u, amount);
+  if (u.barrier) return 0.9 * t.skill; // 結界を剥がす
+  if (eff >= u.hp) return (1.6 + unitWorth(foe, u) * 0.7 * t.trade - deathCost(u)) * (0.4 + 0.6 * t.skill);
+  // 倒せないときは、攻撃力の高い相手を削る
+  return (eff * 0.45 + attackOf(foe, u) * 0.12) * t.skill;
+}
+
+/** 足止で相手のカード u を止める損得。攻撃待ちが明けそうな強いカードほど高い。 */
+function stunValue(state: GameState, foe: PlayerState, u: Unit, ms: number, t: Tuning): number {
+  const wait = Math.max(0, u.readyAt - state.time);
+  // すでに長く待つカードを止めても意味が薄い
+  const soon = wait < 1000 ? 1 : wait < 2000 ? 0.6 : 0.3;
+  const threat = attackOf(foe, u) + (CARDS[u.card].ab.faceBonus ?? 0) * 0.5 + (CARDS[u.card].ab.unitBonus ?? 0) * 0.3;
+  return (threat * 0.55 * soon * (ms / 3000) + (isBlocker(u.card) ? 0.2 : 0)) * t.skill;
+}
+
 function summonCandidates(state: GameState, p: PlayerIndex, t: Tuning): Candidate[] {
   const me = state.players[p];
   const foe = state.players[other(p)];
   const slot = firstEmptySlot(me);
   if (slot < 0) return [];
-  const foeAtk = foe.field.reduce((n, u) => n + (u ? CARDS[u.card].atk : 0), 0);
+  const foeUnits = units(foe);
+  const press = pressure(me, foe);
   const myBlockers = me.field.filter((u) => u && isBlocker(u.card)).length;
-  const foeBlockers = foe.field.filter((u) => u && isBlocker(u.card)).length;
-  const filled = me.field.filter(Boolean).length;
-  // 守りの必要度: 相手の攻撃力の合計が自分の HP に対して大きいほど高い
-  const danger = Math.min(2, foeAtk / Math.max(4, me.hp));
+  const foeBlockers = foeUnits.filter((u) => isBlocker(u.card)).length;
+  const filled = units(me).length;
+  const foeAtk = foeUnits.reduce((n, u) => n + attackOf(foe, u), 0);
+  const early = Math.max(0, 1 - state.time / (MATCH_MS * 0.7));
   const out: Candidate[] = [];
   me.hand.forEach((card, handIndex) => {
     if (summonBlock(state, p, handIndex, slot)) return;
     const d = CARDS[card];
-    let s = cardValue(card) * 0.55 + d.summon * 0.15;
+    const ab = d.ab;
+    let s = cardWorth(card, filled) * 0.55 + d.summon * 0.15;
     // コインが余っているほど急いで出す、枠が空いているほど出す
     s += (me.coins - d.summon) * 0.05 + (FIELD_SLOTS - filled) * 0.25;
     if (me.coins >= COIN_MAX - 0.5) s += 1.5; // 上限で腐らせない
     if (isBlocker(card)) {
-      s += myBlockers === 0 ? danger * 3 * t.defend : -1.0;
+      s += myBlockers === 0 ? press * 3 * t.defend : -1.0;
       if (foeBlockers === 0 && foeAtk === 0) s -= 0.5;
     }
     // 安いカードで高いカードの召喚を邪魔しない（もう少しで払えるなら貯める）
     const bigger = me.hand.some((c) => CARDS[c].summon > d.summon + 1 && CARDS[c].summon <= me.coins + 2.2 && CARDS[c].summon > me.coins);
     if (bigger && d.summon <= 2) s -= 1.2;
+    s -= savePenalty(me, d.summon, card, t);
+
+    // 増収: 早く出すほど元が取れる
+    if (ab.coinBoost) s += ab.coinBoost * 14 * early * t.skill;
+    // 速攻: 出してすぐ殴れる
+    if (ab.haste) s += 0.5 * t.skill;
+    // 仲間: 空き枠が残っていれば見習いが付いてくる
+    if (ab.onSummon?.kind === 'token' && filled + 1 < FIELD_SLOTS) s += 1.3 * t.skill;
+    // 修復: 減っているぶんだけ価値がある
+    if (ab.onSummon?.kind === 'heal') s += Math.min(PLAYER_HP - me.hp, ab.onSummon.amount) * 0.4 * t.skill - 0.3;
+    // 壁: 場の 5 枚目で押されているなら価値が高い（ただの 5 枚目でも少し）
+    if (!isWalled(me) && filled === FIELD_SLOTS - 1) s += (press * 2.4 + (me.hp < foe.hp ? 0.6 : 0.2)) * t.defend;
+    // 薙払: 相手の場が厚いほど出したい
+    if (ab.sweep) s += Math.min(foeUnits.length, 4) * 0.25 * t.skill;
+
+    const os = ab.onSummon;
+    if (needsTarget(card) && (os?.kind === 'strike' || os?.kind === 'stun')) {
+      if (foeUnits.length === 0) {
+        // 的が無い。出しても能力が空振りするので、的が来るまで少し待つ
+        out.push({ action: { type: 'summon', p, handIndex, slot }, score: s - 1.2 * t.skill, lethal: false });
+        return;
+      }
+      for (const u of foeUnits) {
+        const v = os.kind === 'strike' ? strikeValue(foe, u, os.amount, t) : stunValue(state, foe, u, os.ms, t);
+        out.push({ action: { type: 'summon', p, handIndex, slot, target: u.uid }, score: s + v, lethal: false });
+      }
+      return;
+    }
     out.push({ action: { type: 'summon', p, handIndex, slot }, score: s, lethal: false });
   });
   return out;
@@ -108,35 +209,66 @@ function attackCandidates(state: GameState, p: PlayerIndex, t: Tuning): Candidat
   const me = state.players[p];
   const foe = state.players[other(p)];
   const out: Candidate[] = [];
-  const targets: Target[] = [{ kind: 'player' }, ...foe.field.filter((u): u is Unit => !!u).map((u) => ({ kind: 'unit' as const, uid: u.uid }))];
-  const foeAtkTotal = foe.field.reduce((n, u) => n + (u ? CARDS[u.card].atk : 0), 0);
+  const foeUnits = units(foe);
+  const targets: Target[] = [{ kind: 'player' }, ...foeUnits.map((u) => ({ kind: 'unit' as const, uid: u.uid }))];
+  const foeAtkTotal = foeUnits.reduce((n, u) => n + attackOf(foe, u), 0);
+  const press = pressure(me, foe);
+  const myWall = isWalled(me);
+  const foeWall = isWalled(foe);
   for (const unit of me.field) {
     if (!unit) continue;
     const d = CARDS[unit.card];
+    const ab = d.ab;
+    const myAtk = attackOf(me, unit);
     for (const target of targets) {
       if (attackBlock(state, p, unit.uid, target)) continue;
       // コインの重み: アタックコストが高いほど割に合わない
-      const costPenalty = d.attackCost * 0.35;
+      const costPenalty = d.attackCost * 0.35 + savePenalty(me, d.attackCost, null, t);
       if (target.kind === 'player') {
-        const lethal = foe.hp <= d.atk;
-        let s = d.atk * 0.9 * t.face - costPenalty + 0.6;
+        const dmg = myAtk + (ab.faceBonus ?? 0);
+        const lethal = foe.hp <= dmg;
+        let s = dmg * 0.9 * t.face - costPenalty + 0.6;
         // 相手の HP が減っているほど顔を狙う
-        s += (1 - foe.hp / 20) * d.atk * 0.5;
+        s += (1 - foe.hp / PLAYER_HP) * dmg * 0.5;
         if (lethal) s += 100;
         out.push({ action: { type: 'attack', p, uid: unit.uid, target }, score: s, lethal });
       } else {
-        const hit = foe.field.find((u) => u && u.uid === target.uid)!;
+        const hit = foeUnits.find((u) => u.uid === target.uid)!;
         const hd = CARDS[hit.card];
-        const kills = d.atk >= hit.hp;
-        const dies = hd.atk >= unit.hp;
+        const dmg = myAtk + (ab.unitBonus ?? 0);
+        const dealt = effective(hit, dmg);
+        const back = ab.ranged ? 0 : effective(unit, attackOf(foe, hit) + (hd.ab.unitBonus ?? 0));
+        const kills = dealt >= hit.hp;
+        const dies = back >= unit.hp;
         let s: number;
-        if (kills && !dies) s = 2.5 + unitValue(hit) * 0.6 * t.trade + hd.atk * 0.3;
-        else if (kills && dies) s = (unitValue(hit) - unitValue(unit) * 0.9) * 0.6 * t.trade - 0.3;
-        else if (!kills && !dies) s = d.atk * 0.25 + hd.atk * 0.0 - 0.5; // 削るだけ
-        else s = -4 * t.trade - unitValue(unit) * 0.3; // 倒せず死ぬ
+        const hitWorth = unitWorth(foe, hit);
+        const myWorth = unitWorth(me, unit);
+        if (kills && !dies) s = 2.5 + hitWorth * 0.6 * t.trade + attackOf(foe, hit) * 0.3;
+        else if (kills && dies) s = (hitWorth - myWorth * 0.9) * 0.6 * t.trade - 0.3;
+        else if (!kills && !dies) {
+          if (ab.ranged) s = dealt * 0.5 - 0.1; // 反撃を受けないので、削るだけでも得
+          else s = dealt * 0.3 - 0.4; // 削るだけ
+          if (hit.barrier) s += 0.7; // 結界を剥がす
+        } else s = -4 * t.trade - myWorth * 0.3; // 倒せず死ぬ
         // 脅威（攻撃力が高い）を倒す価値
-        if (kills) s += hd.atk * 0.25 * (foeAtkTotal > 6 ? 1.3 : 1);
-        if (isBlocker(hit.card) && kills) s += 1.0; // 顔への道を開ける
+        if (kills) s += attackOf(foe, hit) * 0.25 * (foeAtkTotal > 6 ? 1.3 : 1);
+        if (kills) s -= deathCost(hit);
+        if (kills && isBlocker(hit.card)) s += 1.0; // 顔への道を開ける
+        if (kills && foeWall) s += 1.2; // 壁を崩して顔を通す
+        if (dies) {
+          if (ab.onDeath) s += ab.onDeath.amount * 0.3; // 遺言で一矢報いる
+          if (myWall) s -= 1.0 * press * t.defend + 0.5; // 壁が崩れる
+        }
+        // 薙払: 巻き込んだほかのカードの損得
+        if (ab.sweep) {
+          for (const o of foeUnits) {
+            if (o.uid === hit.uid) continue;
+            const od = effective(o, dmg);
+            if (od >= o.hp) s += (1.2 + unitWorth(foe, o) * 0.5 * t.trade - deathCost(o)) * (0.4 + 0.6 * t.skill);
+            else s += od * 0.25 * t.skill;
+            if (o.barrier) s += 0.4 * t.skill;
+          }
+        }
         s -= costPenalty;
         out.push({ action: { type: 'attack', p, uid: unit.uid, target }, score: s, lethal: false });
       }
