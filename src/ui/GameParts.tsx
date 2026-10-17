@@ -1,4 +1,4 @@
-import { abilityLines, CARDS, WALL_TEXT, type CardId } from '@/game/cards';
+import { abilityLines, CARDS, TYPE_NAME, WALL_TEXT, type CardId } from '@/game/cards';
 import { PLAYER_HP } from '@/game/rules';
 
 import { CardFace } from './CardFace';
@@ -29,14 +29,22 @@ export function CardDetail({ card, hp }: { card: CardId; hp?: number }) {
         <CardFace card={card} hp={hp} />
       </div>
       <dl className="card-detail-stats">
+        <dt>種類</dt>
+        <dd>{TYPE_NAME[def.type]}</dd>
         <dt>召喚コスト</dt>
         <dd>{def.summon}</dd>
-        <dt>アタックコスト</dt>
-        <dd>{def.attackCost}</dd>
-        <dt>攻撃力</dt>
-        <dd>{def.atk}</dd>
-        <dt>HP</dt>
-        <dd>{hp !== undefined && hp < def.hp ? `${hp} / ${def.hp}` : def.hp}</dd>
+        {def.type === 'unit' ? (
+          <>
+            <dt>攻撃力</dt>
+            <dd>{def.atk}</dd>
+          </>
+        ) : null}
+        {def.type !== 'spell' ? (
+          <>
+            <dt>HP</dt>
+            <dd>{hp !== undefined && hp < def.hp ? `${hp} / ${def.hp}` : def.hp}</dd>
+          </>
+        ) : null}
       </dl>
       {abilityLines(card).map((line) => (
         <p key={line} className="card-detail-text">

@@ -2,7 +2,16 @@ import { animate, AnimatePresence, motion } from 'motion/react';
 import { useCallback, useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react';
 
 import { cpuStep, createBrain, type CpuLevel } from '@/ai/cpu';
-import { abilityLines, CARDS, isBlocker, needsTarget, RIVAL_DECK, STARTER_DECK, type CardId } from '@/game/cards';
+import {
+  abilityLines,
+  CARDS,
+  isBlocker,
+  needsTarget,
+  requiresTarget,
+  RIVAL_DECK,
+  STARTER_DECK,
+  type CardId,
+} from '@/game/cards';
 import {
   attackBlock,
   attackOf,
@@ -24,10 +33,8 @@ import { COIN_MAX, DOUBLE_COIN_FROM_MS, MATCH_MS } from '@/game/rules';
 import { COIN_URL, FIELD_URL } from './art';
 import { setBgmTension, startBgm, stopBgm } from './bgm';
 import { CardFace } from './CardFace';
-import { BackIcon, CardDetail, HelpBody, HeroBadge } from './GameParts';
+import { CardDetail, HeroBadge } from './GameParts';
 import { hapticImpact, hapticLose, hapticReject, hapticUseCard, hapticWin } from './haptics';
-import { SettingsIcon } from './icons';
-import { SettingsSheet } from './SettingsSheet';
 import { Sheet } from './Sheets';
 import {
   playBarrier,
@@ -48,10 +55,9 @@ const DRAG_THRESHOLD_PX = 7;
 const LONG_PRESS_MS = 420;
 /** 攻撃の突進で、当たる瞬間までの時間（ms）。数字とダメージ音をここに合わせる。 */
 const HIT_AT_MS = 150;
-/** 狙撃・足止の弾が届くまでの時間（ms）。 */
+/** 狙撃・呪文・砲撃の弾が届くまでの時間（ms）。 */
 const SHOT_AT_MS = 240;
 
-const LEVEL_NAME: Record<CpuLevel, string> = { easy: 'よわい', normal: 'ふつう', hard: 'つよい' };
 const DECKS: [CardId[], CardId[]] = [STARTER_DECK, RIVAL_DECK];
 
 type Press =
@@ -59,7 +65,7 @@ type Press =
   | { kind: 'unit'; uid: number; x0: number; y0: number; timer: number };
 
 type Drag =
-  | { kind: 'hand'; index: number; x: number; y: number; slot: number | null; over: string | null }
+  | { kind: 'hand'; index: number; x: number; y: number; slot: number | null; over: string | null; onBoard: boolean }
   | { kind: 'unit'; uid: number; sx: number; sy: number; x: number; y: number; over: string | null };
 
 interface Popup {
@@ -78,12 +84,15 @@ interface Shot {
   y1: number;
 }
 
-type SheetKind = { kind: 'help' } | { kind: 'settings' } | { kind: 'quit' } | { kind: 'card'; card: CardId; hp?: number };
-
-const SUMMON_REASON = { coins: 'コインが足りません', slot: '場がいっぱいです', over: '' } as const;
-const ATTACK_REASON = {
+const SUMMON_REASON = {
   coins: 'コインが足りません',
-  cooldown: 'まだ攻撃できません',
+  slot: '場がいっぱいです',
+  target: '相手のカードの上で使ってください',
+  over: '',
+} as const;
+const ATTACK_REASON = {
+  building: '建築物は攻撃しません',
+  cooldown: 'クールタイム中です',
   target: 'ブロッカーを先に倒してください',
   over: '',
 } as const;
@@ -112,9 +121,10 @@ export function Game({ level, onExit }: { level: CpuLevel; onExit: () => void })
   const gameRef = useRef(game);
   const brainRef = useRef(createBrain());
   const randRef = useRef(makeRng(seed ^ 0x9e3779b9));
-  const [sheet, setSheet] = useState<SheetKind | null>(null);
+  /** 長押しで開いたカードの説明。開いている間は止める。 */
+  const [detail, setDetail] = useState<{ card: CardId; hp?: number } | null>(null);
   const pausedRef = useRef(false);
-  pausedRef.current = sheet !== null;
+  pausedRef.current = detail !== null;
 
   const commit = useCallback((s: GameState) => {
     gameRef.current = s;
@@ -159,8 +169,9 @@ export function Game({ level, onExit }: { level: CpuLevel; onExit: () => void })
   const [shots, setShots] = useState<Shot[]>([]);
   const fxId = useRef(1);
   const seenEvent = useRef(0);
-  /** 足止めされているカード（攻撃待ちが明けるまで鎖を出す）。 */
+  /** 足止めされているカード（クールタイムが明けるまで鎖を出す）。 */
   const [stunned, setStunned] = useState<Set<number>>(() => new Set());
+  const foeFieldRef = useRef<HTMLDivElement>(null);
 
   const addPopup = useCallback((el: Element | null, text: string, tone: Popup['tone']) => {
     const c = centerOf(el);
@@ -168,6 +179,15 @@ export function Game({ level, onExit }: { level: CpuLevel; onExit: () => void })
     const id = fxId.current++;
     setPopups((ps) => [...ps, { id, x: c.x, y: c.y, text, tone }]);
     window.setTimeout(() => setPopups((ps) => ps.filter((p) => p.id !== id)), 900);
+  }, []);
+
+  const shoot = useCallback((from: Element | null, to: Element | null) => {
+    const a = centerOf(from);
+    const b = centerOf(to);
+    if (!a || !b) return;
+    const id = fxId.current++;
+    setShots((ss) => [...ss, { id, x0: a.x, y0: a.y, x1: b.x, y1: b.y }]);
+    window.setTimeout(() => setShots((ss) => ss.filter((s) => s.id !== id)), SHOT_AT_MS + 120);
   }, []);
 
   const flash = (el: Element | null) => {
@@ -184,11 +204,16 @@ export function Game({ level, onExit }: { level: CpuLevel; onExit: () => void })
   }, [game.events]);
 
   /** 1 回の操作で起きた出来事をまとめて演出する。攻撃は突進が当たる瞬間に、
-   *  召喚の能力は弾が届く瞬間に、ダメージの数字と音を合わせる。 */
+   *  召喚の能力・呪文・砲撃は弾が届く瞬間に、ダメージの数字と音を合わせる。 */
   function playBatch(batch: GameEvent[]) {
     const attackEv = batch.find((e) => e.kind === 'attack');
     const summonEv = batch.find((e) => e.kind === 'summon' && !e.token);
-    const delay = attackEv ? HIT_AT_MS : summonEv ? SHOT_AT_MS : 0;
+    const spellEv = batch.find((e) => e.kind === 'spell');
+    const pulseEv = batch.find((e) => e.kind === 'pulse');
+    const delay = attackEv ? HIT_AT_MS : summonEv || spellEv || pulseEv ? SHOT_AT_MS : 0;
+    const firstHitUid = batch.flatMap((e) =>
+      e.kind === 'damage' && e.target.kind === 'unit' ? [e.target.uid] : e.kind === 'stun' ? [e.uid] : [],
+    )[0];
 
     for (const e of batch) {
       if (e.kind === 'attack') lunge(e);
@@ -196,6 +221,19 @@ export function Game({ level, onExit }: { level: CpuLevel; onExit: () => void })
         if (!e.token) playSummon(CARDS[e.card].summon);
         if (e.p === 0 && !e.token) hapticUseCard();
       }
+      if (e.kind === 'spell') {
+        playSummon(CARDS[e.card].summon);
+        if (e.p === 0) hapticUseCard();
+        const eff = CARDS[e.card].ab.spell!;
+        // 全体・遅延は相手の場ごと光らせる。単体は使った側から弾を飛ばす。
+        if (eff.kind === 'bolt' && e.target !== null) shoot(heroEl(e.p), unitEl(e.target));
+        if (eff.kind === 'blast' || eff.kind === 'freeze') {
+          const row = e.p === 0 ? foeFieldRef.current : fieldRef.current;
+          if (row) animate(row, { filter: ['brightness(1)', 'brightness(1.8)', 'brightness(1)'] }, { duration: 0.45 });
+        }
+      }
+      if (e.kind === 'pulse' && firstHitUid !== undefined) shoot(unitEl(e.uid), unitEl(firstHitUid));
+      if (e.kind === 'pulse') flash(unitEl(e.uid));
       if (e.kind === 'end') {
         const r = gameRef.current.result;
         if (r?.winner === 0) {
@@ -209,22 +247,8 @@ export function Game({ level, onExit }: { level: CpuLevel; onExit: () => void })
     }
 
     // 召喚の能力（狙撃・足止）は、召喚したカードから弾を飛ばす
-    if (summonEv && summonEv.kind === 'summon') {
-      const hitUid = batch.flatMap((e) =>
-        (e.kind === 'damage' && e.target.kind === 'unit') || e.kind === 'stun'
-          ? [e.kind === 'stun' ? e.uid : (e.target as { uid: number }).uid]
-          : [],
-      )[0];
-      if (hitUid !== undefined) {
-        window.setTimeout(() => {
-          const a = centerOf(unitEl(summonEv.uid));
-          const b = centerOf(unitEl(hitUid));
-          if (!a || !b) return;
-          const id = fxId.current++;
-          setShots((ss) => [...ss, { id, x0: a.x, y0: a.y, x1: b.x, y1: b.y }]);
-          window.setTimeout(() => setShots((ss) => ss.filter((s) => s.id !== id)), 400);
-        }, 0);
-      }
+    if (summonEv && summonEv.kind === 'summon' && firstHitUid !== undefined && !spellEv) {
+      window.setTimeout(() => shoot(unitEl(summonEv.uid), unitEl(firstHitUid)), 0);
     }
 
     window.setTimeout(() => {
@@ -255,11 +279,16 @@ export function Game({ level, onExit }: { level: CpuLevel; onExit: () => void })
           playHeal();
         }
         if (e.kind === 'stun') {
-          addPopup(unitEl(e.uid), '足止', 'stun');
+          addPopup(unitEl(e.uid), '遅延', 'stun');
           playStun();
           setStunned((s) => new Set(s).add(e.uid));
         }
+        if (e.kind === 'ready') {
+          addPopup(unitEl(e.uid), '再動', 'heal');
+          flash(unitEl(e.uid));
+        }
       }
+      if (batch.some((e) => e.kind === 'ready')) playHeal();
       if (hitKind) playHit(hitKind);
       if (batch.some((e) => e.kind === 'death')) playDeath();
     }, delay);
@@ -276,7 +305,7 @@ export function Game({ level, onExit }: { level: CpuLevel; onExit: () => void })
     animate(atkEl, { x: [0, dx, 0], y: [0, dy, 0], scale: [1, 1.14, 1] }, { duration: 0.36, times: [0, 0.42, 1], ease: 'easeOut' });
   }
 
-  // 足止めが明けたら鎖を外す
+  // 足止め・遅延が明けたら鎖を外す
   useEffect(() => {
     if (stunned.size === 0) return;
     const still = new Set<number>();
@@ -304,6 +333,7 @@ export function Game({ level, onExit }: { level: CpuLevel; onExit: () => void })
   const dragRef = useRef<Drag | null>(null);
   dragRef.current = drag;
   const fieldRef = useRef<HTMLDivElement>(null);
+  const trayRef = useRef<HTMLDivElement>(null);
 
   /** 手札を落とす枠: 自分の場の上なら、指にいちばん近い空き枠。 */
   const slotAt = useCallback((x: number, y: number): number | null => {
@@ -326,6 +356,12 @@ export function Game({ level, onExit }: { level: CpuLevel; onExit: () => void })
     return best;
   }, []);
 
+  /** 手札より上（盤面の上）で離したか。呪文はここで離すと使える。 */
+  const onBoardAt = (y: number): boolean => {
+    const tray = trayRef.current?.getBoundingClientRect();
+    return !!tray && y < tray.top - 10;
+  };
+
   const dropKeyAt = (x: number, y: number): string | null => {
     const el = document.elementFromPoint(x, y)?.closest<HTMLElement>('[data-drop]');
     return el?.dataset.drop ?? null;
@@ -346,10 +382,10 @@ export function Game({ level, onExit }: { level: CpuLevel; onExit: () => void })
       const s = gameRef.current;
       if (cur.kind === 'hand') {
         const card = s.players[0].hand[cur.index];
-        if (card) setSheet({ kind: 'card', card });
+        if (card) setDetail({ card });
       } else {
         const u = findUnit(s.players[0], cur.uid)?.unit;
-        if (u) setSheet({ kind: 'card', card: u.card, hp: u.hp });
+        if (u) setDetail({ card: u.card, hp: u.hp });
       }
       playUiTap();
     }, LONG_PRESS_MS);
@@ -363,6 +399,16 @@ export function Game({ level, onExit }: { level: CpuLevel; onExit: () => void })
     return key?.startsWith('foe:') ? key : null;
   };
 
+  const handDragAt = (index: number, x: number, y: number): Drag => ({
+    kind: 'hand',
+    index,
+    x,
+    y,
+    slot: slotAt(x, y),
+    over: handOver(index, x, y),
+    onBoard: onBoardAt(y),
+  });
+
   const onPressMove = (e: ReactPointerEvent) => {
     const press = pressRef.current;
     const d = dragRef.current;
@@ -371,15 +417,21 @@ export function Game({ level, onExit }: { level: CpuLevel; onExit: () => void })
       if (Math.hypot(x - press.x0, y - press.y0) < DRAG_THRESHOLD_PX) return;
       window.clearTimeout(press.timer);
       if (press.kind === 'hand') {
-        setDrag({ kind: 'hand', index: press.index, x, y, slot: slotAt(x, y), over: handOver(press.index, x, y) });
+        setDrag(handDragAt(press.index, x, y));
       } else {
+        const u = findUnit(gameRef.current.players[0], press.uid)?.unit;
+        // 建築物は攻撃しないので、ドラッグしても矢印を出さない
+        if (!u || CARDS[u.card].type !== 'unit') {
+          pressRef.current = null;
+          return reject(ATTACK_REASON.building);
+        }
         const c = centerOf(unitEl(press.uid)) ?? { x: press.x0, y: press.y0 };
         setDrag({ kind: 'unit', uid: press.uid, sx: c.x, sy: c.y, x, y, over: null });
       }
       return;
     }
     if (!d) return;
-    if (d.kind === 'hand') setDrag({ ...d, x, y, slot: slotAt(x, y), over: handOver(d.index, x, y) });
+    if (d.kind === 'hand') setDrag(handDragAt(d.index, x, y));
     else setDrag({ ...d, x, y, over: dropKeyAt(x, y) });
   };
 
@@ -392,13 +444,24 @@ export function Game({ level, onExit }: { level: CpuLevel; onExit: () => void })
     if (!d) return;
     const s = gameRef.current;
     if (d.kind === 'hand') {
+      const card = s.players[0].hand[d.index];
+      if (!card) return;
+      const target = d.over ? Number(d.over.slice(4)) : undefined;
+      // 呪文: 単体は相手のカードの上、それ以外は盤面の上で離す
+      if (CARDS[card].type === 'spell') {
+        if (requiresTarget(card) ? target === undefined && !d.onBoard : !d.onBoard) return;
+        const block = summonBlock(s, 0, d.index, -1, target);
+        if (block) return reject(SUMMON_REASON[block]);
+        commit(step(s, { type: 'summon', p: 0, handIndex: d.index, slot: -1, target }));
+        return;
+      }
       // 狙撃・足止を相手のカードの上で離した: 空いている枠に出して、そのカードを狙う
-      if (d.over) {
+      if (target !== undefined) {
         const slot = firstEmptySlot(s.players[0]);
         if (slot < 0) return reject(SUMMON_REASON.slot);
         const block = summonBlock(s, 0, d.index, slot);
         if (block) return reject(SUMMON_REASON[block]);
-        commit(step(s, { type: 'summon', p: 0, handIndex: d.index, slot, target: Number(d.over.slice(4)) }));
+        commit(step(s, { type: 'summon', p: 0, handIndex: d.index, slot, target }));
         return;
       }
       if (d.slot === null) {
@@ -442,10 +505,11 @@ export function Game({ level, onExit }: { level: CpuLevel; onExit: () => void })
   const unitDrag = drag?.kind === 'unit' ? drag : null;
   const handDrag = drag?.kind === 'hand' ? drag : null;
   const handDragCard = handDrag ? me.hand[handDrag.index] : undefined;
-  const aimingSpell = !!handDragCard && needsTarget(handDragCard);
+  const aiming = !!handDragCard && needsTarget(handDragCard);
+  const dragSpell = !!handDragCard && CARDS[handDragCard].type === 'spell';
   const dragBlock = unitDrag ? attackBlock(game, 0, unitDrag.uid) : null;
 
-  /** 攻撃待ちの輪の起点。readyAt が変わった時刻を覚える（engine は起点を持たない）。 */
+  /** クールタイムの輪の起点。readyAt が変わった時刻を覚える（engine は起点を持たない）。 */
   const cdFrom = useRef(new Map<number, { readyAt: number; from: number }>());
   const cooldownLeft = (u: Unit): number => {
     if (game.time >= u.readyAt) return 0;
@@ -469,13 +533,13 @@ export function Game({ level, onExit }: { level: CpuLevel; onExit: () => void })
   };
 
   const renderUnit = (u: Unit, side: 0 | 1) => {
-    const def = CARDS[u.card];
-    const left = cooldownLeft(u);
+    const isUnit = CARDS[u.card].type === 'unit';
+    const left = isUnit ? cooldownLeft(u) : 0;
     const key = targetKey({ kind: 'unit', uid: u.uid });
     const cls = ['unit'];
-    if (side === 0 && left === 0 && me.coins >= def.attackCost && !game.result) cls.push('is-ready');
+    if (side === 0 && isUnit && left === 0 && !game.result) cls.push('is-ready');
     if (side === 1 && unitDrag) cls.push(legal.has(key) ? 'is-target' : 'is-off');
-    if (side === 1 && aimingSpell) cls.push('is-target');
+    if (side === 1 && aiming) cls.push('is-target');
     if (side === 1 && (unitDrag?.over === key ? legal.has(key) : handDrag?.over === key)) cls.push('is-over');
     if (unitDrag?.uid === u.uid) cls.push('is-aiming');
     if (u.barrier) cls.push('is-barrier');
@@ -491,7 +555,7 @@ export function Game({ level, onExit }: { level: CpuLevel; onExit: () => void })
           opacity: 0,
           filter: 'grayscale(1)',
           pointerEvents: 'none',
-          transition: { delay: HIT_AT_MS / 1000 + 0.12, duration: 0.28 },
+          transition: { delay: SHOT_AT_MS / 1000 + 0.05, duration: 0.28 },
         }}
       >
         <div
@@ -507,7 +571,7 @@ export function Game({ level, onExit }: { level: CpuLevel; onExit: () => void })
         >
           <CardFace card={u.card} hp={u.hp} atk={attackOf(pl, u)} />
           {left > 0 ? <span className="unit-cd" style={{ ['--cd' as string]: `${left * 360}deg` }} aria-hidden="true" /> : null}
-          {stunned.has(u.uid) && left > 0 ? <span className="unit-stun" aria-label="足止め中" /> : null}
+          {stunned.has(u.uid) && left > 0 ? <span className="unit-stun" aria-label="遅延中" /> : null}
         </div>
       </motion.div>
     );
@@ -517,7 +581,7 @@ export function Game({ level, onExit }: { level: CpuLevel; onExit: () => void })
     game.players[side].field.map((u, i) => (
       <div
         key={i}
-        className={`slot${side === 0 && handDrag && !handDrag.over && handDrag.slot === i ? ' is-drop' : ''}`}
+        className={`slot${side === 0 && handDrag && !dragSpell && !handDrag.over && handDrag.slot === i ? ' is-drop' : ''}`}
         data-slot={side === 0 ? i : undefined}
       >
         <AnimatePresence>{u ? renderUnit(u, side) : null}</AnimatePresence>
@@ -534,68 +598,28 @@ export function Game({ level, onExit }: { level: CpuLevel; onExit: () => void })
   const coinFrac = me.coins - coinInt;
   const nextCard = me.queue[0];
   const dragInfo = handDragCard ? abilityLines(handDragCard)[0] : null;
+  const castReady = dragSpell && handDragCard && !requiresTarget(handDragCard) && handDrag?.onBoard;
 
   return (
-    <div className="app app-game">
-      <header className="header">
-        <div className="header-row">
-          <div className="header-left">
-            <button
-              className="icon-btn"
-              aria-label="もどる"
-              onClick={() => {
-                playUiTap();
-                if (game.result) onExit();
-                else setSheet({ kind: 'quit' });
-              }}
-            >
-              <BackIcon />
-            </button>
-          </div>
-          <h1 className="title">CPU（{LEVEL_NAME[level]}）</h1>
-          <div className="header-actions">
-            <button
-              className="icon-btn"
-              aria-label="あそびかた"
-              onClick={() => {
-                playUiTap();
-                setSheet({ kind: 'help' });
-              }}
-            >
-              <span className="icon-q">?</span>
-            </button>
-            <button
-              className="icon-btn"
-              aria-label="設定"
-              onClick={() => {
-                playUiTap();
-                setSheet({ kind: 'settings' });
-              }}
-            >
-              <SettingsIcon />
-            </button>
-          </div>
-        </div>
-        <div className="status-bar">
-          <span className={`stat${remaining <= 30_000 ? ' is-urgent' : ''}`}>
-            <span className="stat-label">のこり</span>
-            <span className="stat-num">{formatClock(remaining)}</span>
-          </span>
-          {overtime ? <span className="stat stat-double">コイン 2 倍</span> : null}
-        </div>
-      </header>
-
-      {/* 盤面・コイン・手札を 1 枚のボードに載せる */}
-      <main className="play battle" style={{ backgroundImage: `url(${FIELD_URL})` }}>
+    <div className="app-battle" style={{ backgroundImage: `url(${FIELD_URL})` }}>
+      <main className={`battle${castReady ? ' is-casting' : ''}`}>
         <div className="arena">
-          <div className={foeCls.join(' ')} data-player={1} data-drop={foeKey}>
-            <HeroBadge hp={foe.hp} label="あいて" walled={isWalled(foe)} />
+          <div className="arena-top">
+            <span className={`clock${remaining <= 30_000 ? ' is-urgent' : ''}`}>
+              {formatClock(remaining)}
+              {overtime ? <b className="clock-double">×2</b> : null}
+            </span>
+            <div className={foeCls.join(' ')} data-player={1} data-drop={foeKey}>
+              <HeroBadge hp={foe.hp} label="あいて" walled={isWalled(foe)} />
+            </div>
             <span className="hero-coins">
               <img src={COIN_URL} alt="" />
               {Math.floor(foe.coins)}
             </span>
           </div>
-          <div className="field field-foe">{fieldRow(1)}</div>
+          <div className="field field-foe" ref={foeFieldRef}>
+            {fieldRow(1)}
+          </div>
           <div className="midline" aria-hidden="true" />
           <div className="field field-me" ref={fieldRef}>
             {fieldRow(0)}
@@ -605,7 +629,7 @@ export function Game({ level, onExit }: { level: CpuLevel; onExit: () => void })
           </div>
         </div>
 
-        <div className="tray">
+        <div className="tray" ref={trayRef}>
           <div className="coin-gauge" aria-label={`コイン ${coinInt}`}>
             <span className="coin-count">
               <img src={COIN_URL} alt="" />
@@ -634,7 +658,7 @@ export function Game({ level, onExit }: { level: CpuLevel; onExit: () => void })
                   <div className="hand-slot" key={i}>
                     <AnimatePresence initial={false}>
                       <motion.div
-                        key={`${card}-${i}-${game.nextUid}`}
+                        key={`${card}-${i}`}
                         className={`hand-card${lack === 0 ? ' is-affordable' : ''}${dragging ? ' is-lifted' : ''}`}
                         initial={{ y: 26, opacity: 0, scale: 0.85 }}
                         animate={{ y: 0, opacity: 1, scale: 1, transition: { type: 'spring', stiffness: 460, damping: 32 } }}
@@ -677,7 +701,7 @@ export function Game({ level, onExit }: { level: CpuLevel; onExit: () => void })
 
       {/* ドラッグ中の札・矢印 */}
       {handDrag && handDragCard ? (
-        <div className={`drag-ghost${handDrag.over ? ' is-aiming' : ''}`} style={{ left: handDrag.x, top: handDrag.y }}>
+        <div className={`drag-ghost${handDrag.over || castReady ? ' is-aiming' : ''}`} style={{ left: handDrag.x, top: handDrag.y }}>
           <CardFace card={handDragCard} />
         </div>
       ) : null}
@@ -688,7 +712,7 @@ export function Game({ level, onExit }: { level: CpuLevel; onExit: () => void })
         </svg>
       ) : null}
 
-      {/* 狙撃・足止の弾 */}
+      {/* 狙撃・呪文・砲撃の弾 */}
       <svg className="aim" aria-hidden="true">
         {shots.map((s) => (
           <motion.circle
@@ -764,40 +788,10 @@ export function Game({ level, onExit }: { level: CpuLevel; onExit: () => void })
       </AnimatePresence>
 
       <AnimatePresence>
-        {sheet?.kind === 'help' ? (
-          <Sheet key="help" title="あそびかた" onClose={() => setSheet(null)}>
-            <HelpBody />
-          </Sheet>
-        ) : null}
-        {sheet?.kind === 'settings' ? <SettingsSheet key="settings" onClose={() => setSheet(null)} /> : null}
-        {sheet?.kind === 'quit' ? (
-          <Sheet key="quit" title="対戦をやめますか？" onClose={() => setSheet(null)}>
-            <div className="sheet-buttons">
-              <button
-                className="sheet-btn"
-                onClick={() => {
-                  playUiTap();
-                  onExit();
-                }}
-              >
-                やめる
-              </button>
-              <button
-                className="sheet-btn quiet"
-                onClick={() => {
-                  playUiTap();
-                  setSheet(null);
-                }}
-              >
-                つづける
-              </button>
-            </div>
-          </Sheet>
-        ) : null}
-        {sheet?.kind === 'card' ? (
-          <Sheet key="card" title={CARDS[sheet.card].name} onClose={() => setSheet(null)}>
-            <CardDetail card={sheet.card} hp={sheet.hp} />
-            <button className="sheet-btn" onClick={() => setSheet(null)}>
+        {detail ? (
+          <Sheet key="card" title={CARDS[detail.card].name} onClose={() => setDetail(null)}>
+            <CardDetail card={detail.card} hp={detail.hp} />
+            <button className="sheet-btn" onClick={() => setDetail(null)}>
               とじる
             </button>
           </Sheet>

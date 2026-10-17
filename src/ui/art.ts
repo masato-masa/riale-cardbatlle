@@ -1,5 +1,14 @@
 import type { CardId } from '@/game/cards';
 
+import wallUrl from '@/assets/art/buildings/wall.webp';
+import exchangeUrl from '@/assets/art/buildings/exchange.webp';
+import tradingHouseUrl from '@/assets/art/buildings/tradingHouse.webp';
+import factoryUrl from '@/assets/art/buildings/factory.webp';
+import cathedralUrl from '@/assets/art/buildings/cathedral.webp';
+import fortressUrl from '@/assets/art/buildings/fortress.webp';
+import quarryUrl from '@/assets/art/buildings/quarry.webp';
+import mineUrl from '@/assets/art/buildings/mine.webp';
+import roadUrl from '@/assets/art/buildings/road.webp';
 import fieldUrl from '@/assets/art/field.webp';
 import coinUrl from '@/assets/art/ui/coin.webp';
 import bankerUrl from '@/assets/art/cards/banker.webp';
@@ -37,9 +46,19 @@ export const CARD_ART: Record<CardId, string> = {
   boss: bossUrl,
   banker: bankerUrl,
   double: doubleUrl,
-  festival: festivalUrl,
   informer: informerUrl,
   usurer: usurerUrl,
   // 見習い（能力で出てくるカード）は番頭の絵
   apprentice: clerkUrl,
+  wall: wallUrl,
+  exchange: exchangeUrl,
+  tradingHouse: tradingHouseUrl,
+  factory: factoryUrl,
+  cathedral: cathedralUrl,
+  fortress: fortressUrl,
+  // 呪文はまだ専用の絵が無いので、近い建物の絵を仮に使う（落石＝石切場、地鳴り＝鉱山、通行止め＝街道）
+  quarry: quarryUrl,
+  quake: mineUrl,
+  roadblock: roadUrl,
+  festival: festivalUrl,
 };
