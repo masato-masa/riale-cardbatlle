@@ -2,6 +2,12 @@ import type { CardId } from '@/game/cards';
 
 import fieldUrl from '@/assets/art/field.webp';
 import coinUrl from '@/assets/art/ui/coin.webp';
+import bankerUrl from '@/assets/art/cards/banker.webp';
+import clerkUrl from '@/assets/art/cards/clerk.webp';
+import doubleUrl from '@/assets/art/cards/double.webp';
+import festivalUrl from '@/assets/art/cards/festival.webp';
+import informerUrl from '@/assets/art/cards/informer.webp';
+import usurerUrl from '@/assets/art/cards/usurer.webp';
 import architectUrl from '@/assets/art/cards/architect.webp';
 import blockaderUrl from '@/assets/art/cards/blockader.webp';
 import bossUrl from '@/assets/art/cards/boss.webp';
@@ -29,4 +35,11 @@ export const CARD_ART: Record<CardId, string> = {
   inspector: inspectorUrl,
   architect: architectUrl,
   boss: bossUrl,
+  banker: bankerUrl,
+  double: doubleUrl,
+  festival: festivalUrl,
+  informer: informerUrl,
+  usurer: usurerUrl,
+  // 見習い（能力で出てくるカード）は番頭の絵
+  apprentice: clerkUrl,
 };

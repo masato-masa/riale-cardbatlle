@@ -64,7 +64,13 @@ body {
 }
 
 .battle {
-  gap: 8px;
+  gap: 10px;
+  padding: 10px 10px 8px;
+  border-radius: var(--card-radius);
+  background-size: cover;
+  background-position: center;
+  box-shadow: inset 0 0 0 2px rgb(11 21 32 / 0.25), var(--shadow-lg);
+  overflow: hidden;
   justify-content: flex-start;
   align-self: stretch;
   margin: 0 auto;
@@ -91,11 +97,6 @@ body {
   grid-template-rows: auto auto minmax(10px, 1fr) auto auto;
   align-content: stretch;
   gap: 10px;
-  padding: 10px;
-  border-radius: var(--card-radius);
-  background-size: cover;
-  background-position: center;
-  box-shadow: inset 0 0 0 2px rgb(11 21 32 / 0.25), var(--shadow-lg);
 }
 
 .field {
@@ -256,8 +257,16 @@ body {
 
 /* ---- コインのゲージ ---- */
 
+/* ボードの下端。手札とコインを、盤面と同じ地の上に少し暗く敷く。 */
+.tray {
+  margin: auto -10px -8px;
+  padding: 10px 10px 8px;
+  display: grid;
+  gap: 8px;
+  background: linear-gradient(rgb(11 21 32 / 0), rgb(11 21 32 / 0.28) 30%, rgb(11 21 32 / 0.42));
+}
+
 .coin-gauge {
-  margin-top: auto;
   width: 100%;
   display: grid;
   grid-template-columns: auto 1fr;
@@ -339,7 +348,8 @@ body {
 .next-label {
   font-size: 11px;
   font-weight: 700;
-  color: var(--muted);
+  color: #fff;
+  text-shadow: 0 1px 2px rgb(0 0 0 / 0.6);
 }
 
 .next-slot {
@@ -392,7 +402,7 @@ body {
 .hint {
   position: absolute;
   left: 50%;
-  bottom: 118px;
+  bottom: 168px;
   translate: -50% 0;
   padding: 6px 14px;
   border-radius: 999px;
@@ -513,18 +523,52 @@ body {
   text-shadow: none;
 }
 
-.face-shield {
+.face-chip {
   position: absolute;
-  top: -4%;
+  top: -5%;
   left: 50%;
-  width: 30cqw;
   translate: -50% 0;
-  z-index: 1;
+  padding: 1px 3px;
+  border: 1.5px solid var(--ink);
+  border-radius: 5px;
+  background: #fff4d6;
+  color: var(--ink);
+  font-size: max(8px, 14cqw);
+  font-weight: 800;
+  line-height: 1.15;
+  white-space: nowrap;
+  z-index: 2;
 }
 
-.face-shield svg {
+.face-chip.is-blocker {
+  background: #4fa3ff;
+  color: #fff;
+  text-shadow: 0 1px 0 rgb(0 0 0 / 0.5);
+  border-radius: 5px 5px 9px 9px;
+}
+
+.face-chip.is-icon {
+  padding: 0;
+  border: 0;
+  background: none;
+  width: 28cqw;
+}
+
+.face-chip.is-icon svg {
   display: block;
   width: 100%;
+}
+
+.face.is-small .face-chip {
+  display: none;
+}
+
+.face.is-token {
+  border-color: #6b5a3a;
+}
+
+.pip-atk.is-up {
+  background: #2fb36a;
 }
 
 .face.is-small .face-name {
@@ -700,4 +744,87 @@ body {
   font-size: 13px;
   line-height: 1.6;
   color: var(--pill-fg);
+}
+
+/* ---- 能力の状態 ---- */
+
+/* 結界が残っている: 薄い光の膜 */
+.unit.is-barrier::after {
+  content: '';
+  position: absolute;
+  inset: -3px;
+  border-radius: 12px;
+  border: 2px solid rgb(140 220 255 / 0.95);
+  background: radial-gradient(circle, rgb(140 220 255 / 0) 55%, rgb(140 220 255 / 0.45));
+  box-shadow: 0 0 10px rgb(140 220 255 / 0.9);
+  pointer-events: none;
+  animation: barrier-pulse 1.6s ease-in-out infinite;
+}
+
+@keyframes barrier-pulse {
+  50% {
+    opacity: 0.55;
+  }
+}
+
+/* 足止め中: 鎖の帯 */
+.unit-stun {
+  position: absolute;
+  left: -4%;
+  right: -4%;
+  top: 42%;
+  height: 16%;
+  border-radius: 4px;
+  background: repeating-linear-gradient(90deg, #8a8f98 0 6px, #4b5058 6px 9px);
+  border: 1.5px solid var(--ink);
+  rotate: -12deg;
+  pointer-events: none;
+  z-index: 3;
+}
+
+.hero-wall {
+  padding: 1px 7px;
+  border-radius: 6px;
+  border: 1.5px solid var(--ink);
+  background: repeating-linear-gradient(0deg, #b9a58a 0 5px, #8f7b62 5px 6px);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 800;
+  text-shadow: 0 1px 0 rgb(0 0 0 / 0.6);
+}
+
+.drag-ghost.is-aiming {
+  scale: 0.8;
+  filter: drop-shadow(0 0 10px rgb(229 72 77 / 0.9));
+}
+
+.hint-info {
+  max-width: calc(100% - 20px);
+  white-space: normal;
+  text-align: center;
+  background: rgb(255 255 255 / 0.95);
+  color: var(--ink);
+  font-weight: 600;
+  box-shadow: var(--shadow-lg);
+}
+
+.shot {
+  fill: #ffd84a;
+  stroke: #fff;
+  stroke-width: 3;
+  filter: drop-shadow(0 0 6px #ffb020);
+}
+
+.popup-heal {
+  color: #6be39a;
+}
+
+.popup-guard {
+  color: #8cdcff;
+  font-size: 18px;
+}
+
+.popup-stun {
+  color: #c9ced6;
+  font-size: 18px;
 }

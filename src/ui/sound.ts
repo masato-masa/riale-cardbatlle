@@ -351,6 +351,30 @@ export function playDeath(): void {
   });
 }
 
+/** HP の回復: きらめき。 */
+export function playHeal(): void {
+  play(true, (c) => {
+    if (sample(c, 'cardBuff', 0.05)) return;
+    [660, 880].forEach((freq, i) => tone(c, { freq, duration: 0.16, type: 'sine', gain: 0.1, delay: i * 0.07 }));
+  });
+}
+
+/** 足止め: 鎖の音。 */
+export function playStun(): void {
+  play(true, (c) => {
+    if (sample(c, 'chain', 0.05)) return;
+    tone(c, { freq: 300, freqEnd: 200, duration: 0.25, type: 'square', gain: 0.05 });
+  });
+}
+
+/** 結界が攻撃を弾いた: 盾の音を高めに。 */
+export function playBarrier(): void {
+  play(true, (c) => {
+    if (sample(c, 'shield', 0.04)) return;
+    tone(c, { freq: 1200, freqEnd: 900, duration: 0.2, type: 'triangle', gain: 0.08 });
+  });
+}
+
 /** 残り時間が少ない・2 倍速に入った合図。 */
 export function playHorn(): void {
   play(true, (c) => {

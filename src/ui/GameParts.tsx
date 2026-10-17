@@ -1,0 +1,87 @@
+import { abilityLines, CARDS, WALL_TEXT, type CardId } from '@/game/cards';
+import { PLAYER_HP } from '@/game/rules';
+
+import { CardFace } from './CardFace';
+
+export function HeroBadge({ hp, label, walled }: { hp: number; label: string; walled: boolean }) {
+  const ratio = hp / PLAYER_HP;
+  return (
+    <span className={`hero-badge${ratio <= 0.3 ? ' is-low' : ''}`}>
+      <span className="hero-label">{label}</span>
+      <span className="hero-hp">
+        <HeartMark />
+        <b>{hp}</b>
+      </span>
+      {walled ? (
+        <span className="hero-wall" title={WALL_TEXT}>
+          壁
+        </span>
+      ) : null}
+    </span>
+  );
+}
+
+export function CardDetail({ card, hp }: { card: CardId; hp?: number }) {
+  const def = CARDS[card];
+  return (
+    <div className="card-detail">
+      <div className="card-detail-face">
+        <CardFace card={card} hp={hp} />
+      </div>
+      <dl className="card-detail-stats">
+        <dt>召喚コスト</dt>
+        <dd>{def.summon}</dd>
+        <dt>アタックコスト</dt>
+        <dd>{def.attackCost}</dd>
+        <dt>攻撃力</dt>
+        <dd>{def.atk}</dd>
+        <dt>HP</dt>
+        <dd>{hp !== undefined && hp < def.hp ? `${hp} / ${def.hp}` : def.hp}</dd>
+      </dl>
+      {abilityLines(card).map((line) => (
+        <p key={line} className="card-detail-text">
+          {line}
+        </p>
+      ))}
+      {abilityLines(card).length === 0 ? <p className="card-detail-text">能力なし</p> : null}
+    </div>
+  );
+}
+
+export function HelpBody() {
+  return (
+    <ul className="help-list">
+      <li>コインは時間でたまります（最大 10）。最後の 1 分は 2 倍速。</li>
+      <li>手札を自分の場へドラッグすると召喚。左上の数字が召喚コストです。</li>
+      <li>場のカードを相手のカードか相手の HP へドラッグすると攻撃。右上の数字がアタックコストです。</li>
+      <li>カード同士はお互いにダメージを受けます。左下が攻撃力、右下が HP。</li>
+      <li>盾のマークはブロッカー。相手にブロッカーがいる間は、ブロッカーしか狙えません。</li>
+      <li>{WALL_TEXT}。</li>
+      <li>カードの上端の 2 文字は能力。「狙撃」「足止」は相手のカードの上へドラッグして召喚します。</li>
+      <li>相手の HP を 0 にしたら勝ち。3 分たったら HP の多い方の勝ちです。</li>
+      <li>カードを長押しすると説明が出ます。</li>
+    </ul>
+  );
+}
+
+export function BackIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M15 5 L8 12 L15 19" />
+    </svg>
+  );
+}
+
+function HeartMark() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path
+        d="M12 20.5 C5 15.5 2.5 12 2.5 8.5 C2.5 5.6 4.8 3.5 7.5 3.5 C9.4 3.5 11 4.6 12 6.2 C13 4.6 14.6 3.5 16.5 3.5 C19.2 3.5 21.5 5.6 21.5 8.5 C21.5 12 19 15.5 12 20.5 Z"
+        fill="#e5484d"
+        stroke="#0b1520"
+        strokeWidth="1.8"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}

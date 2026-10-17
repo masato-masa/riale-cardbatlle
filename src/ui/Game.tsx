@@ -2,11 +2,14 @@ import { animate, AnimatePresence, motion } from 'motion/react';
 import { useCallback, useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react';
 
 import { cpuStep, createBrain, type CpuLevel } from '@/ai/cpu';
-import { CARDS, isBlocker, KEYWORD_TEXT, STARTER_DECK, type CardId } from '@/game/cards';
+import { abilityLines, CARDS, isBlocker, needsTarget, RIVAL_DECK, STARTER_DECK, type CardId } from '@/game/cards';
 import {
   attackBlock,
+  attackOf,
   createGame,
   findUnit,
+  firstEmptySlot,
+  isWalled,
   legalTargets,
   step,
   summonBlock,
@@ -16,21 +19,25 @@ import {
   type Unit,
 } from '@/game/engine';
 import { makeRng } from '@/game/rng';
-import { COIN_MAX, DOUBLE_COIN_FROM_MS, MATCH_MS, PLAYER_HP } from '@/game/rules';
+import { COIN_MAX, DOUBLE_COIN_FROM_MS, MATCH_MS } from '@/game/rules';
 
 import { COIN_URL, FIELD_URL } from './art';
-import { startBgm, setBgmTension, stopBgm } from './bgm';
+import { setBgmTension, startBgm, stopBgm } from './bgm';
 import { CardFace } from './CardFace';
+import { BackIcon, CardDetail, HelpBody, HeroBadge } from './GameParts';
 import { hapticImpact, hapticLose, hapticReject, hapticUseCard, hapticWin } from './haptics';
 import { SettingsIcon } from './icons';
 import { SettingsSheet } from './SettingsSheet';
 import { Sheet } from './Sheets';
 import {
+  playBarrier,
   playDeath,
+  playHeal,
   playHit,
   playHorn,
   playLose,
   playReject,
+  playStun,
   playSummon,
   playUiTap,
   playWin,
@@ -41,15 +48,18 @@ const DRAG_THRESHOLD_PX = 7;
 const LONG_PRESS_MS = 420;
 /** 攻撃の突進で、当たる瞬間までの時間（ms）。数字とダメージ音をここに合わせる。 */
 const HIT_AT_MS = 150;
+/** 狙撃・足止の弾が届くまでの時間（ms）。 */
+const SHOT_AT_MS = 240;
 
 const LEVEL_NAME: Record<CpuLevel, string> = { easy: 'よわい', normal: 'ふつう', hard: 'つよい' };
+const DECKS: [CardId[], CardId[]] = [STARTER_DECK, RIVAL_DECK];
 
 type Press =
   | { kind: 'hand'; index: number; x0: number; y0: number; timer: number }
   | { kind: 'unit'; uid: number; x0: number; y0: number; timer: number };
 
 type Drag =
-  | { kind: 'hand'; index: number; x: number; y: number; slot: number | null }
+  | { kind: 'hand'; index: number; x: number; y: number; slot: number | null; over: string | null }
   | { kind: 'unit'; uid: number; sx: number; sy: number; x: number; y: number; over: string | null };
 
 interface Popup {
@@ -57,7 +67,15 @@ interface Popup {
   x: number;
   y: number;
   text: string;
-  tone: 'dmg' | 'face';
+  tone: 'dmg' | 'face' | 'heal' | 'guard' | 'stun';
+}
+
+interface Shot {
+  id: number;
+  x0: number;
+  y0: number;
+  x1: number;
+  y1: number;
 }
 
 type SheetKind = { kind: 'help' } | { kind: 'settings' } | { kind: 'quit' } | { kind: 'card'; card: CardId; hp?: number };
@@ -85,9 +103,12 @@ function centerOf(el: Element | null): { x: number; y: number } | null {
   return { x: r.left + r.width / 2, y: r.top + r.height / 2 };
 }
 
+const unitEl = (uid: number) => document.querySelector(`[data-uid="${uid}"]`);
+const heroEl = (p: 0 | 1) => document.querySelector(`[data-player="${p}"]`);
+
 export function Game({ level, onExit }: { level: CpuLevel; onExit: () => void }) {
   const [seed, setSeed] = useState(() => (Date.now() & 0x7fffffff) >>> 0);
-  const [game, setGame] = useState<GameState>(() => createGame([STARTER_DECK, STARTER_DECK], seed));
+  const [game, setGame] = useState<GameState>(() => createGame(DECKS, seed));
   const gameRef = useRef(game);
   const brainRef = useRef(createBrain());
   const randRef = useRef(makeRng(seed ^ 0x9e3779b9));
@@ -135,81 +156,136 @@ export function Game({ level, onExit }: { level: CpuLevel; onExit: () => void })
 
   // ---- 出来事ごとの演出 ----
   const [popups, setPopups] = useState<Popup[]>([]);
-  const popupId = useRef(1);
+  const [shots, setShots] = useState<Shot[]>([]);
+  const fxId = useRef(1);
   const seenEvent = useRef(0);
+  /** 足止めされているカード（攻撃待ちが明けるまで鎖を出す）。 */
+  const [stunned, setStunned] = useState<Set<number>>(() => new Set());
+
   const addPopup = useCallback((el: Element | null, text: string, tone: Popup['tone']) => {
     const c = centerOf(el);
     if (!c) return;
-    const id = popupId.current++;
+    const id = fxId.current++;
     setPopups((ps) => [...ps, { id, x: c.x, y: c.y, text, tone }]);
     window.setTimeout(() => setPopups((ps) => ps.filter((p) => p.id !== id)), 900);
   }, []);
+
+  const flash = (el: Element | null) => {
+    if (el) animate(el, { filter: ['brightness(2.4) saturate(0.4)', 'brightness(1) saturate(1)'] }, { duration: 0.32 });
+  };
 
   useEffect(() => {
     const fresh = game.events.filter((e) => e.id > seenEvent.current);
     if (fresh.length === 0) return;
     seenEvent.current = fresh[fresh.length - 1]!.id;
-    for (const e of fresh) handleEvent(e);
-    // handleEvent は描画済みの DOM を読むだけ
+    playBatch(fresh);
+    // playBatch は描画済みの DOM を読むだけ
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [game.events]);
 
-  function handleEvent(e: GameEvent) {
-    const s = gameRef.current;
-    if (e.kind === 'summon') {
-      const unit = findUnit(s.players[e.p], e.uid)?.unit;
-      if (unit) playSummon(CARDS[unit.card].summon);
-      if (e.p === 0) hapticUseCard();
-      return;
-    }
-    if (e.kind === 'attack') {
-      const atkEl = document.querySelector(`[data-uid="${e.uid}"]`);
-      const tgtEl =
-        e.target.kind === 'player'
-          ? document.querySelector(`[data-player="${e.p === 0 ? 1 : 0}"]`)
-          : document.querySelector(`[data-uid="${e.target.uid}"]`);
-      const a = centerOf(atkEl);
-      const b = centerOf(tgtEl);
-      if (atkEl && a && b) {
-        const dx = (b.x - a.x) * 0.55;
-        const dy = (b.y - a.y) * 0.55;
-        animate(
-          atkEl,
-          { x: [0, dx, 0], y: [0, dy, 0], scale: [1, 1.14, 1] },
-          { duration: 0.36, times: [0, 0.42, 1], ease: 'easeOut' },
-        );
+  /** 1 回の操作で起きた出来事をまとめて演出する。攻撃は突進が当たる瞬間に、
+   *  召喚の能力は弾が届く瞬間に、ダメージの数字と音を合わせる。 */
+  function playBatch(batch: GameEvent[]) {
+    const attackEv = batch.find((e) => e.kind === 'attack');
+    const summonEv = batch.find((e) => e.kind === 'summon' && !e.token);
+    const delay = attackEv ? HIT_AT_MS : summonEv ? SHOT_AT_MS : 0;
+
+    for (const e of batch) {
+      if (e.kind === 'attack') lunge(e);
+      if (e.kind === 'summon') {
+        if (!e.token) playSummon(CARDS[e.card].summon);
+        if (e.p === 0 && !e.token) hapticUseCard();
       }
-      const targetCard =
-        e.target.kind === 'unit' ? tgtEl?.getAttribute('data-card') : null;
-      window.setTimeout(() => {
-        if (e.target.kind === 'player') {
-          playHit('player');
-          addPopup(tgtEl, `-${e.dealt}`, 'face');
-          if (tgtEl) animate(tgtEl, { x: [0, -7, 7, -5, 5, 0] }, { duration: 0.32 });
-          if (e.p === 1) hapticImpact([28]);
+      if (e.kind === 'end') {
+        const r = gameRef.current.result;
+        if (r?.winner === 0) {
+          playWin();
+          hapticWin();
         } else {
-          playHit(targetCard && isBlocker(targetCard as CardId) ? 'blocker' : 'unit');
-          addPopup(tgtEl, `-${e.dealt}`, 'dmg');
-          if (e.taken > 0) addPopup(atkEl, `-${e.taken}`, 'dmg');
+          playLose();
+          hapticLose();
         }
-      }, HIT_AT_MS);
-      return;
-    }
-    if (e.kind === 'death') {
-      playDeath();
-      return;
-    }
-    if (e.kind === 'end') {
-      const r = s.result;
-      if (r?.winner === 0) {
-        playWin();
-        hapticWin();
-      } else {
-        playLose();
-        hapticLose();
       }
     }
+
+    // 召喚の能力（狙撃・足止）は、召喚したカードから弾を飛ばす
+    if (summonEv && summonEv.kind === 'summon') {
+      const hitUid = batch.flatMap((e) =>
+        (e.kind === 'damage' && e.target.kind === 'unit') || e.kind === 'stun'
+          ? [e.kind === 'stun' ? e.uid : (e.target as { uid: number }).uid]
+          : [],
+      )[0];
+      if (hitUid !== undefined) {
+        window.setTimeout(() => {
+          const a = centerOf(unitEl(summonEv.uid));
+          const b = centerOf(unitEl(hitUid));
+          if (!a || !b) return;
+          const id = fxId.current++;
+          setShots((ss) => [...ss, { id, x0: a.x, y0: a.y, x1: b.x, y1: b.y }]);
+          window.setTimeout(() => setShots((ss) => ss.filter((s) => s.id !== id)), 400);
+        }, 0);
+      }
+    }
+
+    window.setTimeout(() => {
+      let hitKind: 'player' | 'blocker' | 'unit' | null = null;
+      for (const e of batch) {
+        if (e.kind === 'damage') {
+          if (e.target.kind === 'player') {
+            const el = heroEl(e.p);
+            addPopup(el, `-${e.amount}`, 'face');
+            if (el) animate(el, { x: [0, -7, 7, -5, 5, 0] }, { duration: 0.32 });
+            if (e.p === 0) hapticImpact([28]);
+            hitKind = 'player';
+          } else {
+            const el = unitEl(e.target.uid);
+            if (e.guard === 'barrier') {
+              addPopup(el, '結界', 'guard');
+              playBarrier();
+            } else {
+              addPopup(el, `-${e.amount}`, e.guard === 'armor' ? 'guard' : 'dmg');
+              flash(el);
+            }
+            const card = el?.getAttribute('data-card') as CardId | null;
+            if (hitKind !== 'player') hitKind = card && isBlocker(card) ? 'blocker' : 'unit';
+          }
+        }
+        if (e.kind === 'heal') {
+          addPopup(heroEl(e.p), `+${e.amount}`, 'heal');
+          playHeal();
+        }
+        if (e.kind === 'stun') {
+          addPopup(unitEl(e.uid), '足止', 'stun');
+          playStun();
+          setStunned((s) => new Set(s).add(e.uid));
+        }
+      }
+      if (hitKind) playHit(hitKind);
+      if (batch.some((e) => e.kind === 'death')) playDeath();
+    }, delay);
   }
+
+  function lunge(e: Extract<GameEvent, { kind: 'attack' }>) {
+    const atkEl = unitEl(e.uid);
+    const tgtEl = e.target.kind === 'player' ? heroEl(e.p === 0 ? 1 : 0) : unitEl(e.target.uid);
+    const a = centerOf(atkEl);
+    const b = centerOf(tgtEl);
+    if (!atkEl || !a || !b) return;
+    const dx = (b.x - a.x) * 0.55;
+    const dy = (b.y - a.y) * 0.55;
+    animate(atkEl, { x: [0, dx, 0], y: [0, dy, 0], scale: [1, 1.14, 1] }, { duration: 0.36, times: [0, 0.42, 1], ease: 'easeOut' });
+  }
+
+  // 足止めが明けたら鎖を外す
+  useEffect(() => {
+    if (stunned.size === 0) return;
+    const still = new Set<number>();
+    for (const uid of stunned) {
+      const u = findUnit(game.players[0], uid)?.unit ?? findUnit(game.players[1], uid)?.unit;
+      if (u && game.time < u.readyAt) still.add(uid);
+    }
+    if (still.size !== stunned.size) setStunned(still);
+  }, [game, stunned]);
 
   // ---- 断られた操作の理由 ----
   const [hint, setHint] = useState<{ id: number; text: string } | null>(null);
@@ -241,8 +317,7 @@ export function Game({ level, onExit }: { level: CpuLevel; onExit: () => void })
     row.querySelectorAll<HTMLElement>('[data-slot]').forEach((el) => {
       const i = Number(el.dataset.slot);
       if (field[i]) return;
-      const c = centerOf(el)!;
-      const d = Math.abs(c.x - x);
+      const d = Math.abs(centerOf(el)!.x - x);
       if (d < bestD) {
         bestD = d;
         best = i;
@@ -281,23 +356,31 @@ export function Game({ level, onExit }: { level: CpuLevel; onExit: () => void })
     pressRef.current = { ...p, x0: e.clientX, y0: e.clientY, timer } as Press;
   };
 
+  const handOver = (index: number, x: number, y: number): string | null => {
+    const card = gameRef.current.players[0].hand[index];
+    if (!card || !needsTarget(card)) return null;
+    const key = dropKeyAt(x, y);
+    return key?.startsWith('foe:') ? key : null;
+  };
+
   const onPressMove = (e: ReactPointerEvent) => {
     const press = pressRef.current;
     const d = dragRef.current;
+    const { clientX: x, clientY: y } = e;
     if (press && !d) {
-      if (Math.hypot(e.clientX - press.x0, e.clientY - press.y0) < DRAG_THRESHOLD_PX) return;
+      if (Math.hypot(x - press.x0, y - press.y0) < DRAG_THRESHOLD_PX) return;
       window.clearTimeout(press.timer);
       if (press.kind === 'hand') {
-        setDrag({ kind: 'hand', index: press.index, x: e.clientX, y: e.clientY, slot: slotAt(e.clientX, e.clientY) });
+        setDrag({ kind: 'hand', index: press.index, x, y, slot: slotAt(x, y), over: handOver(press.index, x, y) });
       } else {
-        const c = centerOf(document.querySelector(`[data-uid="${press.uid}"]`)) ?? { x: press.x0, y: press.y0 };
-        setDrag({ kind: 'unit', uid: press.uid, sx: c.x, sy: c.y, x: e.clientX, y: e.clientY, over: null });
+        const c = centerOf(unitEl(press.uid)) ?? { x: press.x0, y: press.y0 };
+        setDrag({ kind: 'unit', uid: press.uid, sx: c.x, sy: c.y, x, y, over: null });
       }
       return;
     }
     if (!d) return;
-    if (d.kind === 'hand') setDrag({ ...d, x: e.clientX, y: e.clientY, slot: slotAt(e.clientX, e.clientY) });
-    else setDrag({ ...d, x: e.clientX, y: e.clientY, over: dropKeyAt(e.clientX, e.clientY) });
+    if (d.kind === 'hand') setDrag({ ...d, x, y, slot: slotAt(x, y), over: handOver(d.index, x, y) });
+    else setDrag({ ...d, x, y, over: dropKeyAt(x, y) });
   };
 
   const onPressEnd = () => {
@@ -309,9 +392,19 @@ export function Game({ level, onExit }: { level: CpuLevel; onExit: () => void })
     if (!d) return;
     const s = gameRef.current;
     if (d.kind === 'hand') {
+      // 狙撃・足止を相手のカードの上で離した: 空いている枠に出して、そのカードを狙う
+      if (d.over) {
+        const slot = firstEmptySlot(s.players[0]);
+        if (slot < 0) return reject(SUMMON_REASON.slot);
+        const block = summonBlock(s, 0, d.index, slot);
+        if (block) return reject(SUMMON_REASON[block]);
+        commit(step(s, { type: 'summon', p: 0, handIndex: d.index, slot, target: Number(d.over.slice(4)) }));
+        return;
+      }
       if (d.slot === null) {
-        const anyEmpty = s.players[0].field.some((u) => !u);
-        if (!anyEmpty) reject(SUMMON_REASON.slot);
+        const r = fieldRef.current?.getBoundingClientRect();
+        const nearField = r && d.y > r.top - 40 && d.y < r.bottom + 40;
+        if (nearField && firstEmptySlot(s.players[0]) < 0) reject(SUMMON_REASON.slot);
         return;
       }
       const block = summonBlock(s, 0, d.index, d.slot);
@@ -328,6 +421,9 @@ export function Game({ level, onExit }: { level: CpuLevel; onExit: () => void })
           : null;
     if (!target) return;
     const block = attackBlock(s, 0, d.uid, target);
+    if (block === 'target' && target.kind === 'player' && isWalled(s.players[1])) {
+      return reject('相手の場が 5 枚で壁になっています');
+    }
     if (block) return reject(ATTACK_REASON[block]);
     commit(step(s, { type: 'attack', p: 0, uid: d.uid, target }));
   };
@@ -344,6 +440,9 @@ export function Game({ level, onExit }: { level: CpuLevel; onExit: () => void })
   const foe = game.players[1];
   const legal = useMemo(() => new Set(legalTargets(game, 0).map(targetKey)), [game]);
   const unitDrag = drag?.kind === 'unit' ? drag : null;
+  const handDrag = drag?.kind === 'hand' ? drag : null;
+  const handDragCard = handDrag ? me.hand[handDrag.index] : undefined;
+  const aimingSpell = !!handDragCard && needsTarget(handDragCard);
   const dragBlock = unitDrag ? attackBlock(game, 0, unitDrag.uid) : null;
 
   /** 攻撃待ちの輪の起点。readyAt が変わった時刻を覚える（engine は起点を持たない）。 */
@@ -364,8 +463,9 @@ export function Game({ level, onExit }: { level: CpuLevel; onExit: () => void })
     brainRef.current = createBrain();
     randRef.current = makeRng(next ^ 0x9e3779b9);
     cdFrom.current.clear();
+    setStunned(new Set());
     setSeed(next);
-    commit(createGame([STARTER_DECK, STARTER_DECK], next));
+    commit(createGame(DECKS, next));
   };
 
   const renderUnit = (u: Unit, side: 0 | 1) => {
@@ -375,8 +475,11 @@ export function Game({ level, onExit }: { level: CpuLevel; onExit: () => void })
     const cls = ['unit'];
     if (side === 0 && left === 0 && me.coins >= def.attackCost && !game.result) cls.push('is-ready');
     if (side === 1 && unitDrag) cls.push(legal.has(key) ? 'is-target' : 'is-off');
-    if (side === 1 && unitDrag?.over === key && legal.has(key)) cls.push('is-over');
+    if (side === 1 && aimingSpell) cls.push('is-target');
+    if (side === 1 && (unitDrag?.over === key ? legal.has(key) : handDrag?.over === key)) cls.push('is-over');
     if (unitDrag?.uid === u.uid) cls.push('is-aiming');
+    if (u.barrier) cls.push('is-barrier');
+    const pl = game.players[side];
     return (
       <motion.div
         key={u.uid}
@@ -388,7 +491,7 @@ export function Game({ level, onExit }: { level: CpuLevel; onExit: () => void })
           opacity: 0,
           filter: 'grayscale(1)',
           pointerEvents: 'none',
-          transition: { delay: HIT_AT_MS / 1000 + 0.05, duration: 0.28 },
+          transition: { delay: HIT_AT_MS / 1000 + 0.12, duration: 0.28 },
         }}
       >
         <div
@@ -402,27 +505,24 @@ export function Game({ level, onExit }: { level: CpuLevel; onExit: () => void })
           onPointerCancel={side === 0 ? onPressCancel : undefined}
           onContextMenu={(e) => e.preventDefault()}
         >
-          <CardFace card={u.card} hp={u.hp} />
-          {left > 0 ? (
-            <span className="unit-cd" style={{ ['--cd' as string]: `${left * 360}deg` }} aria-hidden="true" />
-          ) : null}
+          <CardFace card={u.card} hp={u.hp} atk={attackOf(pl, u)} />
+          {left > 0 ? <span className="unit-cd" style={{ ['--cd' as string]: `${left * 360}deg` }} aria-hidden="true" /> : null}
+          {stunned.has(u.uid) && left > 0 ? <span className="unit-stun" aria-label="足止め中" /> : null}
         </div>
       </motion.div>
     );
   };
 
-  const fieldRow = (side: 0 | 1) => {
-    const pl = game.players[side];
-    return pl.field.map((u, i) => (
+  const fieldRow = (side: 0 | 1) =>
+    game.players[side].field.map((u, i) => (
       <div
         key={i}
-        className={`slot${side === 0 && drag?.kind === 'hand' && drag.slot === i ? ' is-drop' : ''}`}
+        className={`slot${side === 0 && handDrag && !handDrag.over && handDrag.slot === i ? ' is-drop' : ''}`}
         data-slot={side === 0 ? i : undefined}
       >
         <AnimatePresence>{u ? renderUnit(u, side) : null}</AnimatePresence>
       </div>
     ));
-  };
 
   const foeKey = 'foe-player';
   const foeCls = ['hero', 'hero-foe'];
@@ -433,6 +533,7 @@ export function Game({ level, onExit }: { level: CpuLevel; onExit: () => void })
   const coinInt = Math.floor(me.coins);
   const coinFrac = me.coins - coinInt;
   const nextCard = me.queue[0];
+  const dragInfo = handDragCard ? abilityLines(handDragCard)[0] : null;
 
   return (
     <div className="app app-game">
@@ -484,10 +585,11 @@ export function Game({ level, onExit }: { level: CpuLevel; onExit: () => void })
         </div>
       </header>
 
-      <main className="play battle">
-        <div className="arena" style={{ backgroundImage: `url(${FIELD_URL})` }}>
+      {/* 盤面・コイン・手札を 1 枚のボードに載せる */}
+      <main className="play battle" style={{ backgroundImage: `url(${FIELD_URL})` }}>
+        <div className="arena">
           <div className={foeCls.join(' ')} data-player={1} data-drop={foeKey}>
-            <HeroBadge hp={foe.hp} label="あいて" />
+            <HeroBadge hp={foe.hp} label="あいて" walled={isWalled(foe)} />
             <span className="hero-coins">
               <img src={COIN_URL} alt="" />
               {Math.floor(foe.coins)}
@@ -499,59 +601,58 @@ export function Game({ level, onExit }: { level: CpuLevel; onExit: () => void })
             {fieldRow(0)}
           </div>
           <div className="hero hero-me" data-player={0}>
-            <HeroBadge hp={me.hp} label="あなた" />
+            <HeroBadge hp={me.hp} label="あなた" walled={isWalled(me)} />
           </div>
         </div>
 
-        <div className="coin-gauge" aria-label={`コイン ${coinInt}`}>
-          <span className="coin-count">
-            <img src={COIN_URL} alt="" />
-            <b>{coinInt}</b>
-          </span>
-          <div className="coin-cells">
-            {Array.from({ length: COIN_MAX }, (_, i) => (
-              <span key={i} className="coin-cell">
-                <span
-                  className="coin-fill"
-                  style={{ transform: `scaleX(${i < coinInt ? 1 : i === coinInt ? coinFrac : 0})` }}
-                />
-              </span>
-            ))}
+        <div className="tray">
+          <div className="coin-gauge" aria-label={`コイン ${coinInt}`}>
+            <span className="coin-count">
+              <img src={COIN_URL} alt="" />
+              <b>{coinInt}</b>
+            </span>
+            <div className="coin-cells">
+              {Array.from({ length: COIN_MAX }, (_, i) => (
+                <span key={i} className="coin-cell">
+                  <span className="coin-fill" style={{ transform: `scaleX(${i < coinInt ? 1 : i === coinInt ? coinFrac : 0})` }} />
+                </span>
+              ))}
+            </div>
           </div>
-        </div>
 
-        <div className="hand-row">
-          <div className="next-card">
-            <span className="next-label">つぎ</span>
-            <div className="next-slot">{nextCard ? <CardFace card={nextCard} small /> : null}</div>
-          </div>
-          <div className="hand">
-            {me.hand.map((card, i) => {
-              const cost = CARDS[card].summon;
-              const lack = Math.max(0, Math.min(1, 1 - me.coins / cost));
-              const dragging = drag?.kind === 'hand' && drag.index === i;
-              return (
-                <div className="hand-slot" key={i}>
-                  <AnimatePresence initial={false}>
-                    <motion.div
-                      key={`${card}-${i}-${game.nextUid}`}
-                      className={`hand-card${lack === 0 ? ' is-affordable' : ''}${dragging ? ' is-lifted' : ''}`}
-                      initial={{ y: 26, opacity: 0, scale: 0.85 }}
-                      animate={{ y: 0, opacity: 1, scale: 1, transition: { type: 'spring', stiffness: 460, damping: 32 } }}
-                      exit={{ opacity: 0, pointerEvents: 'none', transition: { duration: 0.12 } }}
-                      onPointerDown={(e) => onPressStart(e, { kind: 'hand', index: i })}
-                      onPointerMove={onPressMove}
-                      onPointerUp={onPressEnd}
-                      onPointerCancel={onPressCancel}
-                      onContextMenu={(e) => e.preventDefault()}
-                    >
-                      <CardFace card={card} />
-                      {lack > 0 ? <span className="hand-wait" style={{ height: `${lack * 100}%` }} /> : null}
-                    </motion.div>
-                  </AnimatePresence>
-                </div>
-              );
-            })}
+          <div className="hand-row">
+            <div className="next-card">
+              <span className="next-label">つぎ</span>
+              <div className="next-slot">{nextCard ? <CardFace card={nextCard} small /> : null}</div>
+            </div>
+            <div className="hand">
+              {me.hand.map((card, i) => {
+                const cost = CARDS[card].summon;
+                const lack = Math.max(0, Math.min(1, 1 - me.coins / cost));
+                const dragging = handDrag?.index === i;
+                return (
+                  <div className="hand-slot" key={i}>
+                    <AnimatePresence initial={false}>
+                      <motion.div
+                        key={`${card}-${i}-${game.nextUid}`}
+                        className={`hand-card${lack === 0 ? ' is-affordable' : ''}${dragging ? ' is-lifted' : ''}`}
+                        initial={{ y: 26, opacity: 0, scale: 0.85 }}
+                        animate={{ y: 0, opacity: 1, scale: 1, transition: { type: 'spring', stiffness: 460, damping: 32 } }}
+                        exit={{ opacity: 0, pointerEvents: 'none', transition: { duration: 0.12 } }}
+                        onPointerDown={(e) => onPressStart(e, { kind: 'hand', index: i })}
+                        onPointerMove={onPressMove}
+                        onPointerUp={onPressEnd}
+                        onPointerCancel={onPressCancel}
+                        onContextMenu={(e) => e.preventDefault()}
+                      >
+                        <CardFace card={card} />
+                        {lack > 0 ? <span className="hand-wait" style={{ height: `${lack * 100}%` }} /> : null}
+                      </motion.div>
+                    </AnimatePresence>
+                  </div>
+                );
+              })}
+            </div>
           </div>
         </div>
 
@@ -566,28 +667,39 @@ export function Game({ level, onExit }: { level: CpuLevel; onExit: () => void })
             >
               {hint.text}
             </motion.div>
+          ) : dragInfo ? (
+            <motion.div key="info" className="hint hint-info" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+              {dragInfo}
+            </motion.div>
           ) : null}
         </AnimatePresence>
       </main>
 
       {/* ドラッグ中の札・矢印 */}
-      {drag?.kind === 'hand' ? (
-        <div className="drag-ghost" style={{ left: drag.x, top: drag.y }}>
-          <CardFace card={me.hand[drag.index]!} />
+      {handDrag && handDragCard ? (
+        <div className={`drag-ghost${handDrag.over ? ' is-aiming' : ''}`} style={{ left: handDrag.x, top: handDrag.y }}>
+          <CardFace card={handDragCard} />
         </div>
       ) : null}
       {unitDrag ? (
         <svg className="aim" aria-hidden="true">
-          <line
-            x1={unitDrag.sx}
-            y1={unitDrag.sy}
-            x2={unitDrag.x}
-            y2={unitDrag.y}
-            className={dragBlock ? 'aim-line is-blocked' : 'aim-line'}
-          />
+          <line x1={unitDrag.sx} y1={unitDrag.sy} x2={unitDrag.x} y2={unitDrag.y} className={dragBlock ? 'aim-line is-blocked' : 'aim-line'} />
           <circle cx={unitDrag.x} cy={unitDrag.y} r={10} className={dragBlock ? 'aim-dot is-blocked' : 'aim-dot'} />
         </svg>
       ) : null}
+
+      {/* 狙撃・足止の弾 */}
+      <svg className="aim" aria-hidden="true">
+        {shots.map((s) => (
+          <motion.circle
+            key={s.id}
+            r={7}
+            className="shot"
+            initial={{ cx: s.x0, cy: s.y0, opacity: 1 }}
+            animate={{ cx: s.x1, cy: s.y1, opacity: [1, 1, 0], transition: { duration: SHOT_AT_MS / 1000, ease: 'easeIn' } }}
+          />
+        ))}
+      </svg>
 
       <div className="popups" aria-hidden="true">
         <AnimatePresence>
@@ -692,80 +804,5 @@ export function Game({ level, onExit }: { level: CpuLevel; onExit: () => void })
         ) : null}
       </AnimatePresence>
     </div>
-  );
-}
-
-function HeroBadge({ hp, label }: { hp: number; label: string }) {
-  const ratio = hp / PLAYER_HP;
-  return (
-    <span className={`hero-badge${ratio <= 0.3 ? ' is-low' : ''}`}>
-      <span className="hero-label">{label}</span>
-      <span className="hero-hp">
-        <HeartMark />
-        <b>{hp}</b>
-      </span>
-    </span>
-  );
-}
-
-function CardDetail({ card, hp }: { card: CardId; hp?: number }) {
-  const def = CARDS[card];
-  return (
-    <div className="card-detail">
-      <div className="card-detail-face">
-        <CardFace card={card} hp={hp} />
-      </div>
-      <dl className="card-detail-stats">
-        <dt>召喚コスト</dt>
-        <dd>{def.summon}</dd>
-        <dt>アタックコスト</dt>
-        <dd>{def.attackCost}</dd>
-        <dt>攻撃力</dt>
-        <dd>{def.atk}</dd>
-        <dt>HP</dt>
-        <dd>{hp !== undefined && hp < def.hp ? `${hp} / ${def.hp}` : def.hp}</dd>
-      </dl>
-      {def.keywords.map((k) => (
-        <p key={k} className="card-detail-text">
-          {KEYWORD_TEXT[k]}
-        </p>
-      ))}
-    </div>
-  );
-}
-
-function HelpBody() {
-  return (
-    <ul className="help-list">
-      <li>コインは時間でたまります（最大 10）。最後の 1 分は 2 倍速。</li>
-      <li>手札を自分の場へドラッグすると召喚。左上の数字が召喚コストです。</li>
-      <li>場のカードを相手のカードか相手の HP へドラッグすると攻撃。右上の数字がアタックコストです。</li>
-      <li>カード同士はお互いにダメージを受けます。左下が攻撃力、右下が HP。</li>
-      <li>盾のマークはブロッカー。相手にブロッカーがいる間は、ブロッカーしか狙えません。</li>
-      <li>相手の HP を 0 にしたら勝ち。3 分たったら HP の多い方の勝ちです。</li>
-      <li>カードを長押しすると説明が出ます。</li>
-    </ul>
-  );
-}
-
-function BackIcon() {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <path d="M15 5 L8 12 L15 19" />
-    </svg>
-  );
-}
-
-function HeartMark() {
-  return (
-    <svg viewBox="0 0 24 24" aria-hidden="true">
-      <path
-        d="M12 20.5 C5 15.5 2.5 12 2.5 8.5 C2.5 5.6 4.8 3.5 7.5 3.5 C9.4 3.5 11 4.6 12 6.2 C13 4.6 14.6 3.5 16.5 3.5 C19.2 3.5 21.5 5.6 21.5 8.5 C21.5 12 19 15.5 12 20.5 Z"
-        fill="#e5484d"
-        stroke="#0b1520"
-        strokeWidth="1.8"
-        strokeLinejoin="round"
-      />
-    </svg>
   );
 }
