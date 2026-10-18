@@ -8,14 +8,21 @@ import {
   isLegalTarget,
   isWalled,
   legalTargets,
-  step,
+  step as rawStep,
   summonBlock,
   type GameState,
   type PlayerIndex,
   type Target,
   type Unit,
 } from '../src/game/engine';
-import { COIN_MAX, FIELD_SLOTS } from '../src/game/rules';
+import { WINDUP_MS, COIN_MAX, FIELD_SLOTS } from '../src/game/rules';
+
+/** 即時に効く前提のテスト用: 攻撃・呪文・召喚のあとに溜め（WINDUP_MS）を明けるところまで進める。溜めそのものを見るテストは rawStep を使う。 */
+const step: typeof rawStep = (state, action) => {
+  const n = rawStep(state, action);
+  if (action.type === 'tick' || n.pending.length <= state.pending.length) return n;
+  return rawStep(n, { type: 'tick', dt: WINDUP_MS });
+};
 
 const fresh = (): GameState => createGame([STARTER_DECK, STARTER_DECK], 1);
 const tick = (s: GameState, dt: number): GameState => step(s, { type: 'tick', dt });

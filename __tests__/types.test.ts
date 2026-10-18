@@ -10,7 +10,7 @@ import {
   isLegalTarget,
   isWalled,
   legalTargets,
-  step,
+  step as rawStep,
   summonBlock,
   units,
   type GameState,
@@ -18,7 +18,14 @@ import {
   type Target,
   type Unit,
 } from '../src/game/engine';
-import { COIN_MAX, COIN_MS, FIELD_SLOTS, MATCH_MS, PLAYER_HP } from '../src/game/rules';
+import { WINDUP_MS, COIN_MAX, COIN_MS, FIELD_SLOTS, MATCH_MS, PLAYER_HP } from '../src/game/rules';
+
+/** 即時に効く前提のテスト用: 攻撃・呪文・召喚のあとに溜め（WINDUP_MS）を明けるところまで進める。溜めそのものを見るテストは rawStep を使う。 */
+const step: typeof rawStep = (state, action) => {
+  const n = rawStep(state, action);
+  if (action.type === 'tick' || n.pending.length <= state.pending.length) return n;
+  return rawStep(n, { type: 'tick', dt: WINDUP_MS });
+};
 
 const fresh = (): GameState => createGame([STARTER_DECK, STARTER_DECK], 1);
 const tick = (s: GameState, dt: number): GameState => step(s, { type: 'tick', dt });
@@ -65,10 +72,10 @@ describe('クールタイム（カードごと）', () => {
     for (const card of ['herald', 'spy', 'boss'] as CardId[]) {
       const [s, u] = place(withHand(HAND4), 0, 0, card);
       const n = hit(s, 0, u.uid, FACE);
-      expect(findUnit(n.players[0], u.uid)!.unit.readyAt).toBe(n.time + CARDS[card].cd);
+      expect(findUnit(n.players[0], u.uid)!.unit.readyAt).toBe(s.time + CARDS[card].cd);
       expect(attackBlock(n, 0, u.uid, FACE)).toBe('cooldown');
-      expect(attackBlock(tick(n, CARDS[card].cd - 1), 0, u.uid, FACE)).toBe('cooldown');
-      expect(attackBlock(tick(n, CARDS[card].cd), 0, u.uid, FACE)).toBeNull();
+      expect(attackBlock(tick(n, CARDS[card].cd - WINDUP_MS - 1), 0, u.uid, FACE)).toBe('cooldown');
+      expect(attackBlock(tick(n, CARDS[card].cd - WINDUP_MS), 0, u.uid, FACE)).toBeNull();
     }
     expect(CARDS.herald.cd).not.toBe(CARDS.boss.cd);
   });
@@ -115,8 +122,8 @@ describe('クールタイム（カードごと）', () => {
     [s, a] = place(s, 0, 1, 'boss');
     [s, b] = place(s, 1, 0, 'boss');
     s = hit(hit(s, 0, a.uid, FACE), 1, b.uid, FACE);
-    expect(findUnit(s.players[0], a.uid)!.unit.readyAt - s.time).toBe(Math.round(CARDS.boss.cd * 0.7));
-    expect(findUnit(s.players[1], b.uid)!.unit.readyAt - s.time).toBe(CARDS.boss.cd);
+    expect(findUnit(s.players[0], a.uid)!.unit.readyAt).toBe(Math.round(CARDS.boss.cd * 0.7)); // 時刻 0 に攻撃
+    expect(findUnit(s.players[1], b.uid)!.unit.readyAt).toBe(WINDUP_MS + CARDS.boss.cd); // 時刻 WINDUP_MS に攻撃
   });
 
   it('祈りがあれば、召喚後の待ちも短くなる', () => {
@@ -329,7 +336,7 @@ describe('呪文', () => {
     const n = step(s, { type: 'summon', p: 0, handIndex: 0, slot: -1 });
     const pl = n.players[0];
     expect(units(pl)).toHaveLength(0);
-    expect(pl.coins).toBe(COIN_MAX - CARDS.festival.summon);
+    expect(pl.coins).toBeCloseTo(COIN_MAX - CARDS.festival.summon, 0); // 溜めの間にコインが少したまる
     expect(pl.hand).toEqual([next, 'herald', 'guard', 'spy']);
     expect(pl.queue.at(-1)).toBe('festival');
     expect(pl.hand.length + pl.queue.length).toBe(10);
@@ -368,7 +375,7 @@ describe('呪文', () => {
       s = fill(s, 1, 'guard', 2);
       const n = step(s, { type: 'summon', p: 0, handIndex: 0, slot: -1, target: h.uid });
       expect(hpOf(n, 1, h.uid)).toBe(7 - dmg);
-      expect(n.players[0].coins).toBe(COIN_MAX - CARDS.quarry.summon);
+      expect(n.players[0].coins).toBeCloseTo(COIN_MAX - CARDS.quarry.summon, 0);
       expect(units(n.players[0])).toHaveLength(0);
       expect(n.players[1].hp).toBe(PLAYER_HP);
       expect(n.events.find((e) => e.kind === 'spell')).toMatchObject({ card: 'quarry', target: h.uid });
@@ -454,7 +461,7 @@ describe('呪文', () => {
       s = tick(s, 1000);
       let a: Unit, b: Unit, ready: Unit, foe: Unit;
       [s, a] = place(s, 0, 0, 'spy', undefined, s.time + 4000);
-      [s, b] = place(s, 0, 1, 'guard', undefined, s.time + 200);
+      [s, b] = place(s, 0, 1, 'guard', undefined, s.time + 1500);
       [s, ready] = place(s, 0, 2, 'herald', undefined, 0);
       [s, foe] = place(s, 1, 0, 'spy', undefined, s.time + 4000);
       const n = step(s, { type: 'summon', p: 0, handIndex: 0, slot: -1 });

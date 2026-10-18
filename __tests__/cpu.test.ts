@@ -69,7 +69,7 @@ describe('CPU の能力の使い方', () => {
     expect(a).toBeTruthy();
     const n = step(s, a!);
     expect(n).not.toBe(s);
-    expect(n.events.some((e) => e.kind === 'stun')).toBe(true);
+    expect(n.events.some((e) => e.kind === 'windup')).toBe(true); // 足止は溜めのあとに効く
   });
 
   it('相手が壁なら顔を攻撃しない', () => {

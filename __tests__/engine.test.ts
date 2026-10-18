@@ -9,7 +9,7 @@ import {
   isLegalTarget,
   isWalled,
   legalTargets,
-  step,
+  step as rawStep,
   summonBlock,
   type GameState,
   type PlayerIndex,
@@ -24,9 +24,17 @@ import {
   FIELD_SLOTS,
   MATCH_MS,
   PLAYER_HP,
+  WINDUP_MS,
 } from '../src/game/rules';
 
 const STUN = (CARDS.informer.ab.onSummon as { ms: number }).ms;
+/** 即時に効く前提のテスト用: 攻撃・呪文・召喚のあとに溜め（WINDUP_MS）を明けるところまで進める。溜めそのものを見るテストは rawStep を使う。 */
+const step: typeof rawStep = (state, action) => {
+  const n = rawStep(state, action);
+  if (action.type === 'tick' || n.pending.length <= state.pending.length) return n;
+  return rawStep(n, { type: 'tick', dt: WINDUP_MS });
+};
+
 const fresh = (): GameState => createGame([STARTER_DECK, STARTER_DECK], 1);
 const tick = (s: GameState, dt: number): GameState => step(s, { type: 'tick', dt });
 const hit = (s: GameState, p: PlayerIndex, uid: number, target: Target): GameState =>
@@ -176,7 +184,7 @@ describe('攻撃', () => {
     expect('attackCost' in CARDS.craftsman).toBe(false);
     const blocked = step(s, { type: 'attack', p: 0, uid: u.uid, target: { kind: 'player' } });
     expect(blocked).toBe(s);
-    s = tick(s, CARDS.craftsman.cd - 1);
+    s = tick(s, CARDS.craftsman.cd - WINDUP_MS - 1); // 攻撃を選んだ時刻から cd
     expect(step(s, { type: 'attack', p: 0, uid: u.uid, target: { kind: 'player' } })).toBe(s);
     s = tick(s, 1);
     const again = step(s, { type: 'attack', p: 0, uid: u.uid, target: { kind: 'player' } });
@@ -219,7 +227,7 @@ describe('攻撃', () => {
     const n = step(s, { type: 'attack', p: 0, uid: a.uid, target: { kind: 'unit', uid: b.uid } });
     const me = findUnit(n.players[0], a.uid)!.unit;
     expect(me.hp).toBe(CARDS.guard.hp - CARDS.herald.atk);
-    expect(me.readyAt).toBe(n.time + CARDS.guard.cd);
+    expect(me.readyAt).toBe(n.time - WINDUP_MS + CARDS.guard.cd);
     expect(tick(n, 60_000).players[0].field[0]!.hp).toBe(CARDS.guard.hp - CARDS.herald.atk);
   });
   it('プレイヤー攻撃は反撃なし、HP は 0 未満にならない', () => {
@@ -304,13 +312,14 @@ describe('決着', () => {
     const s = tick(fresh(), MATCH_MS);
     expect(s.result).toEqual({ winner: null, reason: 'time' });
   });
-  it('両者 HP 0 は引き分け', () => {
-    // 相手の場のカードを倒すのではなく、状態を直接作って確かめる
-    let s = withHand(['herald', 'herald', 'herald', 'herald']);
-    let a: Unit;
-    [s, a] = place(s, 0, 0, 'herald');
-    s = { ...s, players: [{ ...s.players[0], hp: 0 }, { ...s.players[1], hp: 1 }] };
-    s = step(s, { type: 'attack', p: 0, uid: a.uid, target: { kind: 'player' } });
+  it('両者 HP 0 は引き分け（相打ちの遺言）', () => {
+    // 高利貸どうし: 攻撃で相手の高利貸が倒れて遺言、反撃で自分の高利貸も倒れて遺言
+    let s = withHand(HAND4);
+    let a: Unit, b: Unit;
+    [s, a] = place(s, 0, 0, 'usurer', 1);
+    [s, b] = place(s, 1, 0, 'usurer', 1);
+    s = { ...s, players: [{ ...s.players[0], hp: 2 }, { ...s.players[1], hp: 2 }] };
+    s = step(s, { type: 'attack', p: 0, uid: a.uid, target: { kind: 'unit', uid: b.uid } });
     expect(s.result).toEqual({ winner: null, reason: 'hp' });
   });
   it('決定的: 同じ入力から同じ結果', () => {
@@ -582,7 +591,7 @@ describe('能力: 召喚時・コイン・遺言', () => {
     expect(s.events.some((e) => e.kind === 'stun' && e.uid === a.uid)).toBe(true);
     expect(hit(s, 1, a.uid, FACE)).toBe(s);
     expect(hit(s, 1, o.uid, FACE)).not.toBe(s);
-    expect(findUnit(s.players[1], a.uid)!.unit.readyAt).toBe(STUN);
+    expect(findUnit(s.players[1], a.uid)!.unit.readyAt).toBe(WINDUP_MS + STUN);
     s = tick(s, STUN - 1);
     expect(hit(s, 1, a.uid, FACE)).toBe(s);
     s = tick(s, 1);
@@ -641,8 +650,6 @@ describe('能力: 召喚時・コイン・遺言', () => {
     expect(n.players[0].hp).toBe(0);
     expect(n.result).toEqual({ winner: 1, reason: 'hp' });
     expect(n.events.at(-1)!.kind).toBe('end');
-    const both = hit(withHp(withHp(s, 0, 2), 1, 0), 0, a.uid, U(u.uid));
-    expect(both.result).toEqual({ winner: null, reason: 'hp' });
   });
 });
 
