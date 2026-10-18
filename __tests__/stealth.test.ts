@@ -70,7 +70,7 @@ describe('ステルス', () => {
     expect(hit(s, 0, a.uid, FACE)).not.toBe(s);
   });
 
-  it('壁に数えない: 5 枠うまっていても、ステルスが混じれば壁ではない', () => {
+  it('壁に数えない: 場がうまっていても、ステルスが混じれば壁ではない', () => {
     let s = withHand(HAND4);
     for (let i = 0; i < FIELD_SLOTS - 1; i++) [s] = place(s, 1, i, 'guard');
     [s] = place(s, 1, FIELD_SLOTS - 1, 'herald');

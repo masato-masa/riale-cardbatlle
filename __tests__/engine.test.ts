@@ -140,7 +140,7 @@ describe('召喚', () => {
     const s = withHand(['herald', 'herald', 'herald', 'herald']);
     expect(step(s, { type: 'summon', p: 0, handIndex: 9, slot: 0 })).toBe(s);
   });
-  it('5 枠すべて埋めると 6 体目は出せない', () => {
+  it('全枠を埋めると次は出せない', () => {
     let s = withHand(['herald', 'herald', 'herald', 'herald']);
     for (let i = 0; i < FIELD_SLOTS; i++) [s] = place(s, 0, i, 'guard');
     expect(s.players[0].field.every(Boolean)).toBe(true);
@@ -646,7 +646,7 @@ describe('能力: 召喚時・コイン・遺言', () => {
   });
 });
 
-describe('壁（場が 5 枚うまっている間は攻撃されない）', () => {
+describe('壁（場がうまっている間は攻撃されない）', () => {
   const walled = (blocker = false): [GameState, Unit[], Unit] => {
     let s = withHand(HAND4);
     const us: Unit[] = [];
@@ -660,7 +660,7 @@ describe('壁（場が 5 枚うまっている間は攻撃されない）', () =
     return [s, us, a];
   };
 
-  it('5 枚うまっているとプレイヤーは狙えないが、カードは狙える', () => {
+  it('場がうまっているとプレイヤーは狙えないが、カードは狙える', () => {
     const [s, us, a] = walled();
     expect(isWalled(s.players[1])).toBe(true);
     expect(legalTargets(s, 0)).toEqual(us.map((u) => ({ kind: 'unit', uid: u.uid })));
@@ -675,14 +675,14 @@ describe('壁（場が 5 枚うまっている間は攻撃されない）', () =
     expect(n.players[0].hp).toBe(PLAYER_HP - CARDS.miner.atk);
   });
 
-  it('4 枚なら壁ではない。5 枚目が倒れたらまた狙え、埋まればまた壁', () => {
+  it('1 枠空けば壁ではない。最後の 1 枚が倒れたらまた狙え、埋まればまた壁', () => {
     const [s, us, a] = walled();
-    const n = hit(s, 0, a.uid, U(us[4]!.uid));
-    expect(gone(n, 1, us[4]!.uid)).toBe(true);
+    const n = hit(s, 0, a.uid, U(us[FIELD_SLOTS - 1]!.uid));
+    expect(gone(n, 1, us[FIELD_SLOTS - 1]!.uid)).toBe(true);
     expect(isWalled(n.players[1])).toBe(false);
     expect(isLegalTarget(n, 0, FACE)).toBe(true);
     expect(legalTargets(n, 0)[0]).toEqual(FACE);
-    const refilled = place(n, 1, 4, 'miner')[0];
+    const refilled = place(n, 1, FIELD_SLOTS - 1, 'miner')[0];
     expect(isLegalTarget(refilled, 0, FACE)).toBe(false);
   });
 

@@ -129,9 +129,9 @@ describe('クールタイム（カードごと）', () => {
 describe('建築物', () => {
   it('召喚するとコインを払って場に出る（1 枠）。攻撃力 0・HP あり', () => {
     const s = withHand(['wall', 'herald', 'herald', 'herald']);
-    const n = step(s, { type: 'summon', p: 0, handIndex: 0, slot: 3 });
+    const n = step(s, { type: 'summon', p: 0, handIndex: 0, slot: 1 });
     expect(n.players[0].coins).toBe(COIN_MAX - CARDS.wall.summon);
-    expect(n.players[0].field[3]).toMatchObject({ card: 'wall', hp: CARDS.wall.hp });
+    expect(n.players[0].field[1]).toMatchObject({ card: 'wall', hp: CARDS.wall.hp });
     expect(n.players[0].queue.at(-1)).toBe('wall');
     expect(CARDS.wall.atk).toBe(0);
     expect(CARDS.wall.type).toBe('building');
@@ -157,18 +157,18 @@ describe('建築物', () => {
     expect(gone(hit(m2, 0, a2.uid, U(c.uid)), 1, c.uid)).toBe(true);
   });
 
-  it('建築物も壁の 5 枚に数える', () => {
+  it('建築物も壁の枚数に数える', () => {
     let s = withHand(HAND4);
     for (let i = 0; i < FIELD_SLOTS - 1; i++) [s] = place(s, 1, i, 'herald');
     expect(isWalled(s.players[1])).toBe(false);
-    [s] = place(s, 1, 4, 'exchange');
+    [s] = place(s, 1, FIELD_SLOTS - 1, 'exchange');
     expect(isWalled(s.players[1])).toBe(true);
     const [t, a] = place(s, 0, 0, 'spy');
     expect(isLegalTarget(t, 0, FACE)).toBe(false);
     expect(hit(t, 0, a.uid, FACE)).toBe(t);
   });
 
-  it('建築物だけで 5 枚うめても壁になる', () => {
+  it('建築物だけで場をうめても壁になる', () => {
     let s = withHand(HAND4);
     for (let i = 0; i < FIELD_SLOTS; i++) [s] = place(s, 1, i, 'tradingHouse');
     expect(isWalled(s.players[1])).toBe(true);
@@ -276,7 +276,7 @@ describe('砲撃（砦）', () => {
     let d: Unit;
     [s, d] = place(s, 1, 0, 'double', 1);
     s = fill(s, 1, 'wall', 1);
-    // 城壁（ブロッカー）に囲まれて、5 枠うまっていても当たる。最低 HP は結界つきの影武者
+    // 城壁（ブロッカー）に囲まれて、場がうまっていても当たる。最低 HP は結界つきの影武者
     const n = tick(s, every);
     expect(hpOf(n, 1, d.uid)).toBe(1);
     expect(findUnit(n.players[1], d.uid)!.unit.barrier).toBe(false);
