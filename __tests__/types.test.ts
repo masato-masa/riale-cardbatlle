@@ -18,7 +18,7 @@ import {
   type Target,
   type Unit,
 } from '../src/game/engine';
-import { ATTACK_COOLDOWN_MS, COIN_MAX, FIELD_SLOTS, MATCH_MS, PLAYER_HP } from '../src/game/rules';
+import { ATTACK_COOLDOWN_MS, COIN_MAX, COIN_MS, FIELD_SLOTS, MATCH_MS, PLAYER_HP } from '../src/game/rules';
 
 const fresh = (): GameState => createGame([STARTER_DECK, STARTER_DECK], 1);
 const tick = (s: GameState, dt: number): GameState => step(s, { type: 'tick', dt });
@@ -155,9 +155,9 @@ describe('建築物', () => {
   it('増収・鼓舞・祈りは建築物でも効く。倒れたら止まる', () => {
     const base = withHand(HAND4);
     let [s] = place({ ...base, players: [{ ...base.players[0], coins: 0 }, base.players[1]] }, 0, 0, 'exchange');
-    expect(tick(s, 2800).players[0].coins).toBeCloseTo(1 + CARDS.exchange.ab.coinBoost!);
+    expect(tick(s, COIN_MS).players[0].coins).toBeCloseTo(1 + CARDS.exchange.ab.coinBoost!);
     s = { ...s, players: [{ ...s.players[0], field: s.players[0].field.map(() => null) }, s.players[1]] };
-    expect(tick(s, 2800).players[0].coins).toBeCloseTo(1);
+    expect(tick(s, COIN_MS).players[0].coins).toBeCloseTo(1);
   });
 });
 
