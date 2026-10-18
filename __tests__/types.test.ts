@@ -18,7 +18,7 @@ import {
   type Target,
   type Unit,
 } from '../src/game/engine';
-import { ATTACK_COOLDOWN_MS, COIN_MAX, COIN_MS, FIELD_SLOTS, MATCH_MS, PLAYER_HP } from '../src/game/rules';
+import { COIN_MAX, COIN_MS, FIELD_SLOTS, MATCH_MS, PLAYER_HP } from '../src/game/rules';
 
 const fresh = (): GameState => createGame([STARTER_DECK, STARTER_DECK], 1);
 const tick = (s: GameState, dt: number): GameState => step(s, { type: 'tick', dt });
@@ -59,33 +59,69 @@ const fill = (s: GameState, p: PlayerIndex, card: CardId, from = 0): GameState =
   return s;
 };
 
-describe('クールタイム', () => {
-  it('攻撃したユニットは ATTACK_COOLDOWN_MS 後まで攻撃できない', () => {
-    const [s, u] = place(withHand(HAND4), 0, 0, 'spy');
-    const n = hit(s, 0, u.uid, FACE);
-    expect(findUnit(n.players[0], u.uid)!.unit.readyAt).toBe(n.time + ATTACK_COOLDOWN_MS);
-    expect(attackBlock(n, 0, u.uid, FACE)).toBe('cooldown');
-    expect(attackBlock(tick(n, ATTACK_COOLDOWN_MS), 0, u.uid, FACE)).toBeNull();
+describe('クールタイム（カードごと）', () => {
+  it('攻撃したユニットは、そのカードの cd 後まで攻撃できない（カードごとに違う）', () => {
+    for (const card of ['herald', 'spy', 'boss'] as CardId[]) {
+      const [s, u] = place(withHand(HAND4), 0, 0, card);
+      const n = hit(s, 0, u.uid, FACE);
+      expect(findUnit(n.players[0], u.uid)!.unit.readyAt).toBe(n.time + CARDS[card].cd);
+      expect(attackBlock(n, 0, u.uid, FACE)).toBe('cooldown');
+      expect(attackBlock(tick(n, CARDS[card].cd - 1), 0, u.uid, FACE)).toBe('cooldown');
+      expect(attackBlock(tick(n, CARDS[card].cd), 0, u.uid, FACE)).toBeNull();
+    }
+    expect(CARDS.herald.cd).not.toBe(CARDS.boss.cd);
   });
 
-  it('祈りで -30%、2 枚で -60% ではなく下限の 40%（重ねても 40% より短くならない）', () => {
+  it('召喚後もそのカードの cd 分待つ。速攻だけ待たない', () => {
+    for (const card of ['spy', 'guard', 'boss'] as CardId[]) {
+      let s = withHand([card, 'herald', 'herald', 'herald']);
+      s = step(s, { type: 'summon', p: 0, handIndex: 0, slot: 0 });
+      const u = s.players[0].field[0]!;
+      expect(u.readyAt).toBe(s.time + CARDS[card].cd);
+      expect(attackBlock(tick(s, CARDS[card].cd - 1), 0, u.uid, FACE)).toBe('cooldown');
+      expect(attackBlock(tick(s, CARDS[card].cd), 0, u.uid, FACE)).toBeNull();
+    }
+    const h = step(withHand(['herald', 'herald', 'herald', 'herald']), { type: 'summon', p: 0, handIndex: 0, slot: 0 });
+    expect(h.players[0].field[0]!.readyAt).toBe(h.time);
+  });
+
+  it('建築物・呪文の cd は 0。ユニットは 1 秒刻みで、平均はおよそ 16 秒', () => {
+    const list = Object.values(CARDS).filter((c) => c.type === 'unit' && !c.token);
+    for (const c of Object.values(CARDS)) {
+      if (c.type !== 'unit') expect(c.cd).toBe(0);
+      else expect(c.cd % 1000).toBe(0);
+    }
+    const avg = list.reduce((n, c) => n + c.cd, 0) / list.length / 1000;
+    expect(avg).toBeGreaterThanOrEqual(14);
+    expect(avg).toBeLessThanOrEqual(18);
+  });
+
+  it('祈りは、そのカードの cd に掛かる。-30%、2 枚でも下限の 40%（3 枚でも 40% より短くならない）', () => {
     let [s] = place(withHand(HAND4), 0, 0, 'cathedral');
-    expect(cooldownOf(s.players[0])).toBe(Math.round(ATTACK_COOLDOWN_MS * 0.7));
+    for (const card of ['herald', 'boss'] as CardId[]) {
+      expect(cooldownOf(s.players[0], card)).toBe(Math.round(CARDS[card].cd * 0.7));
+      expect(cooldownOf(s.players[1], card)).toBe(CARDS[card].cd);
+    }
     [s] = place(s, 0, 1, 'cathedral');
-    expect(cooldownOf(s.players[0])).toBe(Math.round(ATTACK_COOLDOWN_MS * 0.4));
+    expect(cooldownOf(s.players[0], 'boss')).toBe(Math.round(CARDS.boss.cd * 0.4));
     [s] = place(s, 0, 2, 'cathedral');
-    expect(cooldownOf(s.players[0])).toBe(Math.round(ATTACK_COOLDOWN_MS * 0.4));
-    expect(cooldownOf(s.players[1])).toBe(ATTACK_COOLDOWN_MS);
+    expect(cooldownOf(s.players[0], 'boss')).toBe(Math.round(CARDS.boss.cd * 0.4));
   });
 
-  it('祈りがあると次の攻撃までが短くなる。相手のユニットには効かない', () => {
+  it('祈りがあると次の攻撃までが短くなる（カードごとの値の 70%）。相手のユニットには効かない', () => {
     let [s] = place(withHand(HAND4), 0, 0, 'cathedral');
     let a: Unit, b: Unit;
-    [s, a] = place(s, 0, 1, 'spy');
-    [s, b] = place(s, 1, 0, 'spy');
+    [s, a] = place(s, 0, 1, 'boss');
+    [s, b] = place(s, 1, 0, 'boss');
     s = hit(hit(s, 0, a.uid, FACE), 1, b.uid, FACE);
-    expect(findUnit(s.players[0], a.uid)!.unit.readyAt - s.time).toBe(Math.round(ATTACK_COOLDOWN_MS * 0.7));
-    expect(findUnit(s.players[1], b.uid)!.unit.readyAt - s.time).toBe(ATTACK_COOLDOWN_MS);
+    expect(findUnit(s.players[0], a.uid)!.unit.readyAt - s.time).toBe(Math.round(CARDS.boss.cd * 0.7));
+    expect(findUnit(s.players[1], b.uid)!.unit.readyAt - s.time).toBe(CARDS.boss.cd);
+  });
+
+  it('祈りがあれば、召喚後の待ちも短くなる', () => {
+    let [s] = place(withHand(['craftsman', 'herald', 'herald', 'herald']), 0, 0, 'cathedral');
+    s = step(s, { type: 'summon', p: 0, handIndex: 0, slot: 1 });
+    expect(s.players[0].field[1]!.readyAt - s.time).toBe(Math.round(CARDS.craftsman.cd * 0.7));
   });
 });
 

@@ -17,7 +17,6 @@ import {
   type Unit,
 } from '../src/game/engine';
 import {
-  ATTACK_COOLDOWN_MS,
   COIN_MAX,
   COIN_MS,
   COIN_START,
@@ -27,6 +26,7 @@ import {
   PLAYER_HP,
 } from '../src/game/rules';
 
+const STUN = (CARDS.informer.ab.onSummon as { ms: number }).ms;
 const fresh = (): GameState => createGame([STARTER_DECK, STARTER_DECK], 1);
 const tick = (s: GameState, dt: number): GameState => step(s, { type: 'tick', dt });
 const hit = (s: GameState, p: PlayerIndex, uid: number, target: Target): GameState =>
@@ -125,7 +125,7 @@ describe('召喚', () => {
     expect(pl.coins).toBe(COIN_MAX - CARDS.miner.summon);
     expect(pl.hand).toEqual([next, 'herald', 'guard', 'spy']);
     expect(pl.queue).toEqual([...rest, 'miner']);
-    expect(pl.field[2]).toMatchObject({ card: 'miner', hp: CARDS.miner.hp, readyAt: n.time + ATTACK_COOLDOWN_MS });
+    expect(pl.field[2]).toMatchObject({ card: 'miner', hp: CARDS.miner.hp, readyAt: n.time + CARDS.miner.cd });
     expect(n.players[1]).toEqual(s.players[1]);
   });
   it('枠が埋まっている・範囲外の枠には出せない', () => {
@@ -160,7 +160,7 @@ describe('攻撃', () => {
     const uid = s.players[0].field[0]!.uid;
     const early = step(s, { type: 'attack', p: 0, uid, target: { kind: 'player' } });
     expect(early).toBe(s);
-    s = tick(s, ATTACK_COOLDOWN_MS - 1);
+    s = tick(s, CARDS.guard.cd - 1);
     expect(step(s, { type: 'attack', p: 0, uid, target: { kind: 'player' } })).toBe(s);
     s = tick(s, 1);
     const landed = step(s, { type: 'attack', p: 0, uid, target: { kind: 'player' } });
@@ -175,7 +175,7 @@ describe('攻撃', () => {
     expect('attackCost' in CARDS.craftsman).toBe(false);
     const blocked = step(s, { type: 'attack', p: 0, uid: u.uid, target: { kind: 'player' } });
     expect(blocked).toBe(s);
-    s = tick(s, ATTACK_COOLDOWN_MS - 1);
+    s = tick(s, CARDS.craftsman.cd - 1);
     expect(step(s, { type: 'attack', p: 0, uid: u.uid, target: { kind: 'player' } })).toBe(s);
     s = tick(s, 1);
     const again = step(s, { type: 'attack', p: 0, uid: u.uid, target: { kind: 'player' } });
@@ -218,7 +218,7 @@ describe('攻撃', () => {
     const n = step(s, { type: 'attack', p: 0, uid: a.uid, target: { kind: 'unit', uid: b.uid } });
     const me = findUnit(n.players[0], a.uid)!.unit;
     expect(me.hp).toBe(CARDS.guard.hp - CARDS.herald.atk);
-    expect(me.readyAt).toBe(n.time + ATTACK_COOLDOWN_MS);
+    expect(me.readyAt).toBe(n.time + CARDS.guard.cd);
     expect(tick(n, 60_000).players[0].field[0]!.hp).toBe(CARDS.guard.hp - CARDS.herald.atk);
   });
   it('プレイヤー攻撃は反撃なし、HP は 0 未満にならない', () => {
@@ -328,7 +328,7 @@ describe('能力: 攻撃まわり', () => {
     expect(h.readyAt).toBe(s.time);
     expect(hit(s, 0, h.uid, FACE).players[1].hp).toBe(PLAYER_HP - CARDS.herald.atk);
     s = step(s, { type: 'summon', p: 0, handIndex: 1, slot: 1 });
-    expect(s.players[0].field[1]!.readyAt).toBe(s.time + ATTACK_COOLDOWN_MS);
+    expect(s.players[0].field[1]!.readyAt).toBe(s.time + CARDS.spy.cd);
   });
 
   it('奇襲: プレイヤーへのダメージだけ +1（カード相手には乗らない）', () => {
@@ -573,7 +573,7 @@ describe('能力: 召喚時・コイン・遺言', () => {
     expect(n.events.some((e) => e.kind === 'stun' || e.kind === 'damage')).toBe(false);
   });
 
-  it('足止: 選んだ相手は 3 秒攻撃できない。ほかのカードは動ける', () => {
+  it('足止: 選んだ相手はしばらく攻撃できない。ほかのカードは動ける', () => {
     let [s, a] = place(withHand(['informer', 'herald', 'herald', 'herald']), 1, 0, 'craftsman');
     let o: Unit;
     [s, o] = place(s, 1, 1, 'guard');
@@ -581,17 +581,17 @@ describe('能力: 召喚時・コイン・遺言', () => {
     expect(s.events.some((e) => e.kind === 'stun' && e.uid === a.uid)).toBe(true);
     expect(hit(s, 1, a.uid, FACE)).toBe(s);
     expect(hit(s, 1, o.uid, FACE)).not.toBe(s);
-    expect(findUnit(s.players[1], a.uid)!.unit.readyAt).toBe(3000);
-    s = tick(s, 2999);
+    expect(findUnit(s.players[1], a.uid)!.unit.readyAt).toBe(STUN);
+    s = tick(s, STUN - 1);
     expect(hit(s, 1, a.uid, FACE)).toBe(s);
     s = tick(s, 1);
     expect(hit(s, 1, a.uid, FACE)).not.toBe(s);
   });
 
-  it('足止: 待ち時間の途中なら、その後ろへ 3 秒足される。target なしなら空振り', () => {
+  it('足止: 待ち時間の途中なら、その後ろへ足される。target なしなら空振り', () => {
     const [s, a] = place(withHand(['informer', 'herald', 'herald', 'herald']), 1, 0, 'craftsman', undefined, 1500);
     const n = step(s, { type: 'summon', p: 0, handIndex: 0, slot: 0, target: a.uid });
-    expect(findUnit(n.players[1], a.uid)!.unit.readyAt).toBe(1500 + 3000);
+    expect(findUnit(n.players[1], a.uid)!.unit.readyAt).toBe(1500 + STUN);
     const m = step(s, { type: 'summon', p: 0, handIndex: 0, slot: 0 });
     expect(findUnit(m.players[1], a.uid)!.unit.readyAt).toBe(1500);
     expect(m.events.some((e) => e.kind === 'stun')).toBe(false);
