@@ -7,7 +7,7 @@ export const MATCH_MS = 180_000;
 /** この時刻（ms）からコインが 2 倍速になる。 */
 export const DOUBLE_COIN_FROM_MS = 120_000;
 /** コイン 1 枚がたまるまでの時間（ms）。 */
-export const COIN_MS = 3500;
+export const COIN_MS = 7000;
 export const COIN_MAX = 10;
 export const COIN_START = 5;
 /** 場の枠の数。 */
