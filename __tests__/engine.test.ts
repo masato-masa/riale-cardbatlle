@@ -200,7 +200,7 @@ describe('攻撃', () => {
     let s = withHand(['herald', 'herald', 'herald', 'herald']);
     let a: Unit, b: Unit;
     [s, a] = place(s, 0, 0, 'taxman'); // 3/3
-    [s, b] = place(s, 1, 0, 'inspector'); // 3/4
+    [s, b] = place(s, 1, 0, 'craftsman'); // 2/4（反撃は討伐込みで 4）
     const n = step(s, { type: 'attack', p: 0, uid: a.uid, target: { kind: 'unit', uid: b.uid } });
     expect(findUnit(n.players[0], a.uid)).toBeNull();
     expect(findUnit(n.players[1], b.uid)!.unit.hp).toBe(1);
