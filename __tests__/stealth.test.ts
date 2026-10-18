@@ -104,16 +104,16 @@ describe('ステルス', () => {
   });
 
   it('全体に当たるものは当たる: 地鳴り・顔役の攻撃時の巻き込み', () => {
-    let [s, sp] = place(withHand(['quake', 'herald', 'herald', 'herald']), 1, 0, 'spy');
+    let [s, sp] = place(withHand(['quake', 'herald', 'herald', 'herald']), 1, 0, 'spy', 9);
     const q = step(s, { type: 'summon', p: 0, handIndex: 0, slot: -1 });
-    expect(hpOf(q, 1, sp.uid)).toBe(CARDS.spy.hp - 2);
+    expect(hpOf(q, 1, sp.uid)).toBe(9 - 2);
 
     let [t, boss] = place(withHand(HAND4), 0, 0, 'boss');
     let g: Unit, sp2: Unit;
     [t, g] = place(t, 1, 0, 'guard');
-    [t, sp2] = place(t, 1, 1, 'spy');
+    [t, sp2] = place(t, 1, 1, 'spy', 9);
     const n = hit(t, 0, boss.uid, U(g.uid));
-    expect(hpOf(n, 1, sp2.uid)).toBe(CARDS.spy.hp - CARDS.boss.ab.splash!);
+    expect(hpOf(n, 1, sp2.uid)).toBe(9 - CARDS.boss.ab.splash!);
     expect(findUnit(n.players[1], sp2.uid)!.unit.stealth).toBe(true); // 当たっても解けない
   });
 

@@ -115,7 +115,7 @@ describe('CPU の新しいルール（建築物・呪文・クールタイム）
 
   it('単体の呪文は target を渡し、倒せる大物を選ぶ。engine が受け付ける', () => {
     const s = setup(['quarry', 'herald', 'herald', 'herald'], [], [['guard'], ['architect', 4], ['herald']]);
-    const a = cast(firstActions(s, 0), 0);
+    const a = cast(firstActions(s, 0, 'normal'), 0);
     expect(a.length).toBeGreaterThan(0);
     for (const x of a) expect(x.type === 'summon' && x.target).toBeTruthy();
     expect(a.some((x) => x.type === 'summon' && x.target === 2)).toBe(true);
@@ -129,7 +129,7 @@ describe('CPU の新しいルール（建築物・呪文・クールタイム）
 
   it('全体の呪文は 2 枚以上倒れるときに使い、1 枚だけなら使わない', () => {
     const many = setup(['quake', 'herald', 'herald', 'herald'], [], [['herald'], ['herald'], ['miner']]);
-    expect(cast(firstActions(many, 0), 0).length).toBeGreaterThan(0);
+    expect(cast(firstActions(many, 0, 'normal'), 0).length).toBeGreaterThan(0);
     const one = setup(['quake', 'herald', 'herald', 'herald'], [], [['guard']]);
     expect(cast(firstActions(one, 0), 0)).toHaveLength(0);
   });

@@ -200,11 +200,11 @@ describe('攻撃', () => {
   it('相打ちなら両方消える', () => {
     let s = withHand(['herald', 'herald', 'herald', 'herald']);
     let a: Unit, b: Unit;
-    [s, a] = place(s, 0, 0, 'taxman'); // 3/3
-    [s, b] = place(s, 1, 0, 'craftsman'); // 2/4（反撃は討伐込みで 4）
+    [s, a] = place(s, 0, 0, 'taxman');
+    [s, b] = place(s, 1, 0, 'craftsman', 9); // 反撃で taxman は倒れ、職人は残る
     const n = step(s, { type: 'attack', p: 0, uid: a.uid, target: { kind: 'unit', uid: b.uid } });
     expect(findUnit(n.players[0], a.uid)).toBeNull();
-    expect(findUnit(n.players[1], b.uid)!.unit.hp).toBe(1);
+    expect(findUnit(n.players[1], b.uid)!.unit.hp).toBe(9 - CARDS.taxman.atk);
     const [s2, c] = place(s, 0, 1, 'taxman');
     const [s3, e] = place(s2, 1, 1, 'taxman');
     const n2 = step(s3, { type: 'attack', p: 0, uid: c.uid, target: { kind: 'unit', uid: e.uid } });
@@ -352,9 +352,9 @@ describe('能力: 攻撃まわり', () => {
   it('討伐: 攻撃時だけ。殴られたときの反撃には乗らない', () => {
     let [s, d] = place(withHand(HAND4), 1, 0, 'craftsman');
     let att: Unit;
-    [s, att] = place(s, 0, 0, 'guard');
+    [s, att] = place(s, 0, 0, 'guard', 9);
     const n = hit(s, 0, att.uid, U(d.uid));
-    expect(hpOf(n, 0, att.uid)).toBe(CARDS.guard.hp - CARDS.craftsman.atk);
+    expect(hpOf(n, 0, att.uid)).toBe(9 - CARDS.craftsman.atk);
   });
 
   it('鉄壁: 受けるダメージ -1。0 まで下がっても負にはならない', () => {
@@ -363,7 +363,7 @@ describe('能力: 攻撃まわり', () => {
     [s, b] = place(s, 1, 0, 'blockader');
     expect(hpOf(hit(s, 0, a.uid, U(b.uid)), 1, b.uid)).toBe(CARDS.blockader.hp - (CARDS.taxman.atk - 1));
     let w: Unit;
-    [s, w] = place(s, 0, 1, 'herald'); // 攻撃力 1 → 鉄壁で 0
+    [s, w] = place(s, 0, 1, 'miner'); // 攻撃力 1 → 鉄壁で 0
     const n = hit(s, 0, w.uid, U(b.uid));
     expect(hpOf(n, 1, b.uid)).toBe(CARDS.blockader.hp);
     expect(n.events.find((e) => e.kind === 'damage' && e.p === 1)).toMatchObject({ amount: 0, guard: 'armor' });

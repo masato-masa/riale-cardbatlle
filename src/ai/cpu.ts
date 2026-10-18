@@ -55,12 +55,14 @@ interface Tuning {
   skill: number;
   /** 高いカードのために、安い操作を我慢する度合い。 */
   save: number;
+  /** 呪文のスコアに足す補正（負なら使い渋る）。 */
+  spellBias: number;
 }
 
 const TUNING: Record<CpuLevel, Tuning> = {
-  easy: { thinkMin: 1600, thinkSpan: 800, noise: 5.5, second: 0.1, missLethal: 0.35, random: 0.25, idle: 0.5, face: 0.6, trade: 0.4, defend: 0.3, skill: 0.6, save: 0 },
-  normal: { thinkMin: 900, thinkSpan: 600, noise: 2.0, second: 0.3, missLethal: 0.05, random: 0.04, idle: 0.8, face: 0.8, trade: 0.9, defend: 0.8, skill: 0.8, save: 0.5 },
-  hard: { thinkMin: 250, thinkSpan: 150, noise: 1.0, second: 0.7, missLethal: 0, random: 0, idle: 0.0, face: 1.0, trade: 1.0, defend: 1.2, skill: 0.2, save: 1.0 },
+  easy: { thinkMin: 1600, thinkSpan: 800, noise: 5.5, second: 0.1, missLethal: 0.35, random: 0.25, idle: 0.5, face: 0.6, trade: 0.4, defend: 0.3, skill: 0.6, save: 0, spellBias: 9 },
+  normal: { thinkMin: 600, thinkSpan: 400, noise: 2.0, second: 0.6, missLethal: 0.05, random: 0.04, idle: 0.4, face: 1.0, trade: 0.9, defend: 0.8, skill: 0.8, save: 0.5, spellBias: 0 },
+  hard: { thinkMin: 200, thinkSpan: 100, noise: 0.5, second: 0.7, missLethal: 0, random: 0, idle: 0.0, face: 1.0, trade: 1.0, defend: 1.2, skill: 0.2, save: 1.0, spellBias: -1 },
 };
 
 /** カードの価値を測る基準のクールタイム（ms）。ユニットの平均あたり。 */
@@ -194,7 +196,7 @@ function spellCandidates(state: GameState, p: PlayerIndex, handIndex: number, ca
   if (summonBlock(state, p, handIndex, -1, sp.kind === 'bolt' ? (foeUnits[0]?.uid ?? -1) : undefined)) return [];
   const foeFighters = foeAll.filter((u) => CARDS[u.card].type === 'unit');
   // 使うコインのぶんの基本の損（安いほど気軽に使う）。コインが余っているときは緩める。
-  let base = -cost * 0.25 - savePenalty(me, cost, card, t);
+  let base = -cost * 0.25 - savePenalty(me, cost, card, t) + t.spellBias;
   if (me.coins >= COIN_MAX - 0.5) base += 1.2;
   const out: Candidate[] = [];
   if (sp.kind === 'bolt') {
@@ -293,11 +295,17 @@ function summonCandidates(state: GameState, p: PlayerIndex, t: Tuning): Candidat
     // 速攻: 出してすぐ殴れる
     if (ab.haste) s += 0.5 * t.skill;
     // 仲間: 空き枠が残っていれば見習いが付いてくる
-    if (ab.onSummon?.kind === 'token' && filled + 1 < FIELD_SLOTS) s += 1.3 * t.skill;
+    if (ab.onSummon?.kind === 'token' && filled + 1 < FIELD_SLOTS) s += 0.8 * t.skill;
     // 修復: 減っているぶんだけ価値がある
     if (ab.onSummon?.kind === 'heal') s += Math.min(PLAYER_HP - me.hp, ab.onSummon.amount) * 0.4 * t.skill - 0.3;
     // 壁: 場の最後の 1 枠で押されているなら価値が高い（ただ埋めるだけでも少し）
-    if (!isWalled(me) && filled === FIELD_SLOTS - 1) s += (press * 2.4 + (me.hp < foe.hp ? 0.6 : 0.2)) * t.defend;
+    if (!isWalled(me) && filled === FIELD_SLOTS - 1) s += (press * 1.2 + (me.hp < foe.hp ? 0.3 : 0.1)) * t.defend;
+    // 場が狭い: 最後の 1 枠を弱いカードで埋めると、もっと良いカードが出せなくなる
+    if (filled === FIELD_SLOTS - 1) {
+      const w = cardWorth(card, filled);
+      const better = me.hand.reduce((m, c) => (c !== card && CARDS[c].type !== 'spell' && CARDS[c].summon <= me.coins + 3 ? Math.max(m, cardWorth(c, filled)) : m), 0);
+      if (better > w + 1) s -= Math.min(2, (better - w) * 0.35) * t.save;
+    }
     // 薙払: 相手の場が厚いほど出したい
     if (ab.splash) s += Math.min(foeUnits.length, 4) * 0.12 * t.skill;
     // ステルス: 相手が選べないので、後から顔を狙う機会が残る（相手のカードが多いほど守りが固く、価値が高い）
@@ -373,6 +381,11 @@ function attackCandidates(state: GameState, p: PlayerIndex, t: Tuning): Candidat
         if (kills) s -= deathCost(hit);
         if (kills && isBlocker(hit.card)) s += 1.0; // 顔への道を開ける
         if (kills && foeWall) s += 1.2; // 壁を崩して顔を通す
+        if (dies && units(me).length >= FIELD_SLOTS) {
+          // 場が埋まっているとき、倒れれば枠が空いて手札のもっと良いカードを出せる
+          const better = me.hand.reduce((m, c) => (CARDS[c].type !== 'spell' && CARDS[c].summon <= me.coins + 1 ? Math.max(m, cardWorth(c, FIELD_SLOTS - 1)) : m), 0);
+          if (better > myWorth) s += Math.min(1.5, (better - myWorth) * 0.4) * t.save;
+        }
         if (dies) {
           if (ab.onDeath) s += ab.onDeath.amount * 0.3; // 遺言で一矢報いる
           if (myWall) s -= 1.0 * press * t.defend + 0.5; // 壁が崩れる
