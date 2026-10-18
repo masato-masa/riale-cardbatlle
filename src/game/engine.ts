@@ -13,6 +13,7 @@ import {
   HAND_SIZE,
   MATCH_MS,
   PLAYER_HP,
+  WINDUP_MS,
 } from './rules';
 
 export type PlayerIndex = 0 | 1;
@@ -44,9 +45,23 @@ export interface PlayerState {
 
 export type Target = { kind: 'player' } | { kind: 'unit'; uid: number };
 
+/** 溜め中の行動。at になったら効く（WINDUP_MS）。
+ *  attack: ユニットの攻撃。spell: 呪文（target は単体のときだけ）。ability: 召喚時の狙撃・足止（uid は召喚したカード）。 */
+export type Pending =
+  | { id: number; kind: 'attack'; p: PlayerIndex; uid: number; target: Target; at: number }
+  | { id: number; kind: 'spell'; p: PlayerIndex; card: CardId; target: number | null; at: number }
+  | { id: number; kind: 'ability'; p: PlayerIndex; uid: number; card: CardId; target: number; at: number };
+
 export type GameEvent =
   | { id: number; kind: 'summon'; p: PlayerIndex; uid: number; slot: number; card: CardId; token: boolean }
+  /** 攻撃が当たった瞬間（溜めのあと）。 */
   | { id: number; kind: 'attack'; p: PlayerIndex; uid: number; target: Target }
+  /** 溜めに入った（攻撃・呪文・召喚時の能力を選んだ）。 */
+  | { id: number; kind: 'windup'; p: PlayerIndex; pending: Pending }
+  /** 召喚時の狙撃・足止が効いた瞬間（溜めのあと）。 */
+  | { id: number; kind: 'ability'; p: PlayerIndex; uid: number; target: number }
+  /** 溜めの間に攻撃元か対象が消えて、中断した。 */
+  | { id: number; kind: 'cancel'; p: PlayerIndex; pending: Pending }
   /** p は受けた側。amount は実際に減った HP。guard は防いだ理由。 */
   | { id: number; kind: 'damage'; p: PlayerIndex; target: Target; amount: number; guard: 'barrier' | 'armor' | null }
   | { id: number; kind: 'heal'; p: PlayerIndex; amount: number }
@@ -76,6 +91,8 @@ export interface GameState {
   nextEventId: number;
   /** 直近の出来事（画面の演出用）。古いものから捨てる。 */
   events: GameEvent[];
+  /** 溜め中の行動（選んだ順）。 */
+  pending: Pending[];
   result: GameResult | null;
 }
 
@@ -107,6 +124,7 @@ export function createGame(decks: [readonly CardId[], readonly CardId[]], seed: 
     nextUid: 1,
     nextEventId: 1,
     events: [],
+    pending: [],
     result: null,
   };
 }
@@ -207,6 +225,7 @@ export function attackBlock(state: GameState, p: PlayerIndex, uid: number, targe
   if (!found) return 'over';
   if (CARDS[found.unit.card].type !== 'unit') return 'building';
   if (state.time < found.unit.readyAt) return 'cooldown';
+  if (state.pending.some((x) => x.kind === 'attack' && x.uid === uid)) return 'cooldown';
   if (target && !isLegalTarget(state, p, target)) return 'target';
   return null;
 }
@@ -219,6 +238,7 @@ interface Draft {
   players: [PlayerState, PlayerState];
   nextUid: number;
   events: NewEvent[];
+  pending: Pending[];
 }
 
 function draftOf(state: GameState): Draft {
@@ -228,7 +248,13 @@ function draftOf(state: GameState): Draft {
     queue: [...pl.queue],
     field: pl.field.map((u) => (u ? { ...u } : null)),
   });
-  return { time: state.time, players: [copy(state.players[0]), copy(state.players[1])], nextUid: state.nextUid, events: [] };
+  return {
+    time: state.time,
+    players: [copy(state.players[0]), copy(state.players[1])],
+    nextUid: state.nextUid,
+    events: [],
+    pending: [...state.pending],
+  };
 }
 
 /** カードにダメージを与える（結界・鉄壁を通す）。 */
@@ -300,6 +326,8 @@ function finish(state: GameState, d: Draft): GameState {
     nextUid: d.nextUid,
     nextEventId: id,
     events: [...state.events, ...added].slice(-EVENT_KEEP),
+    // 決着したら溜め中の行動は捨てる
+    pending: result ? [] : d.pending,
     result,
   };
 }
@@ -316,6 +344,10 @@ function tick(state: GameState, dt: number): GameState {
     coins: Math.min(COIN_MAX, pl.coins + base * coinBoostOf(pl)),
   })) as GameState['players'];
   let next: GameState = { ...state, time: end, players };
+  if (next.pending.some((x) => x.at <= end)) {
+    next = resolvePending(next);
+    if (next.result) return next;
+  }
   if (players.some((pl) => pl.field.some((u) => u && u.pulseAt !== null && u.pulseAt <= end))) {
     next = pulses(next);
     if (next.result) return next;
@@ -369,14 +401,31 @@ function castSpell(state: GameState, p: PlayerIndex, handIndex: number, target?:
   pl.hand[handIndex] = drawn!;
   pl.queue = [...rest, card];
   pl.coins -= CARDS[card].summon;
+  const effect = CARDS[card].ab.spell!;
+  windup(d, { id: d.nextUid++, kind: 'spell', p, card, target: effect.kind === 'bolt' ? (target ?? null) : null, at: d.time + WINDUP_MS });
+  return finish(state, d);
+}
+
+function windup(d: Draft, pending: Pending): void {
+  d.pending.push(pending);
+  d.events.push({ kind: 'windup', p: pending.p, pending });
+}
+
+/** 呪文の効果（溜めのあと）。単体の対象が消えていたら false（中断）。 */
+function applySpell(d: Draft, p: PlayerIndex, card: CardId, target: number | null): boolean {
   const q = other(p);
+  const pl = d.players[p];
   const foe = d.players[q];
   const effect = CARDS[card].ab.spell!;
-  d.events.push({ kind: 'spell', p, card, target: effect.kind === 'bolt' ? (target ?? null) : null });
   if (effect.kind === 'bolt') {
-    const hit = pickable(foe, target!);
-    if (hit) hurtUnit(d, q, hit, effect.amount);
-  } else if (effect.kind === 'blast') {
+    const hit = target === null ? null : pickable(foe, target);
+    if (!hit) return false;
+    d.events.push({ kind: 'spell', p, card, target });
+    hurtUnit(d, q, hit, effect.amount);
+    return true;
+  }
+  d.events.push({ kind: 'spell', p, card, target: null });
+  if (effect.kind === 'blast') {
     for (const u of units(foe)) hurtUnit(d, q, u, effect.amount);
   } else if (effect.kind === 'freeze') {
     for (const u of units(foe)) {
@@ -391,7 +440,66 @@ function castSpell(state: GameState, p: PlayerIndex, handIndex: number, target?:
       d.events.push({ kind: 'ready', p, uid: u.uid });
     }
   }
-  sweepDead(d);
+  return true;
+}
+
+/** 攻撃の解決（溜めのあと）。攻撃元か対象が消えていたら false（中断）。 */
+function applyAttack(d: Draft, p: PlayerIndex, uid: number, target: Target): boolean {
+  const q = other(p);
+  const me = d.players[p];
+  const foe = d.players[q];
+  const unit = findUnit(me, uid)?.unit;
+  if (!unit) return false;
+  const hit = target.kind === 'unit' ? findUnit(foe, target.uid)?.unit : undefined;
+  if (target.kind === 'unit' && !hit) return false;
+  const ab = CARDS[unit.card].ab;
+  const atk = attackOf(me, unit);
+  d.events.push({ kind: 'attack', p, uid, target });
+  if (!hit) {
+    hurtPlayer(d, q, atk + (ab.faceBonus ?? 0));
+  } else {
+    // 反撃は殴られる前の値で決まる（同時にぶつかる）。討伐は攻撃時だけで、反撃には乗らない
+    const back = attackOf(foe, hit);
+    hurtUnit(d, q, hit, atk + (ab.unitBonus ?? 0));
+    if (ab.splash) for (const v of units(foe)) if (v.uid !== hit.uid) hurtUnit(d, q, v, ab.splash);
+    if (!ab.ranged) hurtUnit(d, p, unit, back);
+  }
+  return true;
+}
+
+/** 召喚時の狙撃・足止の解決（溜めのあと）。召喚したカードか対象が消えていたら false（中断）。 */
+function applyAbility(d: Draft, p: PlayerIndex, uid: number, card: CardId, target: number): boolean {
+  const q = other(p);
+  if (!findUnit(d.players[p], uid)) return false;
+  const hit = pickable(d.players[q], target);
+  if (!hit) return false;
+  const os = CARDS[card].ab.onSummon;
+  d.events.push({ kind: 'ability', p, uid, target });
+  if (os?.kind === 'strike') hurtUnit(d, q, hit, os.amount);
+  if (os?.kind === 'stun') {
+    hit.readyAt = Math.max(hit.readyAt, d.time) + os.ms;
+    d.events.push({ kind: 'stun', p: q, uid: hit.uid });
+  }
+  return true;
+}
+
+/** 溜めが明けた行動を、選んだ順に解決する。1 つ解決するたびに倒れたカードを除く
+ *  （先に倒れた攻撃元・対象の行動は中断になる）。 */
+function resolvePending(state: GameState): GameState {
+  const d = draftOf(state);
+  const due = d.pending.filter((x) => x.at <= d.time);
+  d.pending = d.pending.filter((x) => x.at > d.time);
+  for (const x of due) {
+    if (d.players[0].hp <= 0 || d.players[1].hp <= 0) break;
+    const ok =
+      x.kind === 'attack'
+        ? applyAttack(d, x.p, x.uid, x.target)
+        : x.kind === 'spell'
+          ? applySpell(d, x.p, x.card, x.target)
+          : applyAbility(d, x.p, x.uid, x.card, x.target);
+    if (!ok) d.events.push({ kind: 'cancel', p: x.p, pending: x });
+    sweepDead(d);
+  }
   return finish(state, d);
 }
 
@@ -405,7 +513,7 @@ function summon(state: GameState, p: PlayerIndex, handIndex: number, slot: numbe
   pl.hand[handIndex] = drawn!;
   pl.queue = [...rest, card];
   pl.coins -= CARDS[card].summon;
-  place(d, p, card, slot, false);
+  const placed = place(d, p, card, slot, false);
 
   const os = CARDS[card].ab.onSummon;
   const q = other(p);
@@ -418,13 +526,8 @@ function summon(state: GameState, p: PlayerIndex, handIndex: number, slot: numbe
       pl.hp += healed;
       d.events.push({ kind: 'heal', p, amount: healed });
     }
-  } else if (needsTarget(card) && target !== undefined) {
-    const hit = pickable(d.players[q], target);
-    if (hit && os?.kind === 'strike') hurtUnit(d, q, hit, os.amount);
-    if (hit && os?.kind === 'stun') {
-      hit.readyAt = Math.max(hit.readyAt, d.time) + os.ms;
-      d.events.push({ kind: 'stun', p: q, uid: hit.uid });
-    }
+  } else if (needsTarget(card) && target !== undefined && pickable(d.players[q], target)) {
+    windup(d, { id: d.nextUid++, kind: 'ability', p, uid: placed.uid, card, target, at: d.time + WINDUP_MS });
   }
   sweepDead(d);
   return finish(state, d);
@@ -433,27 +536,11 @@ function summon(state: GameState, p: PlayerIndex, handIndex: number, slot: numbe
 function attack(state: GameState, p: PlayerIndex, uid: number, target: Target): GameState {
   if (attackBlock(state, p, uid, target)) return state;
   const d = draftOf(state);
-  const q = other(p);
   const me = d.players[p];
-  const foe = d.players[q];
   const { unit } = findUnit(me, uid)!;
-  const ab = CARDS[unit.card].ab;
-  const atk = attackOf(me, unit);
   unit.readyAt = d.time + cooldownOf(me, unit.card);
-  unit.stealth = false; // 自分で攻撃したらステルスは解ける
-  d.events.push({ kind: 'attack', p, uid, target });
-
-  if (target.kind === 'player') {
-    hurtPlayer(d, q, atk + (ab.faceBonus ?? 0));
-  } else {
-    const hit = findUnit(foe, target.uid)!.unit;
-    // 反撃は殴られる前の値で決まる（同時にぶつかる）。討伐は攻撃時だけで、反撃には乗らない
-    const back = attackOf(foe, hit);
-    hurtUnit(d, q, hit, atk + (ab.unitBonus ?? 0));
-    if (ab.splash) for (const v of units(foe)) if (v.uid !== hit.uid) hurtUnit(d, q, v, ab.splash);
-    if (!ab.ranged) hurtUnit(d, p, unit, back);
-  }
-  sweepDead(d);
+  unit.stealth = false; // 自分で攻撃を選んだらステルスは解ける
+  windup(d, { id: d.nextUid++, kind: 'attack', p, uid, target, at: d.time + WINDUP_MS });
   return finish(state, d);
 }
 

@@ -15,6 +15,10 @@ export const FIELD_SLOTS = 3;
 /** 手札の枚数（このほかに「次のカード」を 1 枚見せる）。 */
 export const HAND_SIZE = 4;
 
+/** 溜め: 攻撃・呪文・召喚時の狙撃や足止は、選んでからこれだけたって効く（ms）。
+ *  その間に攻撃元か対象が場から消えたら中断する。クールタイムとコインは選んだ時点で使う。 */
+export const WINDUP_MS = 1000;
+
 /** その時刻のコインのたまる速さ（枚/ms）。 */
 export function coinRate(timeMs: number): number {
   return (timeMs >= DOUBLE_COIN_FROM_MS ? 2 : 1) / COIN_MS;

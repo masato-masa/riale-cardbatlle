@@ -28,7 +28,7 @@ import {
   type Unit,
 } from '@/game/engine';
 import { makeRng } from '@/game/rng';
-import { COIN_MAX, DOUBLE_COIN_FROM_MS, FIELD_SLOTS, MATCH_MS } from '@/game/rules';
+import { COIN_MAX, DOUBLE_COIN_FROM_MS, FIELD_SLOTS, MATCH_MS, WINDUP_MS } from '@/game/rules';
 
 import { COIN_URL, FIELD_URL } from './art';
 import { setBgmTension, startBgm, stopBgm } from './bgm';
@@ -45,6 +45,7 @@ import {
   playLose,
   playReady,
   playReject,
+  playSelect,
   playStun,
   playSummon,
   playUiTap,
@@ -55,9 +56,9 @@ import {
 const DRAG_THRESHOLD_PX = 7;
 const LONG_PRESS_MS = 420;
 /** 攻撃の突進で、当たる瞬間までの時間（ms）。数字とダメージ音をここに合わせる。 */
-const HIT_AT_MS = 150;
+const HIT_AT_MS = 230;
 /** 狙撃・呪文・砲撃の弾が届くまでの時間（ms）。 */
-const SHOT_AT_MS = 240;
+const SHOT_AT_MS = 380;
 
 
 type Press =
@@ -179,7 +180,7 @@ export function Game({ level, deck, onExit }: { level: CpuLevel; deck: CardId[];
     if (!c) return;
     const id = fxId.current++;
     setPopups((ps) => [...ps, { id, x: c.x, y: c.y, text, tone }]);
-    window.setTimeout(() => setPopups((ps) => ps.filter((p) => p.id !== id)), 900);
+    window.setTimeout(() => setPopups((ps) => ps.filter((p) => p.id !== id)), 1400);
   }, []);
 
   const shoot = useCallback((from: Element | null, to: Element | null) => {
@@ -188,11 +189,11 @@ export function Game({ level, deck, onExit }: { level: CpuLevel; deck: CardId[];
     if (!a || !b) return;
     const id = fxId.current++;
     setShots((ss) => [...ss, { id, x0: a.x, y0: a.y, x1: b.x, y1: b.y }]);
-    window.setTimeout(() => setShots((ss) => ss.filter((s) => s.id !== id)), SHOT_AT_MS + 120);
+    window.setTimeout(() => setShots((ss) => ss.filter((s) => s.id !== id)), SHOT_AT_MS + 200);
   }, []);
 
   const flash = (el: Element | null) => {
-    if (el) animate(el, { filter: ['brightness(2.4) saturate(0.4)', 'brightness(1) saturate(1)'] }, { duration: 0.32 });
+    if (el) animate(el, { filter: ['brightness(2.4) saturate(0.4)', 'brightness(1) saturate(1)'] }, { duration: 0.55 });
   };
 
   useEffect(() => {
@@ -204,33 +205,44 @@ export function Game({ level, deck, onExit }: { level: CpuLevel; deck: CardId[];
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [game.events]);
 
-  /** 1 回の操作で起きた出来事をまとめて演出する。攻撃は突進が当たる瞬間に、
-   *  召喚の能力・呪文・砲撃は弾が届く瞬間に、ダメージの数字と音を合わせる。 */
+  /** 1 回の操作で起きた出来事をまとめて演出する。選んだ瞬間（溜めに入る）は小さな合図だけ。
+   *  溜めが明けて効いた瞬間に、攻撃は突進が当たるところで、狙撃・呪文・砲撃は弾が届くところで、
+   *  ダメージの数字と音を出す。 */
   function playBatch(batch: GameEvent[]) {
     const attackEv = batch.find((e) => e.kind === 'attack');
-    const summonEv = batch.find((e) => e.kind === 'summon' && !e.token);
-    const spellEv = batch.find((e) => e.kind === 'spell');
-    const pulseEv = batch.find((e) => e.kind === 'pulse');
-    const delay = attackEv ? HIT_AT_MS : summonEv || spellEv || pulseEv ? SHOT_AT_MS : 0;
+    const shotEv = batch.find((e) => e.kind === 'ability' || e.kind === 'spell' || e.kind === 'pulse');
+    const delay = attackEv ? HIT_AT_MS : shotEv ? SHOT_AT_MS : 0;
     const firstHitUid = batch.flatMap((e) =>
       e.kind === 'damage' && e.target.kind === 'unit' ? [e.target.uid] : e.kind === 'stun' ? [e.uid] : [],
     )[0];
 
     for (const e of batch) {
-      if (e.kind === 'attack') lunge(e);
       if (e.kind === 'summon') {
         if (!e.token) playSummon(CARDS[e.card].summon);
         if (e.p === 0 && !e.token) hapticUseCard();
       }
-      if (e.kind === 'spell') {
-        playSummon(CARDS[e.card].summon);
+      if (e.kind === 'windup') {
+        const x = e.pending;
+        if (x.kind === 'spell') playSummon(CARDS[x.card].summon);
+        else if (x.kind === 'attack') playSelect();
         if (e.p === 0) hapticUseCard();
+      }
+      if (e.kind === 'cancel') {
+        const x = e.pending;
+        const at = x.kind === 'spell' ? heroEl(x.p) : (unitEl(x.uid) ?? heroEl(x.p));
+        addPopup(at, '中断', 'stun');
+        if (e.p === 0) playReject();
+      }
+      if (e.kind === 'attack') lunge(e);
+      if (e.kind === 'ability') shoot(unitEl(e.uid), unitEl(e.target));
+      if (e.kind === 'spell') {
         const eff = CARDS[e.card].ab.spell!;
-        // 全体・遅延は相手の場ごと光らせる。単体は使った側から弾を飛ばす。
+        // 全体・遅延は相手の場ごと、再動は自分の場ごと光らせる。単体は使った側から弾を飛ばす。
         if (eff.kind === 'bolt' && e.target !== null) shoot(heroEl(e.p), unitEl(e.target));
-        if (eff.kind === 'blast' || eff.kind === 'freeze') {
-          const row = e.p === 0 ? foeFieldRef.current : fieldRef.current;
-          if (row) animate(row, { filter: ['brightness(1)', 'brightness(1.8)', 'brightness(1)'] }, { duration: 0.45 });
+        else {
+          const foeSide = eff.kind === 'blast' || eff.kind === 'freeze';
+          const row = (e.p === 0) === foeSide ? foeFieldRef.current : fieldRef.current;
+          if (row) animate(row, { filter: ['brightness(1)', 'brightness(1.9)', 'brightness(1)'] }, { duration: 0.8 });
         }
       }
       if (e.kind === 'pulse' && firstHitUid !== undefined) shoot(unitEl(e.uid), unitEl(firstHitUid));
@@ -247,11 +259,6 @@ export function Game({ level, deck, onExit }: { level: CpuLevel; deck: CardId[];
       }
     }
 
-    // 召喚の能力（狙撃・足止）は、召喚したカードから弾を飛ばす
-    if (summonEv && summonEv.kind === 'summon' && firstHitUid !== undefined && !spellEv) {
-      window.setTimeout(() => shoot(unitEl(summonEv.uid), unitEl(firstHitUid)), 0);
-    }
-
     window.setTimeout(() => {
       let hitKind: 'player' | 'blocker' | 'unit' | null = null;
       for (const e of batch) {
@@ -259,7 +266,7 @@ export function Game({ level, deck, onExit }: { level: CpuLevel; deck: CardId[];
           if (e.target.kind === 'player') {
             const el = heroEl(e.p);
             addPopup(el, `-${e.amount}`, 'face');
-            if (el) animate(el, { x: [0, -7, 7, -5, 5, 0] }, { duration: 0.32 });
+            if (el) animate(el, { x: [0, -9, 9, -6, 6, -3, 0] }, { duration: 0.5 });
             if (e.p === 0) hapticImpact([28]);
             hitKind = 'player';
           } else {
@@ -303,7 +310,7 @@ export function Game({ level, deck, onExit }: { level: CpuLevel; deck: CardId[];
     if (!atkEl || !a || !b) return;
     const dx = (b.x - a.x) * 0.55;
     const dy = (b.y - a.y) * 0.55;
-    animate(atkEl, { x: [0, dx, 0], y: [0, dy, 0], scale: [1, 1.14, 1] }, { duration: 0.36, times: [0, 0.42, 1], ease: 'easeOut' });
+    animate(atkEl, { x: [0, dx, 0], y: [0, dy, 0], scale: [1, 1.16, 1] }, { duration: 0.6, times: [0, 0.38, 1], ease: 'easeOut' });
   }
 
   // 自分のユニットのクールタイムが明けた瞬間: 音・振動・カードが弾んで光る
@@ -578,6 +585,7 @@ export function Game({ level, deck, onExit }: { level: CpuLevel; deck: CardId[];
     if (side === 1 && (unitDrag?.over === key ? legal.has(key) : handDrag?.over === key)) cls.push('is-over');
     if (unitDrag?.uid === u.uid) cls.push('is-aiming');
     if (justReady.has(u.uid)) cls.push('is-just-ready');
+    if (game.pending.some((x) => x.kind === 'attack' && x.uid === u.uid)) cls.push(side === 0 ? 'is-winding' : 'is-winding is-foe');
     if (u.stealth) cls.push('is-stealth');
     const pl = game.players[side];
     return (
@@ -585,13 +593,13 @@ export function Game({ level, deck, onExit }: { level: CpuLevel; deck: CardId[];
         key={u.uid}
         className="unit-wrap"
         initial={{ scale: 0.4, opacity: 0, y: side === 0 ? 30 : -30 }}
-        animate={{ scale: 1, opacity: 1, y: 0, transition: { type: 'spring', stiffness: 520, damping: 30 } }}
+        animate={{ scale: 1, opacity: 1, y: 0, transition: { type: 'spring', stiffness: 260, damping: 24 } }}
         exit={{
           scale: 0.7,
           opacity: 0,
           filter: 'grayscale(1)',
           pointerEvents: 'none',
-          transition: { delay: SHOT_AT_MS / 1000 + 0.05, duration: 0.28 },
+          transition: { delay: SHOT_AT_MS / 1000 + 0.1, duration: 0.5 },
         }}
       >
         <div
@@ -700,7 +708,7 @@ export function Game({ level, deck, onExit }: { level: CpuLevel; deck: CardId[];
                         key={`${card}-${i}`}
                         className={`hand-card${lack === 0 ? ' is-affordable' : ''}${dragging ? ' is-lifted' : ''}`}
                         initial={{ y: 26, opacity: 0, scale: 0.85 }}
-                        animate={{ y: 0, opacity: 1, scale: 1, transition: { type: 'spring', stiffness: 460, damping: 32 } }}
+                        animate={{ y: 0, opacity: 1, scale: 1, transition: { type: 'spring', stiffness: 300, damping: 30 } }}
                         exit={{ opacity: 0, pointerEvents: 'none', transition: { duration: 0.12 } }}
                         onPointerDown={(e) => onPressStart(e, { kind: 'hand', index: i })}
                         onPointerMove={onPressMove}
@@ -751,6 +759,9 @@ export function Game({ level, deck, onExit }: { level: CpuLevel; deck: CardId[];
         </svg>
       ) : null}
 
+      {/* 溜め中の行動: 攻撃元から対象へ矢印、対象に縮んでいく照準。範囲の呪文は場ごと光らせる */}
+      <PendingMarks game={game} fieldMe={fieldRef.current} fieldFoe={foeFieldRef.current} />
+
       {/* 狙撃・呪文・砲撃の弾 */}
       <svg className="aim" aria-hidden="true">
         {shots.map((s) => (
@@ -772,7 +783,7 @@ export function Game({ level, deck, onExit }: { level: CpuLevel; deck: CardId[];
               className={`popup popup-${p.tone}`}
               style={{ left: p.x, top: p.y }}
               initial={{ opacity: 0, y: 0, scale: 0.6 }}
-              animate={{ opacity: [0, 1, 1, 0], y: -38, scale: 1, transition: { duration: 0.85, times: [0, 0.15, 0.7, 1] } }}
+              animate={{ opacity: [0, 1, 1, 0], y: -44, scale: 1, transition: { duration: 1.3, times: [0, 0.12, 0.75, 1] } }}
               exit={{ opacity: 0 }}
             >
               {p.text}
@@ -837,5 +848,50 @@ export function Game({ level, deck, onExit }: { level: CpuLevel; deck: CardId[];
         ) : null}
       </AnimatePresence>
     </div>
+  );
+}
+
+/** 溜め中の行動の印。描画のたびに要素の位置を読む（盤面は操作で 1px も動かないので、読むだけで足りる）。 */
+function PendingMarks({ game, fieldMe, fieldFoe }: { game: GameState; fieldMe: HTMLElement | null; fieldFoe: HTMLElement | null }) {
+  if (game.pending.length === 0) return null;
+  const lines: { key: number; x0: number; y0: number; x1: number; y1: number; mine: boolean; t: number }[] = [];
+  const areas: { key: number; r: DOMRect; mine: boolean; t: number }[] = [];
+  for (const x of game.pending) {
+    const t = Math.max(0, Math.min(1, 1 - (x.at - game.time) / WINDUP_MS));
+    const mine = x.p === 0;
+    const foe: 0 | 1 = x.p === 0 ? 1 : 0;
+    if (x.kind === 'spell' && x.target === null) {
+      const eff = CARDS[x.card].ab.spell!;
+      const toFoe = eff.kind === 'blast' || eff.kind === 'freeze';
+      const row = (x.p === 0) === toFoe ? fieldFoe : fieldMe;
+      if (row) areas.push({ key: x.id, r: row.getBoundingClientRect(), mine, t });
+      continue;
+    }
+    const src = x.kind === 'spell' ? heroEl(x.p) : unitEl(x.uid);
+    const tgt =
+      x.kind === 'attack' ? (x.target.kind === 'player' ? heroEl(foe) : unitEl(x.target.uid)) : unitEl(x.target as number);
+    const a = centerOf(src);
+    const b = centerOf(tgt);
+    if (a && b) lines.push({ key: x.id, x0: a.x, y0: a.y, x1: b.x, y1: b.y, mine, t });
+  }
+  return (
+    <>
+      {areas.map((m) => (
+        <div
+          key={m.key}
+          className={`pending-area${m.mine ? ' is-mine' : ''}`}
+          style={{ left: m.r.left - 6, top: m.r.top - 6, width: m.r.width + 12, height: m.r.height + 12, opacity: 0.35 + m.t * 0.65 }}
+        />
+      ))}
+      <svg className="aim" aria-hidden="true">
+        {lines.map((m) => (
+          <g key={m.key} className={`pending${m.mine ? ' is-mine' : ''}`}>
+            <line x1={m.x0} y1={m.y0} x2={m.x0 + (m.x1 - m.x0) * Math.min(1, m.t * 1.6)} y2={m.y0 + (m.y1 - m.y0) * Math.min(1, m.t * 1.6)} className="pending-line" />
+            <circle cx={m.x1} cy={m.y1} r={30 - m.t * 16} className="pending-ring" />
+            <circle cx={m.x1} cy={m.y1} r={4} className="pending-dot" />
+          </g>
+        ))}
+      </svg>
+    </>
   );
 }
