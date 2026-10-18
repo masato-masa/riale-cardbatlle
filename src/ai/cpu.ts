@@ -57,12 +57,14 @@ interface Tuning {
   save: number;
   /** 呪文のスコアに足す補正（負なら使い渋る）。 */
   spellBias: number;
+  /** 溜め（pending）の先読み: すでに倒れる予定の相手を重ねて狙わず、倒される予定の味方を先に使う度合い。 */
+  foresee: number;
 }
 
 const TUNING: Record<CpuLevel, Tuning> = {
-  easy: { thinkMin: 1600, thinkSpan: 800, noise: 5.5, second: 0.1, missLethal: 0.35, random: 0.25, idle: 0.5, face: 0.6, trade: 0.4, defend: 0.3, skill: 0.6, save: 0, spellBias: 9 },
-  normal: { thinkMin: 600, thinkSpan: 400, noise: 2.0, second: 0.6, missLethal: 0.05, random: 0.04, idle: 0.4, face: 1.0, trade: 0.9, defend: 0.8, skill: 0.8, save: 0.5, spellBias: 0 },
-  hard: { thinkMin: 200, thinkSpan: 100, noise: 0.5, second: 0.7, missLethal: 0, random: 0, idle: 0.0, face: 1.0, trade: 1.0, defend: 1.2, skill: 0.2, save: 1.0, spellBias: -1 },
+  easy: { thinkMin: 1600, thinkSpan: 800, noise: 5.5, second: 0.1, missLethal: 0.35, random: 0.25, idle: 0.5, face: 0.6, trade: 0.4, defend: 0.3, skill: 0.6, save: 0, spellBias: 9, foresee: 0 },
+  normal: { thinkMin: 600, thinkSpan: 400, noise: 2.0, second: 0.6, missLethal: 0.05, random: 0.04, idle: 0.4, face: 1.0, trade: 0.9, defend: 0.8, skill: 0.8, save: 0.5, spellBias: 0, foresee: 0.6 },
+  hard: { thinkMin: 200, thinkSpan: 100, noise: 0.5, second: 0.7, missLethal: 0, random: 0, idle: 0.0, face: 1.0, trade: 1.0, defend: 1.2, skill: 0.2, save: 1.0, spellBias: -1, foresee: 1.0 },
 };
 
 /** カードの価値を測る基準のクールタイム（ms）。ユニットの平均あたり。 */
@@ -409,8 +411,62 @@ function attackCandidates(state: GameState, p: PlayerIndex, t: Tuning): Candidat
   return out;
 }
 
+/** 溜め中の行動で、各ユニットがこれから受ける実ダメージの合計（owner 側の溜めが victim 側のユニットへ与える分）。 */
+function incoming(state: GameState, owner: PlayerIndex): Map<number, number> {
+  const victim = state.players[other(owner)];
+  const mine = state.players[owner];
+  const out = new Map<number, number>();
+  const add = (uid: number, amount: number) => {
+    const f = victim.field.find((u) => u && u.uid === uid);
+    if (!f) return;
+    const hurt = out.has(uid) ? 0 : effective(f, amount); // 結界は最初の 1 回だけ防ぐ
+    out.set(uid, (out.get(uid) ?? 0) + (out.has(uid) ? Math.max(0, amount - (CARDS[f.card].ab.armor ?? 0)) : hurt));
+  };
+  for (const x of state.pending) {
+    if (x.p !== owner) continue;
+    if (x.kind === 'attack' && x.target.kind === 'unit') {
+      const u = mine.field.find((y) => y && y.uid === x.uid);
+      if (u) add(x.target.uid, attackOf(mine, u) + (CARDS[u.card].ab.unitBonus ?? 0));
+    } else if (x.kind === 'ability') {
+      const os = CARDS[x.card].ab.onSummon;
+      if (os?.kind === 'strike') add(x.target, os.amount);
+    } else if (x.kind === 'spell' && x.target !== null) {
+      const sp = CARDS[x.card].ab.spell;
+      if (sp?.kind === 'bolt') add(x.target, sp.amount);
+    }
+  }
+  return out;
+}
+
+/** 溜めの先読み: すでに倒れる予定の相手を重ねて狙わない。倒される予定の味方は、先に攻撃へ使う。 */
+function foresight(state: GameState, p: PlayerIndex, cands: Candidate[], t: Tuning): void {
+  if (t.foresee <= 0 || state.pending.length === 0) return;
+  const foe = state.players[other(p)];
+  const me = state.players[p];
+  const mineHit = incoming(state, p);
+  const foeHit = incoming(state, other(p));
+  const doomedFoe = (uid: number): boolean => {
+    const f = foe.field.find((u) => u && u.uid === uid);
+    return !!f && (mineHit.get(uid) ?? 0) >= f.hp;
+  };
+  const doomedMine = (uid: number): boolean => {
+    const f = me.field.find((u) => u && u.uid === uid);
+    return !!f && (foeHit.get(uid) ?? 0) >= f.hp;
+  };
+  for (const c of cands) {
+    const a = c.action;
+    if (a.type === 'attack') {
+      if (a.target.kind === 'unit' && doomedFoe(a.target.uid)) c.score -= 3 * t.foresee;
+      if (doomedMine(a.uid)) c.score += 1.5 * t.foresee; // どうせ倒れるなら、倒れる前に攻撃へ使う
+    } else if (a.type === 'summon' && a.target !== undefined && doomedFoe(a.target)) {
+      c.score -= 3 * t.foresee;
+    }
+  }
+}
+
 function choose(state: GameState, p: PlayerIndex, t: Tuning, rand: () => number): Action | null {
   let cands = [...summonCandidates(state, p, t), ...attackCandidates(state, p, t)];
+  foresight(state, p, cands, t);
   if (cands.length === 0) return null;
   const lethal = cands.filter((c) => c.lethal);
   if (lethal.length > 0 && rand() >= t.missLethal) return lethal[0]!.action;
