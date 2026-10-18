@@ -1103,16 +1103,13 @@ body {
   filter: drop-shadow(0 0 2px rgb(255 255 255 / 0.9));
 }
 
-.reserve-badge {
-  fill: #4fa3ff;
-  stroke: #fff;
-  stroke-width: 2.5;
+
+/* 自分のカードの上に重ねると上書き（元のカードは消える） */
+.slot.is-drop.is-replace {
+  background: rgb(229 72 77 / 0.35);
+  box-shadow: inset 0 0 0 3px var(--danger), 0 0 14px rgb(229 72 77 / 0.8);
 }
 
-.reserve-hand {
-  fill: none;
-  stroke: #fff;
-  stroke-width: 2.2;
-  stroke-linecap: round;
-  stroke-linejoin: round;
+.slot.is-replace .unit {
+  filter: grayscale(0.7) brightness(0.7);
 }

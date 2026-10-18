@@ -58,7 +58,7 @@ describe('攻撃の予約', () => {
     expect(s.pending).toHaveLength(0);
     s = tick(s, 1);
     expect(s.pending).toHaveLength(1);
-    expect(unitOf(s, 0, a.uid)!.reserved).toBeNull();
+    expect(unitOf(s, 0, a.uid)!.reserved).toEqual(FACE); // 攻撃してもターゲットは残る
     expect(unitOf(s, 0, a.uid)!.readyAt).toBe(3000 + CARDS.craftsman.cd);
     s = tick(s, WINDUP_MS);
     expect(s.players[1].hp).toBe(PLAYER_HP - CARDS.craftsman.atk);
@@ -108,5 +108,28 @@ describe('溜め中の攻撃は、当たる瞬間に狙えなければ中断', (
     s = tick(s, WINDUP_MS);
     expect(s.players[1].hp).toBe(PLAYER_HP);
     expect(s.events.some((e) => e.kind === 'cancel')).toBe(true);
+  });
+});
+
+describe('ターゲットは残る', () => {
+  it('攻撃したらその対象がターゲットになり、明けるたびに攻撃し続ける', () => {
+    const [s0, a] = place(withHand(HAND4), 0, 0, 'craftsman', 0);
+    let s = atk(s0, 0, a.uid, FACE);
+    expect(unitOf(s, 0, a.uid)!.reserved).toEqual(FACE);
+    s = tick(s, WINDUP_MS);
+    s = tick(s, CARDS.craftsman.cd); // 明けて 2 回目の溜めに入り、
+    s = tick(s, WINDUP_MS); // 当たる
+    expect(s.players[1].hp).toBe(PLAYER_HP - 2 * CARDS.craftsman.atk);
+  });
+
+  it('ターゲットのカードを倒したら外れる', () => {
+    let [s, a] = place(withHand(HAND4), 0, 0, 'craftsman', 0);
+    let v: Unit;
+    [s, v] = place(s, 1, 0, 'herald', 0, 1);
+    s = atk(s, 0, a.uid, U(v.uid));
+    s = tick(s, WINDUP_MS);
+    s = tick(s, 16);
+    expect(unitOf(s, 1, v.uid)).toBeUndefined();
+    expect(unitOf(s, 0, a.uid)!.reserved).toBeNull();
   });
 });

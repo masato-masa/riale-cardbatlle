@@ -138,10 +138,9 @@ describe('召喚', () => {
     expect(pl.field[2]).toMatchObject({ card: 'miner', hp: CARDS.miner.hp, readyAt: n.time + CARDS.miner.cd });
     expect(n.players[1]).toEqual(s.players[1]);
   });
-  it('枠が埋まっている・範囲外の枠には出せない', () => {
+  it('範囲外の枠には出せない', () => {
     let s = withHand(['herald', 'herald', 'herald', 'herald']);
     s = step(s, { type: 'summon', p: 0, handIndex: 0, slot: 0 });
-    expect(step(s, { type: 'summon', p: 0, handIndex: 1, slot: 0 })).toBe(s);
     expect(step(s, { type: 'summon', p: 0, handIndex: 1, slot: FIELD_SLOTS })).toBe(s);
     expect(step(s, { type: 'summon', p: 0, handIndex: 1, slot: -1 })).toBe(s);
   });
@@ -149,12 +148,18 @@ describe('召喚', () => {
     const s = withHand(['herald', 'herald', 'herald', 'herald']);
     expect(step(s, { type: 'summon', p: 0, handIndex: 9, slot: 0 })).toBe(s);
   });
-  it('全枠を埋めると次は出せない', () => {
+  it('自分のカードの上に召喚すると、元のカードを除いて置き換える（死亡時は起きない）', () => {
     let s = withHand(['herald', 'herald', 'herald', 'herald']);
-    for (let i = 0; i < FIELD_SLOTS; i++) [s] = place(s, 0, i, 'guard');
-    expect(s.players[0].field.every(Boolean)).toBe(true);
-    expect(summonBlock(s, 0, 0, 0)).toBe('slot');
-    expect(step(s, { type: 'summon', p: 0, handIndex: 0, slot: 0 })).toBe(s);
+    let old: Unit;
+    [s, old] = place(s, 0, 0, 'usurer');
+    for (let i = 1; i < FIELD_SLOTS; i++) [s] = place(s, 0, i, 'guard');
+    expect(summonBlock(s, 0, 0, 0)).toBeNull();
+    const n = step(s, { type: 'summon', p: 0, handIndex: 0, slot: 0 });
+    expect(n.players[0].field[0]!.card).toBe('herald');
+    expect(findUnit(n.players[0], old.uid)).toBeNull();
+    expect(n.players[1].hp).toBe(PLAYER_HP); // 高利貸の死亡時は起きない
+    expect(n.events.some((e) => e.kind === 'replace' && e.uid === old.uid)).toBe(true);
+    expect(n.events.some((e) => e.kind === 'death')).toBe(false);
   });
   it('デッキの枚数は保たれる（手札 + queue = 10）', () => {
     let s = withHand(['herald', 'herald', 'herald', 'herald']);
@@ -187,9 +192,11 @@ describe('攻撃', () => {
     expect(blocked).toBe(s);
     s = tick(s, CARDS.craftsman.cd - WINDUP_MS - 1); // 攻撃を選んだ時刻から cd
     expect(step(s, { type: 'attack', p: 0, uid: u.uid, target: { kind: 'player' } })).toBe(s);
+    // ターゲットは残っているので、明けた瞬間に同じ対象へ自動で攻撃が始まる
     s = tick(s, 1);
-    const again = step(s, { type: 'attack', p: 0, uid: u.uid, target: { kind: 'player' } });
-    expect(again.players[1].hp).toBe(PLAYER_HP - 2 * CARDS.craftsman.atk);
+    expect(s.pending.some((x) => x.kind === 'attack' && x.uid === u.uid)).toBe(true);
+    s = tick(s, WINDUP_MS);
+    expect(s.players[1].hp).toBe(PLAYER_HP - 2 * CARDS.craftsman.atk);
   });
   it('コインが 0 でも攻撃できる', () => {
     const [s, u] = place(withHand(HAND4, 0), 0, 0, 'architect');

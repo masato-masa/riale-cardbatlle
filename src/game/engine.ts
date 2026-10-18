@@ -30,7 +30,8 @@ export interface Unit {
   stealth: boolean;
   /** 建築物が次に効く時刻（生産・砲撃）。無ければ null。 */
   pulseAt: number | null;
-  /** 攻撃の予約。クールタイムが明けた瞬間にこの対象への攻撃を始める。狙えなくなったら消える。 */
+  /** ターゲット。クールタイムが明けるたびにこの対象を攻撃する（攻撃しても外れない）。
+   *  狙えなくなったら（倒れた・ブロッカーが出た・壁ができた）外れる。 */
   reserved: Target | null;
 }
 
@@ -66,6 +67,8 @@ export type GameEvent =
   | { id: number; kind: 'reserve'; p: PlayerIndex; uid: number; target: Target }
   /** 予約が消えた（対象が倒れた・ブロッカーや壁で狙えなくなった・取り消した）。 */
   | { id: number; kind: 'unreserve'; p: PlayerIndex; uid: number }
+  /** 自分のカードの上に召喚して、元のカードを場から除いた（死亡時は起きない）。 */
+  | { id: number; kind: 'replace'; p: PlayerIndex; uid: number; card: CardId; slot: number }
   /** 溜めの間に攻撃元か対象が消えて、中断した。 */
   | { id: number; kind: 'cancel'; p: PlayerIndex; pending: Pending }
   /** p は受けた側。amount は実際に減った HP。guard は防いだ理由。 */
@@ -233,7 +236,7 @@ export function summonBlock(
     if (requiresTarget(card) && (target === undefined || !pickable(state.players[other(p)], target))) return 'target';
     return null;
   }
-  if (slot < 0 || slot >= FIELD_SLOTS || pl.field[slot]) return 'slot';
+  if (slot < 0 || slot >= FIELD_SLOTS) return 'slot';
   return null;
 }
 
@@ -433,7 +436,6 @@ function runReservations(state: GameState): GameState {
       }
       if (d.time < u.readyAt || d.pending.some((x) => x.kind === 'attack' && x.uid === u.uid)) continue;
       const target = u.reserved;
-      u.reserved = null;
       u.readyAt = d.time + cooldownOf(me, u.card);
       u.stealth = false;
       windup(d, { id: d.nextUid++, kind: 'attack', p, uid: u.uid, target, at: d.time + WINDUP_MS });
@@ -583,6 +585,12 @@ function summon(state: GameState, p: PlayerIndex, handIndex: number, slot: numbe
   pl.hand[handIndex] = drawn!;
   pl.queue = [...rest, card];
   pl.coins -= CARDS[card].summon;
+  const old = pl.field[slot];
+  if (old) {
+    // 自分のカードの上に召喚した: 元のカードは除くだけ（倒れたのではないので死亡時は起きない）
+    pl.field[slot] = null;
+    d.events.push({ kind: 'replace', p, uid: old.uid, card: old.card, slot });
+  }
   const placed = place(d, p, card, slot, false);
 
   const os = CARDS[card].ab.onSummon;
@@ -610,7 +618,7 @@ function attack(state: GameState, p: PlayerIndex, uid: number, target: Target): 
   const { unit } = findUnit(me, uid)!;
   unit.readyAt = d.time + cooldownOf(me, unit.card);
   unit.stealth = false; // 自分で攻撃を選んだらステルスは解ける
-  unit.reserved = null;
+  unit.reserved = target; // 攻撃した対象をターゲットとして残す（明けるたびに攻撃し続ける）
   windup(d, { id: d.nextUid++, kind: 'attack', p, uid, target, at: d.time + WINDUP_MS });
   return finish(state, d);
 }

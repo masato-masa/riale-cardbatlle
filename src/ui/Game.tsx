@@ -228,7 +228,6 @@ export function Game({ level, deck, onExit }: { level: CpuLevel; deck: CardId[];
         if (e.p === 0) hapticUseCard();
       }
       if (e.kind === 'reserve' && e.p === 0) playSelect();
-      if (e.kind === 'unreserve' && e.p === 0) addPopup(unitEl(e.uid), '予約取消', 'stun');
       if (e.kind === 'cancel') {
         const x = e.pending;
         const at = x.kind === 'spell' ? heroEl(x.p) : (unitEl(x.uid) ?? heroEl(x.p));
@@ -369,13 +368,28 @@ export function Game({ level, deck, onExit }: { level: CpuLevel; deck: CardId[];
   const fieldRef = useRef<HTMLDivElement>(null);
   const trayRef = useRef<HTMLDivElement>(null);
 
-  /** 手札を落とす枠: 自分の場の上なら、指にいちばん近い空き枠。 */
+  /** 手札を落とす枠: 指の下に自分の枠があればその枠（埋まっていれば上書き）。
+   *  枠と枠のすき間などでは、指にいちばん近い空き枠（無ければ近い枠）。 */
   const slotAt = useCallback((x: number, y: number): number | null => {
     const row = fieldRef.current;
     if (!row) return null;
     const r = row.getBoundingClientRect();
     if (y < r.top - 40 || y > r.bottom + 40 || x < r.left - 20 || x > r.right + 20) return null;
+    const under = document.elementFromPoint(x, y)?.closest<HTMLElement>('[data-slot]');
+    if (under && row.contains(under)) return Number(under.dataset.slot);
     const field = gameRef.current.players[0].field;
+    if (field.every(Boolean)) {
+      let near = 0;
+      let nearD = Infinity;
+      row.querySelectorAll<HTMLElement>('[data-slot]').forEach((el) => {
+        const d = Math.abs(centerOf(el)!.x - x);
+        if (d < nearD) {
+          nearD = d;
+          near = Number(el.dataset.slot);
+        }
+      });
+      return near;
+    }
     let best: number | null = null;
     let bestD = Infinity;
     row.querySelectorAll<HTMLElement>('[data-slot]').forEach((el) => {
@@ -639,7 +653,7 @@ export function Game({ level, deck, onExit }: { level: CpuLevel; deck: CardId[];
     game.players[side].field.map((u, i) => (
       <div
         key={i}
-        className={`slot${side === 0 && handDrag && !dragSpell && !handDrag.over && handDrag.slot === i ? ' is-drop' : ''}`}
+        className={`slot${side === 0 && handDrag && !dragSpell && !handDrag.over && handDrag.slot === i ? (u ? ' is-drop is-replace' : ' is-drop') : ''}`}
         data-slot={side === 0 ? i : undefined}
       >
         <AnimatePresence>{u ? renderUnit(u, side) : null}</AnimatePresence>
@@ -879,6 +893,7 @@ function PendingMarks({ game, fieldMe, fieldFoe }: { game: GameState; fieldMe: H
   for (const p of [0, 1] as const) {
     for (const u of game.players[p].field) {
       if (!u?.reserved) continue;
+      if (game.pending.some((x) => x.kind === 'attack' && x.uid === u.uid)) continue;
       const tgt = u.reserved.kind === 'player' ? heroEl(p === 0 ? 1 : 0) : unitEl(u.reserved.uid);
       const a = centerOf(unitEl(u.uid));
       const b = centerOf(tgt);
@@ -919,8 +934,6 @@ function PendingMarks({ game, fieldMe, fieldFoe }: { game: GameState; fieldMe: H
         {reserves.map((m) => (
           <g key={`r${m.key}`} className="reserve">
             <line x1={m.x0} y1={m.y0} x2={m.x1} y2={m.y1} className="reserve-line" />
-            <circle cx={m.x1} cy={m.y1} r={11} className="reserve-badge" />
-            <path d={`M${m.x1} ${m.y1 - 6} V${m.y1} H${m.x1 + 5}`} className="reserve-hand" />
           </g>
         ))}
         {lines.map((m) => (

@@ -76,7 +76,8 @@ describe('クールタイム（カードごと）', () => {
       expect(findUnit(n.players[0], u.uid)!.unit.readyAt).toBe(s.time + CARDS[card].cd);
       expect(attackBlock(n, 0, u.uid, FACE)).toBe('cooldown');
       expect(attackBlock(tick(n, CARDS[card].cd - WINDUP_MS - 1), 0, u.uid, FACE)).toBe('cooldown');
-      expect(attackBlock(tick(n, CARDS[card].cd - WINDUP_MS), 0, u.uid, FACE)).toBeNull();
+      // 明けた瞬間、残っているターゲットへ自動で攻撃が始まる
+      expect(tick(n, CARDS[card].cd - WINDUP_MS).pending.some((x) => x.kind === 'attack' && x.uid === u.uid)).toBe(true);
     }
     expect(CARDS.herald.cd).not.toBe(CARDS.boss.cd);
   });
