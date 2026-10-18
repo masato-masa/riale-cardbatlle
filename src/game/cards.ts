@@ -69,8 +69,8 @@ export interface Abilities {
   armor?: number;
   /** 場にいる間、コインのたまる速さ +割合（0.25 = 25%） */
   coinBoost?: number;
-  /** なぎ払い: カードを攻撃すると相手のカード全員にダメージ。反撃は選んだ相手からだけ */
-  sweep?: true;
+  /** 攻撃時: 狙った相手のほかの敵カード全員に N ダメージ */
+  splash?: number;
   /** 遠隔: 自分から攻撃したときは反撃を受けない */
   ranged?: true;
   /** バリア: 最初に受けるダメージを 0 にする */
@@ -96,71 +96,66 @@ export interface CardDef {
   /** HP（右下）。呪文は 0。 */
   hp: number;
   ab: Abilities;
-  /** カードの上端に出す、能力の短い名前（2 文字）。ブロッカーだけのカードは盾の印なので空。 */
-  chip: string;
   /** デッキに入らないカード（能力で出てくるもの） */
   token?: true;
 }
 
-const unit = (id: CardId, name: string, summon: number, atk: number, hp: number, chip: string, ab: Abilities = {}): CardDef => ({
+const unit = (id: CardId, name: string, summon: number, atk: number, hp: number, ab: Abilities = {}): CardDef => ({
   id,
   type: 'unit',
   name,
   summon,
   atk,
   hp,
-  chip,
   ab,
 });
-const building = (id: CardId, name: string, summon: number, hp: number, chip: string, ab: Abilities): CardDef => ({
+const building = (id: CardId, name: string, summon: number, hp: number, ab: Abilities): CardDef => ({
   id,
   type: 'building',
   name,
   summon,
   atk: 0,
   hp,
-  chip,
   ab,
 });
-const spell = (id: CardId, name: string, summon: number, chip: string, effect: SpellEffect): CardDef => ({
+const spell = (id: CardId, name: string, summon: number, effect: SpellEffect): CardDef => ({
   id,
   type: 'spell',
   name,
   summon,
   atk: 0,
   hp: 0,
-  chip,
   ab: { spell: effect },
 });
 
 export const CARDS: Record<CardId, CardDef> = {
-  herald: unit('herald', '伝令', 1, 1, 2, '速攻', { haste: true }),
-  miner: unit('miner', '採掘師', 2, 1, 2, '仲間', { onSummon: { kind: 'token' } }),
-  usurer: unit('usurer', '高利貸', 2, 2, 2, '遺言', { onDeath: { kind: 'face', amount: 2 } }),
-  spy: unit('spy', '買収者', 3, 2, 3, '奇襲', { faceBonus: 1 }),
-  craftsman: unit('craftsman', '職人', 3, 2, 4, '討伐', { unitBonus: 2 }),
-  guard: unit('guard', '衛兵', 2, 1, 5, '', { blocker: true }),
-  banker: unit('banker', '銀行家', 3, 1, 4, '増収', { coinBoost: 0.15 }),
-  informer: unit('informer', '密告者', 2, 2, 2, '足止', { onSummon: { kind: 'stun', ms: 3000 } }),
-  taxman: unit('taxman', '徴税官', 4, 3, 3, '狙撃', { onSummon: { kind: 'strike', amount: 2 } }),
-  double: unit('double', '影武者', 3, 2, 3, '結界', { barrier: true }),
-  inspector: unit('inspector', '検査官', 4, 3, 4, '遠隔', { ranged: true }),
-  blockader: unit('blockader', '封鎖者', 4, 2, 5, '鉄壁', { blocker: true, armor: 1 }),
-  architect: unit('architect', '建築家', 5, 4, 5, '修復', { onSummon: { kind: 'heal', amount: 3 } }),
-  boss: unit('boss', '顔役', 5, 3, 6, '薙払', { sweep: true }),
-  apprentice: { ...unit('apprentice', '見習い', 1, 1, 1, ''), token: true },
+  herald: unit('herald', '伝令', 1, 1, 2, { haste: true }),
+  miner: unit('miner', '採掘師', 2, 1, 2, { onSummon: { kind: 'token' } }),
+  usurer: unit('usurer', '高利貸', 2, 2, 2, { onDeath: { kind: 'face', amount: 2 } }),
+  spy: unit('spy', '買収者', 3, 2, 3, { faceBonus: 1 }),
+  craftsman: unit('craftsman', '職人', 3, 2, 4, { unitBonus: 2 }),
+  guard: unit('guard', '衛兵', 2, 1, 5, { blocker: true }),
+  banker: unit('banker', '銀行家', 3, 1, 4, { coinBoost: 0.15 }),
+  informer: unit('informer', '密告者', 2, 2, 2, { onSummon: { kind: 'stun', ms: 3000 } }),
+  taxman: unit('taxman', '徴税官', 4, 3, 3, { onSummon: { kind: 'strike', amount: 2 } }),
+  double: unit('double', '影武者', 3, 2, 3, { barrier: true }),
+  inspector: unit('inspector', '検査官', 4, 3, 4, { ranged: true }),
+  blockader: unit('blockader', '封鎖者', 4, 2, 5, { blocker: true, armor: 1 }),
+  architect: unit('architect', '建築家', 5, 4, 5, { onSummon: { kind: 'heal', amount: 3 } }),
+  boss: unit('boss', '顔役', 5, 3, 6, { splash: 1 }),
+  apprentice: { ...unit('apprentice', '見習い', 1, 1, 1), token: true },
 
-  wall: building('wall', '城壁', 2, 8, '', { blocker: true }),
-  exchange: building('exchange', '取引所', 3, 5, '増収', { coinBoost: 0.3 }),
-  tradingHouse: building('tradingHouse', '商館', 3, 5, '鼓舞', { rally: 1 }),
-  factory: building('factory', '工房', 4, 5, '生産', { pulse: { everyMs: 6000, kind: 'token' } }),
-  cathedral: building('cathedral', '大聖堂', 4, 6, '祈り', { cooldownCut: 0.3 }),
-  fortress: building('fortress', '砦', 5, 8, '砲撃', { pulse: { everyMs: 6000, kind: 'snipe', amount: 1 } }),
+  wall: building('wall', '城壁', 2, 8, { blocker: true }),
+  exchange: building('exchange', '取引所', 3, 5, { coinBoost: 0.3 }),
+  tradingHouse: building('tradingHouse', '商館', 3, 5, { rally: 1 }),
+  factory: building('factory', '工房', 4, 5, { pulse: { everyMs: 6000, kind: 'token' } }),
+  cathedral: building('cathedral', '大聖堂', 4, 6, { cooldownCut: 0.3 }),
+  fortress: building('fortress', '砦', 5, 8, { pulse: { everyMs: 6000, kind: 'snipe', amount: 1 } }),
 
-  quarry: spell('quarry', '落石', 4, '単体', { kind: 'bolt', amount: 5 }),
-  quake: spell('quake', '地鳴り', 4, '全体', { kind: 'blast', amount: 2 }),
-  roadblock: spell('roadblock', '通行止め', 3, '遅延', { kind: 'freeze', ms: 4000 }),
-  festival: spell('festival', '祝祭', 2, '再動', { kind: 'ready' }),
+  quarry: spell('quarry', '落石', 4, { kind: 'bolt', amount: 5 }),
+  quake: spell('quake', '地鳴り', 4, { kind: 'blast', amount: 2 }),
+  roadblock: spell('roadblock', '通行止め', 3, { kind: 'freeze', ms: 4000 }),
+  festival: spell('festival', '祝祭', 2, { kind: 'ready' }),
 };
 
 /** 自分の最初のデッキ（10 枚固定）。 */
@@ -208,37 +203,48 @@ export function requiresTarget(card: CardId): boolean {
 
 export const TYPE_NAME: Record<CardType, string> = { unit: 'ユニット', building: '建築物', spell: '呪文' };
 
-/** 能力の説明（長押しの説明・ドラッグ中の案内）。 */
+/** 能力の説明（長押しの説明・ドラッグ中の案内）。ドラクエライバルズの書き方にそろえる:
+ *  キーワード（ブロッカー・速攻・結界）はそのまま、時機のある能力は「召喚時：」「攻撃時：」「死亡時：」
+ *  「N 秒ごと：」を頭に付け、いつでも効く能力は効果だけを書く。
+ *  言葉: 敵カード＝相手のユニットと建築物、敵ユニット＝相手のユニットだけ、敵プレイヤー＝相手。 */
 export function abilityLines(card: CardId): string[] {
   const a = CARDS[card].ab;
   const lines: string[] = [];
-  if (a.blocker) lines.push('ブロッカー: 相手はこのカードがいる間、ブロッカーしか攻撃できない');
-  if (a.haste) lines.push('速攻: 召喚してすぐ攻撃できる');
-  if (a.faceBonus) lines.push(`奇襲: プレイヤーへのダメージ +${a.faceBonus}`);
-  if (a.unitBonus) lines.push(`討伐: カードへのダメージ +${a.unitBonus}（反撃も）`);
-  if (a.armor) lines.push(`鉄壁: 受けるダメージ -${a.armor}`);
-  if (a.coinBoost) lines.push(`増収: 場にある間、コインのたまる速さ +${Math.round(a.coinBoost * 100)}%`);
-  if (a.sweep) lines.push('薙払: カードを攻撃すると、相手のカード全員にダメージ。反撃は選んだ相手からだけ受ける');
-  if (a.ranged) lines.push('遠隔: 自分から攻撃したときは反撃を受けない');
-  if (a.barrier) lines.push('結界: 最初に受けるダメージを 0 にする');
-  if (a.rally) lines.push(`鼓舞: ほかの味方の攻撃力 +${a.rally}`);
-  if (a.cooldownCut) lines.push(`祈り: 場にある間、味方ユニットのクールタイム -${Math.round(a.cooldownCut * 100)}%`);
+  if (a.blocker) lines.push('ブロッカー（相手はブロッカーしか攻撃できない）');
+  if (a.haste) lines.push('速攻（召喚してすぐ攻撃できる）');
+  if (a.barrier) lines.push('結界（最初に受けるダメージを 0 にする）');
   const s = a.onSummon;
-  if (s?.kind === 'token') lines.push('仲間: 召喚したとき、空いている枠に見習い（攻撃 1・HP 1）を出す');
-  if (s?.kind === 'heal') lines.push(`修復: 召喚したとき、自分の HP を ${s.amount} 回復`);
-  if (s?.kind === 'strike') lines.push(`狙撃: 相手のカードの上で召喚すると、そのカードに ${s.amount} ダメージ`);
-  if (s?.kind === 'stun') lines.push(`足止: 相手のカードの上で召喚すると、そのカードは ${s.ms / 1000} 秒攻撃できない`);
-  if (a.onDeath?.kind === 'face') lines.push(`遺言: 倒れたとき、相手のプレイヤーに ${a.onDeath.amount} ダメージ`);
+  if (s?.kind === 'token') lines.push('召喚時：空いている枠に見習い（攻撃 1・HP 1）を出す');
+  if (s?.kind === 'heal') lines.push(`召喚時：自分の HP を ${s.amount} 回復`);
+  if (s?.kind === 'strike') lines.push(`召喚時：敵カード 1 枚に ${s.amount} ダメージ`);
+  if (s?.kind === 'stun') lines.push(`召喚時：敵ユニット 1 体のクールタイム +${s.ms / 1000} 秒`);
+  if (a.ranged) lines.push('攻撃時：反撃を受けない');
+  if (a.splash) lines.push(`攻撃時：ほかの敵カード全員に ${a.splash} ダメージ`);
+  if (a.onDeath?.kind === 'face') lines.push(`死亡時：敵プレイヤーに ${a.onDeath.amount} ダメージ`);
   const p = a.pulse;
-  if (p?.kind === 'token') lines.push(`生産: ${p.everyMs / 1000} 秒ごとに、空いている枠に見習いを出す`);
-  if (p?.kind === 'snipe') lines.push(`砲撃: ${p.everyMs / 1000} 秒ごとに、相手のいちばん HP の低いカードに ${p.amount} ダメージ`);
+  if (p?.kind === 'token') lines.push(`${p.everyMs / 1000} 秒ごと：空いている枠に見習いを出す`);
+  if (p?.kind === 'snipe') lines.push(`${p.everyMs / 1000} 秒ごと：HP がいちばん低い敵カードに ${p.amount} ダメージ`);
+  if (a.faceBonus) lines.push(`敵プレイヤーへのダメージ +${a.faceBonus}`);
+  if (a.unitBonus) lines.push(`敵カードへのダメージ +${a.unitBonus}（反撃も）`);
+  if (a.armor) lines.push(`受けるダメージ -${a.armor}`);
+  if (a.rally) lines.push(`ほかの味方ユニットの攻撃力 +${a.rally}`);
+  if (a.coinBoost) lines.push(`コインのたまる速さ +${Math.round(a.coinBoost * 100)}%`);
+  if (a.cooldownCut) lines.push(`味方ユニットのクールタイム -${Math.round(a.cooldownCut * 100)}%`);
   const sp = a.spell;
-  if (sp?.kind === 'bolt') lines.push(`単体: 相手のカードの上で使うと、そのカードに ${sp.amount} ダメージ`);
-  if (sp?.kind === 'blast') lines.push(`全体: 相手のカード全員に ${sp.amount} ダメージ`);
-  if (sp?.kind === 'freeze') lines.push(`遅延: 相手のユニット全員のクールタイム +${sp.ms / 1000} 秒`);
-  if (sp?.kind === 'ready') lines.push('再動: 味方ユニット全員のクールタイムをなくす');
-  if (CARDS[card].type === 'building') lines.push('建築物: 攻撃はしない。場にあるだけで効く');
+  if (sp?.kind === 'bolt') lines.push(`敵カード 1 枚に ${sp.amount} ダメージ`);
+  if (sp?.kind === 'blast') lines.push(`敵カード全員に ${sp.amount} ダメージ`);
+  if (sp?.kind === 'freeze') lines.push(`敵ユニット全員のクールタイム +${sp.ms / 1000} 秒`);
+  if (sp?.kind === 'ready') lines.push('味方ユニット全員のクールタイムをなくす');
   return lines;
+}
+
+/** 使い方の補足（説明の下に小さく出す）。 */
+export function usageNote(card: CardId): string | null {
+  const def = CARDS[card];
+  if (needsTarget(card)) return def.type === 'spell' ? '敵カードの上へドラッグして使う' : '敵カードの上へドラッグして召喚すると、そのカードに効く';
+  if (def.type === 'spell') return '盤面へドラッグして使う';
+  if (def.type === 'building') return '攻撃しない。場にあるだけで効く';
+  return null;
 }
 
 /** 壁の説明（ヘルプと案内で使う）。 */

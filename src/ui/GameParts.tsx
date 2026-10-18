@@ -1,4 +1,4 @@
-import { abilityLines, CARDS, TYPE_NAME, WALL_TEXT, type CardId } from '@/game/cards';
+import { abilityLines, CARDS, TYPE_NAME, usageNote, WALL_TEXT, type CardId } from '@/game/cards';
 import { PLAYER_HP } from '@/game/rules';
 
 import { CardFace } from './CardFace';
@@ -52,6 +52,7 @@ export function CardDetail({ card, hp }: { card: CardId; hp?: number }) {
         </p>
       ))}
       {abilityLines(card).length === 0 ? <p className="card-detail-text">能力なし</p> : null}
+      {usageNote(card) ? <p className="card-detail-note">{usageNote(card)}</p> : null}
     </div>
   );
 }

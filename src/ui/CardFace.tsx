@@ -4,7 +4,7 @@ import { CARD_ART } from './art';
 
 /** カードの面。左上 召喚コスト・左下 攻撃力（赤）・右下 HP（緑）。
  *  建築物は攻撃力が無く（石の枠）、呪文は召喚コストだけ（紫の枠）。
- *  上端の中央に能力の短い名前（ブロッカーは青い盾の形）。
+ *  能力の文字は面に書かない（長押しの説明で見る）。ブロッカーだけ上端に盾の印。
  *  hp・atk を渡すと場のカードとして、減った HP を赤、上がった攻撃力を金の縁で出す。 */
 export function CardFace({ card, hp, atk, small }: { card: CardId; hp?: number; atk?: number; small?: boolean }) {
   const def = CARDS[card];
@@ -21,9 +21,9 @@ export function CardFace({ card, hp, atk, small }: { card: CardId; hp?: number; 
         <img className="face-art" src={CARD_ART[card]} alt="" draggable={false} />
         <span className="face-name">{def.name}</span>
       </div>
-      {def.chip || blocker ? (
-        <span className={`face-chip${blocker ? ' is-blocker' : ''}${def.chip ? '' : ' is-icon'}`}>
-          {def.chip || <ShieldMark />}
+      {blocker ? (
+        <span className="face-chip is-icon" aria-label="ブロッカー">
+          <ShieldMark />
         </span>
       ) : null}
       <span className="pip pip-summon" aria-label="召喚コスト">

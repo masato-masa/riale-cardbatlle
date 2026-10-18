@@ -25,7 +25,6 @@ import {
   FIELD_SLOTS,
   MATCH_MS,
   PLAYER_HP,
-  SUMMON_DELAY_MS,
 } from '../src/game/rules';
 
 const fresh = (): GameState => createGame([STARTER_DECK, STARTER_DECK], 1);
@@ -126,7 +125,7 @@ describe('召喚', () => {
     expect(pl.coins).toBe(COIN_MAX - CARDS.miner.summon);
     expect(pl.hand).toEqual([next, 'herald', 'guard', 'spy']);
     expect(pl.queue).toEqual([...rest, 'miner']);
-    expect(pl.field[2]).toMatchObject({ card: 'miner', hp: CARDS.miner.hp, readyAt: n.time + SUMMON_DELAY_MS });
+    expect(pl.field[2]).toMatchObject({ card: 'miner', hp: CARDS.miner.hp, readyAt: n.time + ATTACK_COOLDOWN_MS });
     expect(n.players[1]).toEqual(s.players[1]);
   });
   it('枠が埋まっている・範囲外の枠には出せない', () => {
@@ -155,13 +154,13 @@ describe('召喚', () => {
 });
 
 describe('攻撃', () => {
-  it('召喚直後 1 秒は攻撃できない', () => {
+  it('召喚したあとはクールタイム分たつまで攻撃できない', () => {
     let s = withHand(['guard', 'herald', 'herald', 'herald']);
     s = step(s, { type: 'summon', p: 0, handIndex: 0, slot: 0 });
     const uid = s.players[0].field[0]!.uid;
     const early = step(s, { type: 'attack', p: 0, uid, target: { kind: 'player' } });
     expect(early).toBe(s);
-    s = tick(s, SUMMON_DELAY_MS - 1);
+    s = tick(s, ATTACK_COOLDOWN_MS - 1);
     expect(step(s, { type: 'attack', p: 0, uid, target: { kind: 'player' } })).toBe(s);
     s = tick(s, 1);
     const landed = step(s, { type: 'attack', p: 0, uid, target: { kind: 'player' } });
@@ -322,14 +321,14 @@ describe('決着', () => {
 });
 
 describe('能力: 攻撃まわり', () => {
-  it('速攻: 召喚してすぐ攻撃できる（ほかのカードは 1 秒待つ）', () => {
+  it('速攻: 召喚してすぐ攻撃できる（ほかのカードはクールタイム分待つ）', () => {
     let s = withHand(['herald', 'spy', 'herald', 'herald']);
     s = step(s, { type: 'summon', p: 0, handIndex: 0, slot: 0 });
     const h = s.players[0].field[0]!;
     expect(h.readyAt).toBe(s.time);
     expect(hit(s, 0, h.uid, FACE).players[1].hp).toBe(PLAYER_HP - CARDS.herald.atk);
     s = step(s, { type: 'summon', p: 0, handIndex: 1, slot: 1 });
-    expect(s.players[0].field[1]!.readyAt).toBe(s.time + SUMMON_DELAY_MS);
+    expect(s.players[0].field[1]!.readyAt).toBe(s.time + ATTACK_COOLDOWN_MS);
   });
 
   it('奇襲: プレイヤーへのダメージだけ +1（カード相手には乗らない）', () => {
@@ -409,37 +408,36 @@ describe('能力: 攻撃まわり', () => {
     expect(hpOf(m, 0, att.uid)).toBe(CARDS.guard.hp - CARDS.inspector.atk);
   });
 
-  it('薙払: 相手のカード全員にダメージ。反撃は選んだ相手からだけ', () => {
+  it('顔役: 攻撃時、ほかの敵カード全員に 1 ダメージ。反撃は狙った相手からだけ', () => {
     let [s, b] = place(withHand(HAND4), 0, 0, 'boss');
     let g: Unit, c: Unit, m: Unit;
-    [s, g] = place(s, 1, 0, 'guard', 6); // 1/6 ブロッカー（選ぶ相手）
-    [s, c] = place(s, 1, 1, 'craftsman', 6); // 討伐持ち、選ばない
+    [s, g] = place(s, 1, 0, 'guard', 6); // 1/6 ブロッカー（狙う相手）
+    [s, c] = place(s, 1, 1, 'craftsman', 6); // 討伐持ち、狙わない
     [s, m] = place(s, 1, 2, 'miner', 6);
     const n = hit(s, 0, b.uid, U(g.uid));
-    const dmg = CARDS.boss.atk;
-    expect(hpOf(n, 1, g.uid)).toBe(6 - dmg);
-    expect(hpOf(n, 1, c.uid)).toBe(6 - dmg); // ブロッカーの陰でも当たる
-    expect(hpOf(n, 1, m.uid)).toBe(6 - dmg);
-    expect(hpOf(n, 0, b.uid)).toBe(CARDS.boss.hp - CARDS.guard.atk); // 選んだ衛兵の 1 だけ
+    expect(hpOf(n, 1, g.uid)).toBe(6 - CARDS.boss.atk);
+    expect(hpOf(n, 1, c.uid)).toBe(6 - 1); // ブロッカーの陰でも当たる
+    expect(hpOf(n, 1, m.uid)).toBe(6 - 1);
+    expect(hpOf(n, 0, b.uid)).toBe(CARDS.boss.hp - CARDS.guard.atk); // 狙った衛兵の 1 だけ
     expect(n.events.filter((e) => e.kind === 'damage' && e.p === 1)).toHaveLength(3);
   });
 
-  it('薙払: 巻き込まれたカードの結界と鉄壁も効く。倒れたカードの遺言は起きる', () => {
+  it('顔役: 巻き込みにも結界と鉄壁が効く。倒れたカードの死亡時は起きる', () => {
     let [s, b] = place(withHand(HAND4), 0, 0, 'boss');
     let g: Unit, d: Unit, u: Unit, bl: Unit;
     [s, g] = place(s, 1, 0, 'guard');
     [s, d] = place(s, 1, 1, 'double');
-    [s, u] = place(s, 1, 2, 'usurer', 3);
+    [s, u] = place(s, 1, 2, 'usurer', 1);
     [s, bl] = place(s, 1, 3, 'blockader', 6);
     const n = hit(s, 0, b.uid, U(g.uid));
     expect(hpOf(n, 1, d.uid)).toBe(CARDS.double.hp); // 結界
     expect(findUnit(n.players[1], d.uid)!.unit.barrier).toBe(false);
-    expect(hpOf(n, 1, bl.uid)).toBe(6 - (CARDS.boss.atk - 1)); // 鉄壁
+    expect(hpOf(n, 1, bl.uid)).toBe(6); // 鉄壁で 1 - 1 = 0
     expect(gone(n, 1, u.uid)).toBe(true);
-    expect(n.players[0].hp).toBe(PLAYER_HP - 2); // 遺言
+    expect(n.players[0].hp).toBe(PLAYER_HP - 2); // 死亡時
   });
 
-  it('薙払: プレイヤーへの攻撃は通常どおり（カードには当たらない）', () => {
+  it('顔役: プレイヤーへの攻撃ではカードに当たらない', () => {
     let [s, b] = place(withHand(HAND4), 0, 0, 'boss');
     let m: Unit;
     [s, m] = place(s, 1, 0, 'miner');

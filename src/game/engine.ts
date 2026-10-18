@@ -13,7 +13,6 @@ import {
   HAND_SIZE,
   MATCH_MS,
   PLAYER_HP,
-  SUMMON_DELAY_MS,
 } from './rules';
 
 export type PlayerIndex = 0 | 1;
@@ -265,7 +264,7 @@ function place(d: Draft, p: PlayerIndex, card: CardId, slot: number, token: bool
     uid: d.nextUid++,
     card,
     hp: CARDS[card].hp,
-    readyAt: ab.haste ? d.time : d.time + SUMMON_DELAY_MS,
+    readyAt: ab.haste ? d.time : d.time + cooldownOf(d.players[p]),
     barrier: !!ab.barrier,
     pulseAt: ab.pulse ? d.time + ab.pulse.everyMs : null,
   };
@@ -439,8 +438,8 @@ function attack(state: GameState, p: PlayerIndex, uid: number, target: Target): 
     const hit = findUnit(foe, target.uid)!.unit;
     // 反撃は殴られる前の値で決まる（同時にぶつかる）
     const back = attackOf(foe, hit) + (CARDS[hit.card].ab.unitBonus ?? 0);
-    const victims = ab.sweep ? units(foe) : [hit];
-    for (const v of victims) hurtUnit(d, q, v, atk + (ab.unitBonus ?? 0));
+    hurtUnit(d, q, hit, atk + (ab.unitBonus ?? 0));
+    if (ab.splash) for (const v of units(foe)) if (v.uid !== hit.uid) hurtUnit(d, q, v, ab.splash);
     if (!ab.ranged) hurtUnit(d, p, unit, back);
   }
   sweepDead(d);

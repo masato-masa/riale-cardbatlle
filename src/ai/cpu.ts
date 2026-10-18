@@ -76,7 +76,7 @@ function worth(card: CardId, hp: number, atk: number, allies: number, barrier: b
   if (barrier) v += 1.0;
   if (ab.armor) v += ab.armor * 0.8;
   if (ab.ranged) v += 0.9;
-  if (ab.sweep) v += 1.5;
+  if (ab.splash) v += 0.6;
   if (ab.unitBonus) v += ab.unitBonus * 0.35;
   if (ab.rally) v += ab.rally * (0.5 + allies * 0.5);
   if (ab.coinBoost) v += ab.coinBoost * 5;
@@ -289,7 +289,7 @@ function summonCandidates(state: GameState, p: PlayerIndex, t: Tuning): Candidat
     // 壁: 場の 5 枚目で押されているなら価値が高い（ただの 5 枚目でも少し）
     if (!isWalled(me) && filled === FIELD_SLOTS - 1) s += (press * 2.4 + (me.hp < foe.hp ? 0.6 : 0.2)) * t.defend;
     // 薙払: 相手の場が厚いほど出したい
-    if (ab.sweep) s += Math.min(foeUnits.length, 4) * 0.25 * t.skill;
+    if (ab.splash) s += Math.min(foeUnits.length, 4) * 0.12 * t.skill;
     if (d.type === 'building') s += buildingValue(state, me, foe, card, t);
 
     const os = ab.onSummon;
@@ -363,11 +363,11 @@ function attackCandidates(state: GameState, p: PlayerIndex, t: Tuning): Candidat
           if (ab.onDeath) s += ab.onDeath.amount * 0.3; // 遺言で一矢報いる
           if (myWall) s -= 1.0 * press * t.defend + 0.5; // 壁が崩れる
         }
-        // 薙払: 巻き込んだほかのカードの損得
-        if (ab.sweep) {
+        // 攻撃時: ほかの敵カードへの小ダメージの損得
+        if (ab.splash) {
           for (const o of foeUnits) {
             if (o.uid === hit.uid) continue;
-            const od = effective(o, dmg);
+            const od = effective(o, ab.splash);
             if (od >= o.hp) s += (1.2 + unitWorth(foe, o) * 0.5 * t.trade - deathCost(o)) * (0.4 + 0.6 * t.skill);
             else s += od * 0.25 * t.skill;
             if (o.barrier) s += 0.4 * t.skill;

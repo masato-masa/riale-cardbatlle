@@ -9,6 +9,7 @@ import {
   needsTarget,
   requiresTarget,
   RIVAL_DECK,
+  usageNote,
   type CardId,
 } from '@/game/cards';
 import {
@@ -596,7 +597,7 @@ export function Game({ level, deck, onExit }: { level: CpuLevel; deck: CardId[];
   const coinInt = Math.floor(me.coins);
   const coinFrac = me.coins - coinInt;
   const nextCard = me.queue[0];
-  const dragInfo = handDragCard ? abilityLines(handDragCard)[0] : null;
+  const dragInfo = handDragCard ? (needsTarget(handDragCard) || CARDS[handDragCard].type === 'spell' ? usageNote(handDragCard) : abilityLines(handDragCard)[0]) ?? null : null;
   const castReady = dragSpell && handDragCard && !requiresTarget(handDragCard) && handDrag?.onBoard;
 
   return (
