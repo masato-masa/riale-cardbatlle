@@ -25,6 +25,8 @@ export interface Unit {
   readyAt: number;
   /** 結界がまだ残っているか。 */
   barrier: boolean;
+  /** ステルス中か（自分で攻撃するまで、相手に選ばれず、壁にも数えない）。 */
+  stealth: boolean;
   /** 建築物が次に効く時刻（生産・砲撃）。無ければ null。 */
   pulseAt: number | null;
 }
@@ -123,9 +125,15 @@ export function units(player: PlayerState): Unit[] {
   return player.field.filter((u): u is Unit => !!u);
 }
 
-/** 場が全部うまっている（壁）。 */
+/** 相手が選んで狙えるカード（ステルス中は除く）。 */
+function pickable(player: PlayerState, uid: number): Unit | null {
+  const f = findUnit(player, uid);
+  return f && !f.unit.stealth ? f.unit : null;
+}
+
+/** 場が全部うまっている（壁）。ステルス中のカードは数えない。 */
 export function isWalled(player: PlayerState): boolean {
-  return player.field.every((u) => !!u);
+  return player.field.every((u) => !!u && !u.stealth);
 }
 
 /** 鼓舞を含めた攻撃力。建築物は 0。 */
@@ -146,7 +154,8 @@ export function coinBoostOf(player: PlayerState): number {
 /** p から見て、いま攻撃対象に選べる相手。ブロッカーがいればブロッカーだけ、壁ならプレイヤーは選べない。 */
 export function legalTargets(state: GameState, p: PlayerIndex): Target[] {
   const foe = state.players[other(p)];
-  const all = units(foe);
+  // ステルス中のカードは存在しない扱い（選べない）
+  const all = units(foe).filter((u) => !u.stealth);
   const blockers = all.filter((u) => isBlocker(u.card));
   if (blockers.length > 0) return blockers.map((u) => ({ kind: 'unit', uid: u.uid }));
   const list: Target[] = all.map((u) => ({ kind: 'unit' as const, uid: u.uid }));
@@ -182,7 +191,7 @@ export function summonBlock(
   if (!card) return 'over';
   if (pl.coins < CARDS[card].summon) return 'coins';
   if (CARDS[card].type === 'spell') {
-    if (requiresTarget(card) && (target === undefined || !findUnit(state.players[other(p)], target))) return 'target';
+    if (requiresTarget(card) && (target === undefined || !pickable(state.players[other(p)], target))) return 'target';
     return null;
   }
   if (slot < 0 || slot >= FIELD_SLOTS || pl.field[slot]) return 'slot';
@@ -266,6 +275,7 @@ function place(d: Draft, p: PlayerIndex, card: CardId, slot: number, token: bool
     hp: CARDS[card].hp,
     readyAt: ab.haste ? d.time : d.time + cooldownOf(d.players[p], card),
     barrier: !!ab.barrier,
+    stealth: !!ab.stealth,
     pulseAt: ab.pulse ? d.time + ab.pulse.everyMs : null,
   };
   d.players[p].field[slot] = unit;
@@ -340,7 +350,7 @@ function pulses(state: GameState): GameState {
         } else {
           const q = other(p);
           const weakest = units(d.players[q])
-            .filter((u) => u.hp > 0)
+            .filter((u) => u.hp > 0 && !u.stealth)
             .reduce<Unit | null>((m, u) => (!m || u.hp < m.hp ? u : m), null);
           if (weakest) hurtUnit(d, q, weakest, pulse.amount);
         }
@@ -364,8 +374,8 @@ function castSpell(state: GameState, p: PlayerIndex, handIndex: number, target?:
   const effect = CARDS[card].ab.spell!;
   d.events.push({ kind: 'spell', p, card, target: effect.kind === 'bolt' ? (target ?? null) : null });
   if (effect.kind === 'bolt') {
-    const hit = findUnit(foe, target!);
-    if (hit) hurtUnit(d, q, hit.unit, effect.amount);
+    const hit = pickable(foe, target!);
+    if (hit) hurtUnit(d, q, hit, effect.amount);
   } else if (effect.kind === 'blast') {
     for (const u of units(foe)) hurtUnit(d, q, u, effect.amount);
   } else if (effect.kind === 'freeze') {
@@ -409,11 +419,11 @@ function summon(state: GameState, p: PlayerIndex, handIndex: number, slot: numbe
       d.events.push({ kind: 'heal', p, amount: healed });
     }
   } else if (needsTarget(card) && target !== undefined) {
-    const hit = findUnit(d.players[q], target);
-    if (hit && os?.kind === 'strike') hurtUnit(d, q, hit.unit, os.amount);
+    const hit = pickable(d.players[q], target);
+    if (hit && os?.kind === 'strike') hurtUnit(d, q, hit, os.amount);
     if (hit && os?.kind === 'stun') {
-      hit.unit.readyAt = Math.max(hit.unit.readyAt, d.time) + os.ms;
-      d.events.push({ kind: 'stun', p: q, uid: hit.unit.uid });
+      hit.readyAt = Math.max(hit.readyAt, d.time) + os.ms;
+      d.events.push({ kind: 'stun', p: q, uid: hit.uid });
     }
   }
   sweepDead(d);
@@ -430,14 +440,15 @@ function attack(state: GameState, p: PlayerIndex, uid: number, target: Target): 
   const ab = CARDS[unit.card].ab;
   const atk = attackOf(me, unit);
   unit.readyAt = d.time + cooldownOf(me, unit.card);
+  unit.stealth = false; // 自分で攻撃したらステルスは解ける
   d.events.push({ kind: 'attack', p, uid, target });
 
   if (target.kind === 'player') {
     hurtPlayer(d, q, atk + (ab.faceBonus ?? 0));
   } else {
     const hit = findUnit(foe, target.uid)!.unit;
-    // 反撃は殴られる前の値で決まる（同時にぶつかる）
-    const back = attackOf(foe, hit) + (CARDS[hit.card].ab.unitBonus ?? 0);
+    // 反撃は殴られる前の値で決まる（同時にぶつかる）。討伐は攻撃時だけで、反撃には乗らない
+    const back = attackOf(foe, hit);
     hurtUnit(d, q, hit, atk + (ab.unitBonus ?? 0));
     if (ab.splash) for (const v of units(foe)) if (v.uid !== hit.uid) hurtUnit(d, q, v, ab.splash);
     if (!ab.ranged) hurtUnit(d, p, unit, back);

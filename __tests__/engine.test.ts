@@ -57,6 +57,7 @@ function withHand(hand: CardId[], coins = COIN_MAX): GameState {
 /** 場へ直接置く（召喚の待ち時間なしで攻撃できる）。 */
 function place(s: GameState, p: PlayerIndex, slot: number, card: CardId, hp?: number, readyAt = 0): [GameState, Unit] {
   const unit: Unit = { uid: s.nextUid, card, hp: hp ?? CARDS[card].hp, readyAt, barrier: !!CARDS[card].ab.barrier,
+    stealth: !!CARDS[card].ab.stealth,
     pulseAt: CARDS[card].ab.pulse ? s.time + CARDS[card].ab.pulse!.everyMs : null,
   };
   const field = [...s.players[p].field];
@@ -247,7 +248,7 @@ describe('ブロッカー', () => {
     let s = withHand(['herald', 'herald', 'herald', 'herald']);
     let a: Unit, g: Unit, h: Unit;
     [s, a] = place(s, 0, 0, 'craftsman');
-    [s, g] = place(s, 1, 0, 'guard');
+    [s, g] = place(s, 1, 0, 'guard', 9);
     [s, h] = place(s, 1, 1, 'herald');
     expect(legalTargets(s, 0)).toEqual([{ kind: 'unit', uid: g.uid }]);
     expect(isLegalTarget(s, 0, { kind: 'player' })).toBe(false);
@@ -256,7 +257,7 @@ describe('ブロッカー', () => {
     expect(step(s, { type: 'attack', p: 0, uid: a.uid, target: { kind: 'unit', uid: h.uid } })).toBe(s);
     const n = step(s, { type: 'attack', p: 0, uid: a.uid, target: { kind: 'unit', uid: g.uid } });
     expect(n).not.toBe(s);
-    expect(findUnit(n.players[1], g.uid)!.unit.hp).toBe(CARDS.guard.hp - CARDS.craftsman.atk - 2);
+    expect(findUnit(n.players[1], g.uid)!.unit.hp).toBe(9 - CARDS.craftsman.atk - 2);
   });
   it('ブロッカーがいなければ全員とプレイヤーを狙える', () => {
     let s = withHand(['herald', 'herald', 'herald', 'herald']);
@@ -342,18 +343,18 @@ describe('能力: 攻撃まわり', () => {
   it('討伐: カードへのダメージ +2、顔には乗らない', () => {
     let [s, a] = place(withHand(HAND4), 0, 0, 'craftsman');
     let g: Unit;
-    [s, g] = place(s, 1, 0, 'guard');
-    expect(hpOf(hit(s, 0, a.uid, U(g.uid)), 1, g.uid)).toBe(CARDS.guard.hp - CARDS.craftsman.atk - 2);
+    [s, g] = place(s, 1, 0, 'guard', 9);
+    expect(hpOf(hit(s, 0, a.uid, U(g.uid)), 1, g.uid)).toBe(9 - CARDS.craftsman.atk - 2);
     const [s2, c] = place(withHand(HAND4), 0, 0, 'craftsman');
     expect(hit(s2, 0, c.uid, FACE).players[1].hp).toBe(PLAYER_HP - CARDS.craftsman.atk);
   });
 
-  it('討伐: 殴られたときの反撃にも乗る', () => {
+  it('討伐: 攻撃時だけ。殴られたときの反撃には乗らない', () => {
     let [s, d] = place(withHand(HAND4), 1, 0, 'craftsman');
     let att: Unit;
     [s, att] = place(s, 0, 0, 'guard');
     const n = hit(s, 0, att.uid, U(d.uid));
-    expect(hpOf(n, 0, att.uid)).toBe(CARDS.guard.hp - CARDS.craftsman.atk - 2);
+    expect(hpOf(n, 0, att.uid)).toBe(CARDS.guard.hp - CARDS.craftsman.atk);
   });
 
   it('鉄壁: 受けるダメージ -1。0 まで下がっても負にはならない', () => {
@@ -362,7 +363,7 @@ describe('能力: 攻撃まわり', () => {
     [s, b] = place(s, 1, 0, 'blockader');
     expect(hpOf(hit(s, 0, a.uid, U(b.uid)), 1, b.uid)).toBe(CARDS.blockader.hp - (CARDS.taxman.atk - 1));
     let w: Unit;
-    [s, w] = place(s, 0, 1, 'guard'); // 攻撃力 1 → 鉄壁で 0
+    [s, w] = place(s, 0, 1, 'herald'); // 攻撃力 1 → 鉄壁で 0
     const n = hit(s, 0, w.uid, U(b.uid));
     expect(hpOf(n, 1, b.uid)).toBe(CARDS.blockader.hp);
     expect(n.events.find((e) => e.kind === 'damage' && e.p === 1)).toMatchObject({ amount: 0, guard: 'armor' });
@@ -397,15 +398,15 @@ describe('能力: 攻撃まわり', () => {
   it('遠隔: 自分から攻撃したときは反撃を受けない。殴られたときは受ける', () => {
     let [s, a] = place(withHand(HAND4), 0, 0, 'inspector');
     let g: Unit;
-    [s, g] = place(s, 1, 0, 'guard');
+    [s, g] = place(s, 1, 0, 'guard', 9);
     const n = hit(s, 0, a.uid, U(g.uid));
     expect(hpOf(n, 0, a.uid)).toBe(CARDS.inspector.hp);
-    expect(hpOf(n, 1, g.uid)).toBe(CARDS.guard.hp - CARDS.inspector.atk);
+    expect(hpOf(n, 1, g.uid)).toBe(9 - CARDS.inspector.atk);
     let i: Unit, att: Unit;
     [s, i] = place(withHand(HAND4), 1, 0, 'inspector');
-    [s, att] = place(s, 0, 0, 'guard');
+    [s, att] = place(s, 0, 0, 'guard', 9);
     const m = hit(s, 0, att.uid, U(i.uid));
-    expect(hpOf(m, 0, att.uid)).toBe(CARDS.guard.hp - CARDS.inspector.atk);
+    expect(hpOf(m, 0, att.uid)).toBe(9 - CARDS.inspector.atk);
   });
 
   it('顔役: 攻撃時、ほかの敵カード全員に 1 ダメージ。反撃は狙った相手からだけ', () => {
@@ -458,12 +459,12 @@ describe('能力: 攻撃まわり', () => {
   it('鼓舞: 反撃にも乗る。商館が 2 枚なら足される', () => {
     let [s] = place(withHand(HAND4), 1, 0, 'tradingHouse');
     let h: Unit, att: Unit;
-    [s, h] = place(s, 1, 1, 'spy');
-    [s, att] = place(s, 0, 0, 'guard');
+    [s, h] = place(s, 1, 1, 'craftsman');
+    [s, att] = place(s, 0, 0, 'guard', 9);
     const n = hit(s, 0, att.uid, U(h.uid));
-    expect(hpOf(n, 0, att.uid)).toBe(CARDS.guard.hp - (CARDS.spy.atk + 1));
+    expect(hpOf(n, 0, att.uid)).toBe(9 - (CARDS.craftsman.atk + 1));
     [s] = place(s, 1, 2, 'tradingHouse');
-    expect(attackOf(s.players[1], h)).toBe(CARDS.spy.atk + 2);
+    expect(attackOf(s.players[1], h)).toBe(CARDS.craftsman.atk + 2);
   });
 });
 

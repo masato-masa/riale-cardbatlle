@@ -45,6 +45,7 @@ function place(s: GameState, p: PlayerIndex, slot: number, card: CardId, hp?: nu
     hp: hp ?? CARDS[card].hp,
     readyAt,
     barrier: !!ab.barrier,
+    stealth: !!ab.stealth,
     pulseAt: ab.pulse ? s.time + ab.pulse.everyMs : null,
   };
   const field = [...s.players[p].field];
@@ -147,9 +148,9 @@ describe('建築物', () => {
   it('建築物を攻撃しても反撃されない。HP が 0 になれば消える', () => {
     let [s, a] = place(withHand(HAND4), 0, 0, 'craftsman');
     let b: Unit;
-    [s, b] = place(s, 1, 0, 'exchange');
-    const n = hit(s, 0, a.uid, U(b.uid)); // 2 + 討伐 2 = 4 ダメージ
-    expect(hpOf(n, 1, b.uid)).toBe(CARDS.exchange.hp - 4);
+    [s, b] = place(s, 1, 0, 'exchange', 9);
+    const n = hit(s, 0, a.uid, U(b.uid)); // 攻撃力 + 討伐 2
+    expect(hpOf(n, 1, b.uid)).toBe(9 - CARDS.craftsman.atk - 2);
     expect(hpOf(n, 0, a.uid)).toBe(CARDS.craftsman.hp);
     const [m, c] = place(withHand(HAND4), 1, 0, 'exchange', 1);
     const [m2, a2] = place(m, 0, 0, 'craftsman');
@@ -251,7 +252,7 @@ describe('砲撃（砦）', () => {
     let [s] = place(withHand(HAND4), 0, 0, 'fortress');
     let a: Unit, b: Unit, c: Unit;
     [s, a] = place(s, 1, 0, 'guard', 5);
-    [s, b] = place(s, 1, 1, 'spy', 3);
+    [s, b] = place(s, 1, 1, 'usurer', 3);
     [s, c] = place(s, 1, 2, 'craftsman', 4);
     const n = tick(s, every);
     expect(hpOf(n, 1, b.uid)).toBe(3 - amount);

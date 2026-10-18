@@ -15,6 +15,7 @@ function setup(hand: CardId[], mine: CardId[], foe: [CardId, number?][]): GameSt
     hp: hp ?? CARDS[card].hp,
     readyAt: 0,
     barrier: !!CARDS[card].ab.barrier,
+    stealth: !!CARDS[card].ab.stealth,
     pulseAt: CARDS[card].ab.pulse ? 5000 + CARDS[card].ab.pulse!.everyMs : null,
   });
   const field = (list: [CardId, number?][]) =>
@@ -148,6 +149,25 @@ describe('CPU の新しいルール（建築物・呪文・クールタイム）
 
   it('呪文は場が全部うまっていても使う', () => {
     const s = setup(['quake', 'herald', 'herald', 'herald'], ['guard', 'guard', 'guard', 'guard', 'guard'], [['herald'], ['herald'], ['miner']]);
-    expect(cast(firstActions(s, 0), 0).length).toBeGreaterThan(0);
+    expect(cast(firstActions(s, 0, 'normal'), 0).length).toBeGreaterThan(0);
+  });
+});
+
+describe('CPU とステルス', () => {
+  it('ステルス中の相手のカードは、狙撃・足止・単体の呪文・攻撃の対象にしない', () => {
+    const s = setup(['taxman', 'quarry', 'informer', 'herald'], ['craftsman'], [['spy', 1], ['spy', 1]]);
+    expect(s.players[1].field[0]!.stealth).toBe(true);
+    for (const x of actionsOf(s, 0)) {
+      if (x.type === 'summon') expect(x.target === undefined || (x.target !== 2 && x.target !== 3)).toBe(true);
+      if (x.type === 'attack') expect(x.target.kind === 'player' || (x.target.kind === 'unit' && x.target.uid > 3)).toBe(true);
+    }
+    const poor = { ...s, players: [{ ...s.players[0], coins: 0 }, s.players[1]] } as GameState;
+    expect(actionsOf(poor, 0).some((x) => x.type === 'attack' && x.target.kind === 'player')).toBe(true);
+  });
+
+  it('自分のステルスで顔を狙う', () => {
+    const s = setup(['guard', 'guard', 'guard', 'guard'], ['spy'], [['herald']]);
+    const atk = actionsOf(s, 0).filter((x) => x.type === 'attack');
+    expect(atk.length).toBeGreaterThan(0);
   });
 });

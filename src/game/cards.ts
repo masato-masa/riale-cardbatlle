@@ -63,8 +63,10 @@ export interface Abilities {
   haste?: true;
   /** プレイヤーへのダメージ +N */
   faceBonus?: number;
-  /** カードへのダメージ +N（反撃も含む） */
+  /** 攻撃時：カードへのダメージ +N（反撃には乗らない） */
   unitBonus?: number;
+  /** ステルス: 自分で攻撃するまで、相手に選ばれない・壁に数えない（全体に当たるものは当たる） */
+  stealth?: true;
   /** 受けるダメージ -N */
   armor?: number;
   /** 場にいる間、コインのたまる速さ +割合（0.25 = 25%） */
@@ -136,19 +138,19 @@ const spell = (id: CardId, name: string, summon: number, effect: SpellEffect): C
 
 export const CARDS: Record<CardId, CardDef> = {
   herald: unit('herald', '伝令', 1, 1, 2, 10, { haste: true }),
-  miner: unit('miner', '採掘師', 2, 1, 2, 14, { onSummon: { kind: 'token' } }),
-  usurer: unit('usurer', '高利貸', 2, 2, 2, 14, { onDeath: { kind: 'face', amount: 2 } }),
-  spy: unit('spy', '買収者', 3, 2, 3, 14, { faceBonus: 1 }),
-  craftsman: unit('craftsman', '職人', 3, 2, 4, 16, { unitBonus: 2 }),
-  guard: unit('guard', '衛兵', 2, 1, 5, 18, { blocker: true }),
-  banker: unit('banker', '銀行家', 3, 1, 4, 20, { coinBoost: 0.22 }),
-  informer: unit('informer', '密告者', 2, 2, 2, 14, { onSummon: { kind: 'stun', ms: 6000 } }),
-  taxman: unit('taxman', '徴税官', 4, 3, 3, 16, { onSummon: { kind: 'strike', amount: 2 } }),
-  double: unit('double', '影武者', 3, 2, 3, 14, { barrier: true }),
-  inspector: unit('inspector', '検査官', 4, 3, 3, 18, { ranged: true }),
-  blockader: unit('blockader', '封鎖者', 4, 2, 5, 20, { blocker: true, armor: 1 }),
-  architect: unit('architect', '建築家', 5, 4, 4, 18, { onSummon: { kind: 'heal', amount: 3 } }),
-  boss: unit('boss', '顔役', 5, 3, 6, 22, { splash: 1 }),
+  miner: unit('miner', '採掘師', 2, 1, 2, 12, { onSummon: { kind: 'token' } }),
+  usurer: unit('usurer', '高利貸', 2, 3, 2, 12, { onDeath: { kind: 'face', amount: 2 } }),
+  spy: unit('spy', '買収者', 3, 3, 3, 12, { faceBonus: 1, stealth: true }),
+  craftsman: unit('craftsman', '職人', 3, 3, 4, 14, { unitBonus: 2 }),
+  guard: unit('guard', '衛兵', 2, 2, 4, 20, { blocker: true }),
+  banker: unit('banker', '銀行家', 3, 2, 4, 18, { coinBoost: 0.22 }),
+  informer: unit('informer', '密告者', 2, 2, 2, 12, { onSummon: { kind: 'stun', ms: 6000 } }),
+  taxman: unit('taxman', '徴税官', 4, 3, 3, 14, { onSummon: { kind: 'strike', amount: 2 } }),
+  double: unit('double', '影武者', 3, 3, 3, 12, { barrier: true }),
+  inspector: unit('inspector', '検査官', 4, 4, 3, 16, { ranged: true }),
+  blockader: unit('blockader', '封鎖者', 4, 3, 5, 18, { blocker: true, armor: 1 }),
+  architect: unit('architect', '建築家', 5, 4, 4, 16, { onSummon: { kind: 'heal', amount: 3 } }),
+  boss: unit('boss', '顔役', 5, 3, 6, 20, { splash: 1 }),
   apprentice: { ...unit('apprentice', '見習い', 1, 1, 1, 12), token: true },
 
   wall: building('wall', '城壁', 2, 8, { blocker: true }),
@@ -219,6 +221,7 @@ export function abilityLines(card: CardId): string[] {
   if (a.blocker) lines.push('ブロッカー（相手はブロッカーしか攻撃できない）');
   if (a.haste) lines.push('速攻（召喚してすぐ攻撃できる）');
   if (a.barrier) lines.push('結界（最初に受けるダメージを 0 にする）');
+  if (a.stealth) lines.push('ステルス（自分で攻撃するまで、相手に選ばれない）');
   const s = a.onSummon;
   if (s?.kind === 'token') lines.push('召喚時：空いている枠に見習い（攻撃 1・HP 1）を出す');
   if (s?.kind === 'heal') lines.push(`召喚時：自分の HP を ${s.amount} 回復`);
@@ -231,7 +234,7 @@ export function abilityLines(card: CardId): string[] {
   if (p?.kind === 'token') lines.push(`${p.everyMs / 1000} 秒ごと：空いている枠に見習いを出す`);
   if (p?.kind === 'snipe') lines.push(`${p.everyMs / 1000} 秒ごと：HP がいちばん低い敵カードに ${p.amount} ダメージ`);
   if (a.faceBonus) lines.push(`敵プレイヤーへのダメージ +${a.faceBonus}`);
-  if (a.unitBonus) lines.push(`敵カードへのダメージ +${a.unitBonus}（反撃も）`);
+  if (a.unitBonus) lines.push(`攻撃時：敵カードへのダメージ +${a.unitBonus}`);
   if (a.armor) lines.push(`受けるダメージ -${a.armor}`);
   if (a.rally) lines.push(`ほかの味方ユニットの攻撃力 +${a.rally}`);
   if (a.coinBoost) lines.push(`コインのたまる速さ +${Math.round(a.coinBoost * 100)}%`);

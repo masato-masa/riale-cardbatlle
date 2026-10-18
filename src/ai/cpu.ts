@@ -60,8 +60,11 @@ interface Tuning {
 const TUNING: Record<CpuLevel, Tuning> = {
   easy: { thinkMin: 1600, thinkSpan: 800, noise: 5.5, second: 0.1, missLethal: 0.35, random: 0.25, idle: 0.5, face: 0.6, trade: 0.4, defend: 0.3, skill: 0.6, save: 0 },
   normal: { thinkMin: 900, thinkSpan: 600, noise: 2.0, second: 0.3, missLethal: 0.05, random: 0.04, idle: 0.8, face: 0.8, trade: 0.9, defend: 0.8, skill: 0.8, save: 0.5 },
-  hard: { thinkMin: 250, thinkSpan: 150, noise: 1.0, second: 0.7, missLethal: 0, random: 0, idle: 0.0, face: 1.0, trade: 1.4, defend: 1.2, skill: 0.2, save: 1.0 },
+  hard: { thinkMin: 250, thinkSpan: 150, noise: 1.0, second: 0.7, missLethal: 0, random: 0, idle: 0.0, face: 1.0, trade: 1.0, defend: 1.2, skill: 0.2, save: 1.0 },
 };
+
+/** カードの価値を測る基準のクールタイム（ms）。ユニットの平均あたり。 */
+const REF_COOLDOWN_MS = 16_000;
 
 /** 受けるダメージの実際の値（結界は 0、鉄壁で減る）。 */
 function effective(u: Unit, amount: number): number {
@@ -72,11 +75,16 @@ function effective(u: Unit, amount: number): number {
 /** カードの強さの目安（盤面に残る価値）。allies はそのカードを除いた味方の数（鼓舞の価値に使う）。 */
 function worth(card: CardId, hp: number, atk: number, allies: number, barrier: boolean): number {
   const ab = CARDS[card].ab;
-  let v = atk * 1.1 + hp * 0.7 + (isBlocker(card) ? 1.5 : 0);
+  // 攻撃力はクールタイムが短いほど価値が高い（ダメージ毎秒）。基準は 16 秒
+  const cd = CARDS[card].cd;
+  const rate = cd > 0 ? Math.min(1.6, Math.max(0.6, REF_COOLDOWN_MS / cd)) : 1;
+  let v = atk * 1.1 * rate + hp * 0.7 + (isBlocker(card) ? 1.5 : 0);
   if (barrier) v += 1.0;
   if (ab.armor) v += ab.armor * 0.8;
   if (ab.ranged) v += 0.9;
   if (ab.splash) v += 0.6;
+  // ステルス: 選ばれず壁にも数えない。奇襲と組むと顔へ安全に通る
+  if (ab.stealth) v += 1.0 + (ab.faceBonus ?? 0) * 0.5;
   if (ab.unitBonus) v += ab.unitBonus * 0.35;
   if (ab.rally) v += ab.rally * (0.5 + allies * 0.5);
   if (ab.coinBoost) v += ab.coinBoost * 5;
@@ -144,7 +152,7 @@ function stunValue(state: GameState, foe: PlayerState, u: Unit, ms: number, t: T
   const wait = Math.max(0, u.readyAt - state.time);
   // すでに長く待つカードを止めても意味が薄い
   const soon = wait < 1000 ? 1 : wait < 2000 ? 0.6 : 0.3;
-  const threat = attackOf(foe, u) + (CARDS[u.card].ab.faceBonus ?? 0) * 0.5 + (CARDS[u.card].ab.unitBonus ?? 0) * 0.3;
+  const threat = attackOf(foe, u) + (CARDS[u.card].ab.faceBonus ?? 0) * 0.5 + (CARDS[u.card].ab.unitBonus ?? 0) * 0.2;
   return (threat * 0.55 * soon * (ms / 3000) + (isBlocker(u.card) ? 0.2 : 0)) * t.skill;
 }
 
@@ -180,9 +188,11 @@ function spellCandidates(state: GameState, p: PlayerIndex, handIndex: number, ca
   const foe = state.players[other(p)];
   const sp = CARDS[card].ab.spell!;
   const cost = CARDS[card].summon;
-  if (summonBlock(state, p, handIndex, -1, sp.kind === 'bolt' ? (units(foe)[0]?.uid ?? -1) : undefined)) return [];
-  const foeUnits = units(foe);
-  const foeFighters = foeUnits.filter((u) => CARDS[u.card].type === 'unit');
+  // ステルス中の相手は選べない（全体に当たるものだけ当たる）
+  const foeAll = units(foe);
+  const foeUnits = foeAll.filter((u) => !u.stealth);
+  if (summonBlock(state, p, handIndex, -1, sp.kind === 'bolt' ? (foeUnits[0]?.uid ?? -1) : undefined)) return [];
+  const foeFighters = foeAll.filter((u) => CARDS[u.card].type === 'unit');
   // 使うコインのぶんの基本の損（安いほど気軽に使う）。コインが余っているときは緩める。
   let base = -cost * 0.25 - savePenalty(me, cost, card, t);
   if (me.coins >= COIN_MAX - 0.5) base += 1.2;
@@ -205,7 +215,7 @@ function spellCandidates(state: GameState, p: PlayerIndex, handIndex: number, ca
   if (sp.kind === 'blast') {
     let kills = 0;
     let total = 0;
-    for (const u of foeUnits) {
+    for (const u of foeAll) {
       const eff = effective(u, sp.amount);
       if (eff >= u.hp) {
         kills++;
@@ -249,7 +259,7 @@ function summonCandidates(state: GameState, p: PlayerIndex, t: Tuning): Candidat
   const me = state.players[p];
   const foe = state.players[other(p)];
   const slot = firstEmptySlot(me);
-  const foeUnits = units(foe);
+  const foeUnits = units(foe).filter((u) => !u.stealth);
   const press = pressure(me, foe);
   const myBlockers = me.field.filter((u) => u && isBlocker(u.card)).length;
   const foeBlockers = foeUnits.filter((u) => isBlocker(u.card)).length;
@@ -290,6 +300,8 @@ function summonCandidates(state: GameState, p: PlayerIndex, t: Tuning): Candidat
     if (!isWalled(me) && filled === FIELD_SLOTS - 1) s += (press * 2.4 + (me.hp < foe.hp ? 0.6 : 0.2)) * t.defend;
     // 薙払: 相手の場が厚いほど出したい
     if (ab.splash) s += Math.min(foeUnits.length, 4) * 0.12 * t.skill;
+    // ステルス: 相手が選べないので、後から顔を狙う機会が残る（相手のカードが多いほど守りが固く、価値が高い）
+    if (ab.stealth) s += (0.5 + Math.min(foeUnits.length, 4) * 0.1) * t.skill;
     if (d.type === 'building') s += buildingValue(state, me, foe, card, t);
 
     const os = ab.onSummon;
@@ -314,9 +326,10 @@ function attackCandidates(state: GameState, p: PlayerIndex, t: Tuning): Candidat
   const me = state.players[p];
   const foe = state.players[other(p)];
   const out: Candidate[] = [];
-  const foeUnits = units(foe);
+  const foeAllUnits = units(foe);
+  const foeUnits = foeAllUnits.filter((u) => !u.stealth);
   const targets: Target[] = [{ kind: 'player' }, ...foeUnits.map((u) => ({ kind: 'unit' as const, uid: u.uid }))];
-  const foeAtkTotal = foeUnits.reduce((n, u) => n + attackOf(foe, u), 0);
+  const foeAtkTotal = foeAllUnits.reduce((n, u) => n + attackOf(foe, u), 0);
   const press = pressure(me, foe);
   const myWall = isWalled(me);
   const foeWall = isWalled(foe);
@@ -332,16 +345,17 @@ function attackCandidates(state: GameState, p: PlayerIndex, t: Tuning): Candidat
         const dmg = myAtk + (ab.faceBonus ?? 0);
         const lethal = foe.hp <= dmg;
         let s = dmg * 0.9 * t.face + 0.6;
+        // ステルス中は反撃されず選ばれないまま顔を削れる。ただし攻撃すると解ける（顔へ通すなら惜しくない）
+        if (unit.stealth) s += 0.4;
         // 相手の HP が減っているほど顔を狙う
         s += (1 - foe.hp / PLAYER_HP) * dmg * 0.5;
         if (lethal) s += 100;
         out.push({ action: { type: 'attack', p, uid: unit.uid, target }, score: s, lethal });
       } else {
         const hit = foeUnits.find((u) => u.uid === target.uid)!;
-        const hd = CARDS[hit.card];
         const dmg = myAtk + (ab.unitBonus ?? 0);
         const dealt = effective(hit, dmg);
-        const back = ab.ranged ? 0 : effective(unit, attackOf(foe, hit) + (hd.ab.unitBonus ?? 0));
+        const back = ab.ranged ? 0 : effective(unit, attackOf(foe, hit));
         const kills = dealt >= hit.hp;
         const dies = back >= unit.hp;
         let s: number;
@@ -363,9 +377,11 @@ function attackCandidates(state: GameState, p: PlayerIndex, t: Tuning): Candidat
           if (ab.onDeath) s += ab.onDeath.amount * 0.3; // 遺言で一矢報いる
           if (myWall) s -= 1.0 * press * t.defend + 0.5; // 壁が崩れる
         }
+        // ステルスは自分で攻撃すると解ける。カード相手に使うのはもったいない
+        if (unit.stealth) s -= 1.0;
         // 攻撃時: ほかの敵カードへの小ダメージの損得
         if (ab.splash) {
-          for (const o of foeUnits) {
+          for (const o of foeAllUnits) {
             if (o.uid === hit.uid) continue;
             const od = effective(o, ab.splash);
             if (od >= o.hp) s += (1.2 + unitWorth(foe, o) * 0.5 * t.trade - deathCost(o)) * (0.4 + 0.6 * t.skill);
