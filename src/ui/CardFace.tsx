@@ -2,7 +2,7 @@ import { CARDS, isBlocker, type CardId } from '@/game/cards';
 
 import { CARD_ART } from './art';
 
-/** カードの面。左上 召喚コスト・左下 攻撃力（赤）・右下 HP（緑）。
+/** カードの面。左上 召喚コスト・右上 クールタイム（秒、時計の色）・左下 攻撃力（赤）・右下 HP（緑）。
  *  建築物は攻撃力が無く（石の枠）、呪文は召喚コストだけ（紫の枠）。
  *  能力の文字は面に書かない（長押しの説明で見る）。ブロッカーだけ上端に盾の印。
  *  hp・atk を渡すと場のカードとして、減った HP を赤、上がった攻撃力を金の縁で出す。 */
@@ -29,6 +29,11 @@ export function CardFace({ card, hp, atk, small }: { card: CardId; hp?: number; 
       <span className="pip pip-summon" aria-label="召喚コスト">
         {def.summon}
       </span>
+      {def.type === 'unit' ? (
+        <span className="pip pip-cd" aria-label={`クールタイム ${def.cd / 1000} 秒`}>
+          {def.cd / 1000}
+        </span>
+      ) : null}
       {def.type === 'unit' ? (
         <span className={`pip pip-atk${shownAtk > def.atk ? ' is-up' : ''}`} aria-label="攻撃力">
           {shownAtk}

@@ -4,9 +4,9 @@
 import { CARDS, isBlocker, needsTarget, requiresTarget, type CardId } from './cards';
 import { makeRng, shuffle } from './rng';
 import {
-  ATTACK_COOLDOWN_MS,
   COIN_MAX,
   COIN_START,
+  COOLDOWN_SCALE,
   coinRate,
   DOUBLE_COIN_FROM_MS,
   FIELD_SLOTS,
@@ -160,11 +160,11 @@ export function isLegalTarget(state: GameState, p: PlayerIndex, target: Target):
   );
 }
 
-/** そのプレイヤーのユニットのクールタイム（祈りで縮む。最短で 40%）。 */
-export function cooldownOf(player: PlayerState): number {
+/** そのカードのクールタイム（カードごとの値。祈りで縮む。最短で 40%）。 */
+export function cooldownOf(player: PlayerState, card: CardId): number {
   let cut = 0;
   for (const u of player.field) if (u) cut += CARDS[u.card].ab.cooldownCut ?? 0;
-  return Math.round(ATTACK_COOLDOWN_MS * Math.max(0.4, 1 - cut));
+  return Math.round(CARDS[card].cd * COOLDOWN_SCALE * Math.max(0.4, 1 - cut));
 }
 
 export type SummonBlock = 'coins' | 'slot' | 'target' | 'over' | null;
@@ -264,7 +264,7 @@ function place(d: Draft, p: PlayerIndex, card: CardId, slot: number, token: bool
     uid: d.nextUid++,
     card,
     hp: CARDS[card].hp,
-    readyAt: ab.haste ? d.time : d.time + cooldownOf(d.players[p]),
+    readyAt: ab.haste ? d.time : d.time + cooldownOf(d.players[p], card),
     barrier: !!ab.barrier,
     pulseAt: ab.pulse ? d.time + ab.pulse.everyMs : null,
   };
@@ -429,7 +429,7 @@ function attack(state: GameState, p: PlayerIndex, uid: number, target: Target): 
   const { unit } = findUnit(me, uid)!;
   const ab = CARDS[unit.card].ab;
   const atk = attackOf(me, unit);
-  unit.readyAt = d.time + cooldownOf(me);
+  unit.readyAt = d.time + cooldownOf(me, unit.card);
   d.events.push({ kind: 'attack', p, uid, target });
 
   if (target.kind === 'player') {

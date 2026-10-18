@@ -37,6 +37,8 @@ export function CardDetail({ card, hp }: { card: CardId; hp?: number }) {
           <>
             <dt>攻撃力</dt>
             <dd>{def.atk}</dd>
+            <dt>クールタイム</dt>
+            <dd>{def.cd / 1000} 秒</dd>
           </>
         ) : null}
         {def.type !== 'spell' ? (

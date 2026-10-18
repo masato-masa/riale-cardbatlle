@@ -95,18 +95,22 @@ export interface CardDef {
   atk: number;
   /** HP（右下）。呪文は 0。 */
   hp: number;
+  /** クールタイム（ms、右上）。攻撃したあと・召喚したあと、これだけ待つ。ユニットだけ。 */
+  cd: number;
   ab: Abilities;
   /** デッキに入らないカード（能力で出てくるもの） */
   token?: true;
 }
 
-const unit = (id: CardId, name: string, summon: number, atk: number, hp: number, ab: Abilities = {}): CardDef => ({
+/** cdSec はクールタイム（秒）。 */
+const unit = (id: CardId, name: string, summon: number, atk: number, hp: number, cdSec: number, ab: Abilities = {}): CardDef => ({
   id,
   type: 'unit',
   name,
   summon,
   atk,
   hp,
+  cd: cdSec * 1000,
   ab,
 });
 const building = (id: CardId, name: string, summon: number, hp: number, ab: Abilities): CardDef => ({
@@ -116,6 +120,7 @@ const building = (id: CardId, name: string, summon: number, hp: number, ab: Abil
   summon,
   atk: 0,
   hp,
+  cd: 0,
   ab,
 });
 const spell = (id: CardId, name: string, summon: number, effect: SpellEffect): CardDef => ({
@@ -125,25 +130,26 @@ const spell = (id: CardId, name: string, summon: number, effect: SpellEffect): C
   summon,
   atk: 0,
   hp: 0,
+  cd: 0,
   ab: { spell: effect },
 });
 
 export const CARDS: Record<CardId, CardDef> = {
-  herald: unit('herald', '伝令', 1, 1, 2, { haste: true }),
-  miner: unit('miner', '採掘師', 2, 1, 2, { onSummon: { kind: 'token' } }),
-  usurer: unit('usurer', '高利貸', 2, 2, 2, { onDeath: { kind: 'face', amount: 2 } }),
-  spy: unit('spy', '買収者', 3, 2, 3, { faceBonus: 1 }),
-  craftsman: unit('craftsman', '職人', 3, 2, 4, { unitBonus: 2 }),
-  guard: unit('guard', '衛兵', 2, 1, 5, { blocker: true }),
-  banker: unit('banker', '銀行家', 3, 1, 4, { coinBoost: 0.22 }),
-  informer: unit('informer', '密告者', 2, 2, 2, { onSummon: { kind: 'stun', ms: 3000 } }),
-  taxman: unit('taxman', '徴税官', 4, 3, 3, { onSummon: { kind: 'strike', amount: 2 } }),
-  double: unit('double', '影武者', 3, 2, 3, { barrier: true }),
-  inspector: unit('inspector', '検査官', 4, 3, 3, { ranged: true }),
-  blockader: unit('blockader', '封鎖者', 4, 2, 5, { blocker: true, armor: 1 }),
-  architect: unit('architect', '建築家', 5, 4, 4, { onSummon: { kind: 'heal', amount: 3 } }),
-  boss: unit('boss', '顔役', 5, 3, 6, { splash: 1 }),
-  apprentice: { ...unit('apprentice', '見習い', 1, 1, 1), token: true },
+  herald: unit('herald', '伝令', 1, 1, 2, 10, { haste: true }),
+  miner: unit('miner', '採掘師', 2, 1, 2, 14, { onSummon: { kind: 'token' } }),
+  usurer: unit('usurer', '高利貸', 2, 2, 2, 14, { onDeath: { kind: 'face', amount: 2 } }),
+  spy: unit('spy', '買収者', 3, 2, 3, 14, { faceBonus: 1 }),
+  craftsman: unit('craftsman', '職人', 3, 2, 4, 16, { unitBonus: 2 }),
+  guard: unit('guard', '衛兵', 2, 1, 5, 18, { blocker: true }),
+  banker: unit('banker', '銀行家', 3, 1, 4, 20, { coinBoost: 0.22 }),
+  informer: unit('informer', '密告者', 2, 2, 2, 14, { onSummon: { kind: 'stun', ms: 6000 } }),
+  taxman: unit('taxman', '徴税官', 4, 3, 3, 16, { onSummon: { kind: 'strike', amount: 2 } }),
+  double: unit('double', '影武者', 3, 2, 3, 14, { barrier: true }),
+  inspector: unit('inspector', '検査官', 4, 3, 3, 18, { ranged: true }),
+  blockader: unit('blockader', '封鎖者', 4, 2, 5, 20, { blocker: true, armor: 1 }),
+  architect: unit('architect', '建築家', 5, 4, 4, 18, { onSummon: { kind: 'heal', amount: 3 } }),
+  boss: unit('boss', '顔役', 5, 3, 6, 22, { splash: 1 }),
+  apprentice: { ...unit('apprentice', '見習い', 1, 1, 1, 12), token: true },
 
   wall: building('wall', '城壁', 2, 8, { blocker: true }),
   exchange: building('exchange', '取引所', 3, 5, { coinBoost: 0.3 }),
@@ -154,7 +160,7 @@ export const CARDS: Record<CardId, CardDef> = {
 
   quarry: spell('quarry', '落石', 4, { kind: 'bolt', amount: 5 }),
   quake: spell('quake', '地鳴り', 4, { kind: 'blast', amount: 2 }),
-  roadblock: spell('roadblock', '通行止め', 3, { kind: 'freeze', ms: 5000 }),
+  roadblock: spell('roadblock', '通行止め', 3, { kind: 'freeze', ms: 8000 }),
   festival: spell('festival', '祝祭', 2, { kind: 'ready' }),
 };
 

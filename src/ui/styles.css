@@ -990,3 +990,13 @@ body {
   font-size: 12px;
   color: var(--muted);
 }
+
+/* クールタイム（秒）。コインの丸と区別できるよう、青灰の地に白い文字。 */
+.pip-cd {
+  top: -6%;
+  right: -8%;
+  width: 30cqw;
+  height: 30cqw;
+  font-size: max(9px, 19cqw);
+  background: radial-gradient(circle at 35% 30%, #a9c4e0, #5b7a9c 60%, #34506e);
+}

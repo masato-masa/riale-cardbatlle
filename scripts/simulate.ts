@@ -1,11 +1,11 @@
 // CPU 同士の対戦を回して、勝率・試合時間・デッキ差・カードごとの成績を表にする。
-// 使い方: npm run simulate -- [試合数=200] [cards=normal] [cd=3000,4000,5000]
-//   cd= はクールタイム（ms）の上書き。複数並べると、それぞれで表を出す。省略は rules.ts の値。
+// 使い方: npm run simulate -- [試合数=200] [cards=normal] [cdx=0.8,1,1.2]
+//   cdx= はクールタイムの倍率（カードごとの値に掛ける）。複数並べると、それぞれで表を出す。省略は 1。
 //   先手・後手とデッキ（0 番 = STARTER_DECK、1 番 = RIVAL_DECK）は 4 通りを均等に回す。
 //   カードの表は cards= で指定したレベル同士の試合から作る。
 import { createBrain, cpuStep, type CpuLevel } from '../src/ai/cpu';
 import { CARDS, RIVAL_DECK, STARTER_DECK, TYPE_NAME, type CardId } from '../src/game/cards';
-import { ATTACK_COOLDOWN_MS, overrideAttackCooldownForSimulation } from '../src/game/rules';
+import { overrideCooldownScaleForSimulation } from '../src/game/rules';
 import { createGame, step, type Action, type GameState, type PlayerIndex } from '../src/game/engine';
 import { makeRng } from '../src/game/rng';
 
@@ -148,7 +148,7 @@ function match(a: CpuLevel, b: CpuLevel, n: number, collect: boolean): Stat {
 
 const args = process.argv.slice(2);
 const n = Number(args.find((x) => /^\d+$/.test(x)) ?? 200);
-const cds = (args.find((x) => x.startsWith('cd='))?.slice(3) ?? '').split(',').filter(Boolean).map(Number);
+const cds = (args.find((x) => x.startsWith('cdx='))?.slice(4) ?? '').split(',').filter(Boolean).map(Number);
 const cardLevel = (args.find((x) => x.startsWith('cards='))?.slice(6) ?? 'normal') as CpuLevel;
 const pct = (x: number, d = n) => `${((x / d) * 100).toFixed(1)}%`;
 const rate = (o: Tally) => (o.n ? ((o.w + o.d / 2) / o.n) * 100 : NaN);
@@ -209,9 +209,9 @@ function report(): void {
   console.log('（デッキ欄: S = STARTER、R = RIVAL）');
 }
 
-for (const cd of cds.length ? cds : [ATTACK_COOLDOWN_MS]) {
-  overrideAttackCooldownForSimulation(cd);
+for (const cd of cds.length ? cds : [1]) {
+  overrideCooldownScaleForSimulation(cd);
   console.log(`
-===== クールタイム ${cd / 1000} 秒 =====`);
+===== クールタイム ×${cd} =====`);
   report();
 }

@@ -14,14 +14,16 @@ export const COIN_START = 5;
 export const FIELD_SLOTS = 5;
 /** 手札の枚数（このほかに「次のカード」を 1 枚見せる）。 */
 export const HAND_SIZE = 4;
-/** クールタイム: 攻撃してから次の攻撃ができるまでの時間（ms）。攻撃を縛るのはこれだけ（コインは召喚にだけ使う）。 */
-export let ATTACK_COOLDOWN_MS = 8000;
-/** バランス測定（scripts/simulate.ts の cd=）専用。ゲーム本体は呼ばない。 */
-export function overrideAttackCooldownForSimulation(ms: number): void {
-  ATTACK_COOLDOWN_MS = ms;
-}
 
 /** その時刻のコインのたまる速さ（枚/ms）。 */
 export function coinRate(timeMs: number): number {
   return (timeMs >= DOUBLE_COIN_FROM_MS ? 2 : 1) / COIN_MS;
+}
+
+/** クールタイムの倍率。カードごとのクールタイム（cards.ts の cd）に掛ける。ゲームでは 1 のまま。 */
+export let COOLDOWN_SCALE = 1;
+
+/** シミュレーションでクールタイムをまとめて伸び縮みさせる（scripts/simulate.ts の cdx=）。ゲームからは呼ばない。 */
+export function overrideCooldownScaleForSimulation(scale: number): void {
+  COOLDOWN_SCALE = scale;
 }
