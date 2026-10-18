@@ -564,46 +564,6 @@ body {
   text-shadow: none;
 }
 
-.face-chip {
-  position: absolute;
-  top: -5%;
-  left: 50%;
-  translate: -50% 0;
-  padding: 1px 3px;
-  border: 1.5px solid var(--ink);
-  border-radius: 5px;
-  background: #fff4d6;
-  color: var(--ink);
-  font-size: max(8px, 14cqw);
-  font-weight: 800;
-  line-height: 1.15;
-  white-space: nowrap;
-  z-index: 2;
-}
-
-.face-chip.is-blocker {
-  background: #4fa3ff;
-  color: #fff;
-  text-shadow: 0 1px 0 rgb(0 0 0 / 0.5);
-  border-radius: 5px 5px 9px 9px;
-}
-
-.face-chip.is-icon {
-  padding: 0;
-  border: 0;
-  background: none;
-  width: 28cqw;
-}
-
-.face-chip.is-icon svg {
-  display: block;
-  width: 100%;
-}
-
-.face.is-small .face-chip {
-  display: none;
-}
-
 .face.is-token {
   border-color: #6b5a3a;
 }
@@ -789,40 +749,6 @@ body {
 
 /* ---- 能力の状態 ---- */
 
-/* 結界が残っている: 薄い光の膜 */
-.unit.is-barrier::after {
-  content: '';
-  position: absolute;
-  inset: -3px;
-  border-radius: 12px;
-  border: 2px solid rgb(140 220 255 / 0.95);
-  background: radial-gradient(circle, rgb(140 220 255 / 0) 55%, rgb(140 220 255 / 0.45));
-  box-shadow: 0 0 10px rgb(140 220 255 / 0.9);
-  pointer-events: none;
-  animation: barrier-pulse 1.6s ease-in-out infinite;
-}
-
-@keyframes barrier-pulse {
-  50% {
-    opacity: 0.55;
-  }
-}
-
-/* 足止め中: 鎖の帯 */
-.unit-stun {
-  position: absolute;
-  left: -4%;
-  right: -4%;
-  top: 42%;
-  height: 16%;
-  border-radius: 4px;
-  background: repeating-linear-gradient(90deg, #8a8f98 0 6px, #4b5058 6px 9px);
-  border: 1.5px solid var(--ink);
-  rotate: -12deg;
-  pointer-events: none;
-  z-index: 3;
-}
-
 .hero-wall {
   padding: 1px 7px;
   border-radius: 6px;
@@ -999,4 +925,53 @@ body {
   height: 30cqw;
   font-size: max(9px, 19cqw);
   background: radial-gradient(circle at 35% 30%, #a9c4e0, #5b7a9c 60%, #34506e);
+}
+
+/* ---- 場のカードの状態アイコン（ブロッカー・結界・ステルス・遅延） ---- */
+
+.face-states {
+  position: absolute;
+  top: -9%;
+  left: 50%;
+  translate: -50% 0;
+  display: flex;
+  gap: 2px;
+  z-index: 2;
+}
+
+.state {
+  width: 26cqw;
+  height: 26cqw;
+  min-width: 14px;
+  min-height: 14px;
+  display: grid;
+  place-items: center;
+  border: 1.5px solid var(--ink);
+  border-radius: 999px;
+}
+
+.state svg {
+  width: 72%;
+  height: 72%;
+}
+
+.state-blocker {
+  background: #3d8ef0;
+}
+
+.state-barrier {
+  background: #29b6d9;
+}
+
+.state-stealth {
+  background: #6b4fb8;
+}
+
+.state-stun {
+  background: #6f7680;
+}
+
+/* ステルス中は半透明（相手から見えていない） */
+.unit.is-stealth .face-body {
+  opacity: 0.55;
 }

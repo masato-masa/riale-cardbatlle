@@ -1,18 +1,38 @@
-import { CARDS, isBlocker, type CardId } from '@/game/cards';
+import { CARDS, type CardId } from '@/game/cards';
 
 import { CARD_ART } from './art';
 
-/** カードの面。左上 召喚コスト・右上 クールタイム（秒、時計の色）・左下 攻撃力（赤）・右下 HP（緑）。
- *  建築物は攻撃力が無く（石の枠）、呪文は召喚コストだけ（紫の枠）。
- *  能力の文字は面に書かない（長押しの説明で見る）。ブロッカーだけ上端に盾の印。
+/** 場のカードの状態。ブロッカー・結界・ステルス・遅延（足止め・通行止め）。 */
+export type CardState = 'blocker' | 'barrier' | 'stealth' | 'stun';
+
+const STATE_LABEL: Record<CardState, string> = {
+  blocker: 'ブロッカー',
+  barrier: '結界',
+  stealth: 'ステルス',
+  stun: '遅延中',
+};
+
+/** カードの面。左上 召喚コスト・右上 クールタイム（秒）・左下 攻撃力（赤）・右下 HP（緑）。
+ *  建築物は攻撃力とクールタイムが無く（石の枠）、呪文は召喚コストだけ（紫の枠）。
+ *  能力の文字は面に書かない（長押しの説明で見る）。場のカードだけ、上端に状態のアイコンを並べる。
  *  hp・atk を渡すと場のカードとして、減った HP を赤、上がった攻撃力を金の縁で出す。 */
-export function CardFace({ card, hp, atk, small }: { card: CardId; hp?: number; atk?: number; small?: boolean }) {
+export function CardFace({
+  card,
+  hp,
+  atk,
+  small,
+  states = [],
+}: {
+  card: CardId;
+  hp?: number;
+  atk?: number;
+  small?: boolean;
+  states?: CardState[];
+}) {
   const def = CARDS[card];
   const shownHp = hp ?? def.hp;
   const shownAtk = atk ?? def.atk;
-  const blocker = isBlocker(card);
   const cls = ['face', `is-${def.type}`];
-  if (blocker) cls.push('is-blocker');
   if (small) cls.push('is-small');
   if (def.token) cls.push('is-token');
   return (
@@ -21,9 +41,13 @@ export function CardFace({ card, hp, atk, small }: { card: CardId; hp?: number; 
         <img className="face-art" src={CARD_ART[card]} alt="" draggable={false} />
         <span className="face-name">{def.name}</span>
       </div>
-      {blocker ? (
-        <span className="face-chip is-icon" aria-label="ブロッカー">
-          <ShieldMark />
+      {states.length > 0 ? (
+        <span className="face-states">
+          {states.map((s) => (
+            <span key={s} className={`state state-${s}`} aria-label={STATE_LABEL[s]} title={STATE_LABEL[s]}>
+              <StateIcon state={s} />
+            </span>
+          ))}
         </span>
       ) : null}
       <span className="pip pip-summon" aria-label="召喚コスト">
@@ -48,16 +72,36 @@ export function CardFace({ card, hp, atk, small }: { card: CardId; hp?: number; 
   );
 }
 
-export function ShieldMark() {
+function StateIcon({ state }: { state: CardState }) {
+  if (state === 'blocker') {
+    return (
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M12 3 L19.5 5.8 V11.5 C19.5 16.2 16.3 19.5 12 21 C7.7 19.5 4.5 16.2 4.5 11.5 V5.8 Z" fill="#fff" />
+      </svg>
+    );
+  }
+  if (state === 'barrier') {
+    return (
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <circle cx="12" cy="12" r="8" fill="none" stroke="#fff" strokeWidth="2.6" />
+        <path d="M8.5 10.5 A4 4 0 0 1 12 8" fill="none" stroke="#fff" strokeWidth="2.2" strokeLinecap="round" />
+      </svg>
+    );
+  }
+  if (state === 'stealth') {
+    return (
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M2.5 12 C5.5 7 9 5.5 12 5.5 C15 5.5 18.5 7 21.5 12 C18.5 17 15 18.5 12 18.5 C9 18.5 5.5 17 2.5 12 Z" fill="none" stroke="#fff" strokeWidth="2.2" />
+        <circle cx="12" cy="12" r="2.8" fill="#fff" />
+        <path d="M4 20 L20 4" stroke="#fff" strokeWidth="2.6" strokeLinecap="round" />
+      </svg>
+    );
+  }
   return (
     <svg viewBox="0 0 24 24" aria-hidden="true">
-      <path
-        d="M12 2.5 L20 5.5 V11.5 C20 16.5 16.6 20 12 21.5 C7.4 20 4 16.5 4 11.5 V5.5 Z"
-        fill="#4fa3ff"
-        stroke="#0b1520"
-        strokeWidth="2"
-        strokeLinejoin="round"
-      />
+      <rect x="3" y="9" width="8" height="6" rx="3" fill="none" stroke="#fff" strokeWidth="2.4" />
+      <rect x="13" y="9" width="8" height="6" rx="3" fill="none" stroke="#fff" strokeWidth="2.4" />
+      <path d="M9 12 H15" stroke="#fff" strokeWidth="2.4" />
     </svg>
   );
 }

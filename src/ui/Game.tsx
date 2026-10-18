@@ -32,7 +32,7 @@ import { COIN_MAX, DOUBLE_COIN_FROM_MS, MATCH_MS } from '@/game/rules';
 
 import { COIN_URL, FIELD_URL } from './art';
 import { setBgmTension, startBgm, stopBgm } from './bgm';
-import { CardFace } from './CardFace';
+import { CardFace, type CardState } from './CardFace';
 import { CardDetail, HeroBadge } from './GameParts';
 import { hapticImpact, hapticLose, hapticReject, hapticUseCard, hapticWin } from './haptics';
 import { Sheet } from './Sheets';
@@ -532,6 +532,16 @@ export function Game({ level, deck, onExit }: { level: CpuLevel; deck: CardId[];
     commit(createGame(decks, next));
   };
 
+  /** 場のカードの状態アイコン。 */
+  const statesOf = (u: Unit, left: number): CardState[] => {
+    const out: CardState[] = [];
+    if (isBlocker(u.card)) out.push('blocker');
+    if (u.barrier) out.push('barrier');
+    if (u.stealth) out.push('stealth');
+    if (stunned.has(u.uid) && left > 0) out.push('stun');
+    return out;
+  };
+
   const renderUnit = (u: Unit, side: 0 | 1) => {
     const isUnit = CARDS[u.card].type === 'unit';
     const left = isUnit ? cooldownLeft(u) : 0;
@@ -542,7 +552,7 @@ export function Game({ level, deck, onExit }: { level: CpuLevel; deck: CardId[];
     if (side === 1 && aiming) cls.push('is-target');
     if (side === 1 && (unitDrag?.over === key ? legal.has(key) : handDrag?.over === key)) cls.push('is-over');
     if (unitDrag?.uid === u.uid) cls.push('is-aiming');
-    if (u.barrier) cls.push('is-barrier');
+    if (u.stealth) cls.push('is-stealth');
     const pl = game.players[side];
     return (
       <motion.div
@@ -569,9 +579,8 @@ export function Game({ level, deck, onExit }: { level: CpuLevel; deck: CardId[];
           onPointerCancel={side === 0 ? onPressCancel : undefined}
           onContextMenu={(e) => e.preventDefault()}
         >
-          <CardFace card={u.card} hp={u.hp} atk={attackOf(pl, u)} />
+          <CardFace card={u.card} hp={u.hp} atk={attackOf(pl, u)} states={statesOf(u, left)} />
           {left > 0 ? <span className="unit-cd" style={{ ['--cd' as string]: `${left * 360}deg` }} aria-hidden="true" /> : null}
-          {stunned.has(u.uid) && left > 0 ? <span className="unit-stun" aria-label="遅延中" /> : null}
         </div>
       </motion.div>
     );
