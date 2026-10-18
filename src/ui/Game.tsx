@@ -227,6 +227,8 @@ export function Game({ level, deck, onExit }: { level: CpuLevel; deck: CardId[];
         else if (x.kind === 'attack') playSelect();
         if (e.p === 0) hapticUseCard();
       }
+      if (e.kind === 'reserve' && e.p === 0) playSelect();
+      if (e.kind === 'unreserve' && e.p === 0) addPopup(unitEl(e.uid), '予約取消', 'stun');
       if (e.kind === 'cancel') {
         const x = e.pending;
         const at = x.kind === 'spell' ? heroEl(x.p) : (unitEl(x.uid) ?? heroEl(x.p));
@@ -507,7 +509,11 @@ export function Game({ level, deck, onExit }: { level: CpuLevel; deck: CardId[];
       commit(step(s, { type: 'summon', p: 0, handIndex: d.index, slot: d.slot }));
       return;
     }
-    if (!d.over) return;
+    const reservedNow = findUnit(s.players[0], d.uid)?.unit.reserved;
+    if (!d.over) {
+      if (reservedNow) commit(step(s, { type: 'reserve', p: 0, uid: d.uid, target: null }));
+      return;
+    }
     const target: Target | null =
       d.over === 'foe-player'
         ? { kind: 'player' }
@@ -518,6 +524,11 @@ export function Game({ level, deck, onExit }: { level: CpuLevel; deck: CardId[];
     const block = attackBlock(s, 0, d.uid, target);
     if (block === 'target' && target.kind === 'player' && isWalled(s.players[1])) {
       return reject(`相手の場が ${FIELD_SLOTS} 枚で壁になっています`);
+    }
+    // クールタイム中（溜め中も）は予約にする。明けた瞬間に攻撃が始まる
+    if (block === 'cooldown') {
+      commit(step(s, { type: 'reserve', p: 0, uid: d.uid, target }));
+      return;
     }
     if (block) return reject(ATTACK_REASON[block]);
     commit(step(s, { type: 'attack', p: 0, uid: d.uid, target }));
@@ -754,8 +765,19 @@ export function Game({ level, deck, onExit }: { level: CpuLevel; deck: CardId[];
       ) : null}
       {unitDrag ? (
         <svg className="aim" aria-hidden="true">
-          <line x1={unitDrag.sx} y1={unitDrag.sy} x2={unitDrag.x} y2={unitDrag.y} className={dragBlock ? 'aim-line is-blocked' : 'aim-line'} />
-          <circle cx={unitDrag.x} cy={unitDrag.y} r={10} className={dragBlock ? 'aim-dot is-blocked' : 'aim-dot'} />
+          <line
+            x1={unitDrag.sx}
+            y1={unitDrag.sy}
+            x2={unitDrag.x}
+            y2={unitDrag.y}
+            className={dragBlock === 'cooldown' ? 'aim-line is-reserve' : dragBlock ? 'aim-line is-blocked' : 'aim-line'}
+          />
+          <circle
+            cx={unitDrag.x}
+            cy={unitDrag.y}
+            r={10}
+            className={dragBlock === 'cooldown' ? 'aim-dot is-reserve' : dragBlock ? 'aim-dot is-blocked' : 'aim-dot'}
+          />
         </svg>
       ) : null}
 
@@ -853,7 +875,17 @@ export function Game({ level, deck, onExit }: { level: CpuLevel; deck: CardId[];
 
 /** 溜め中の行動の印。描画のたびに要素の位置を読む（盤面は操作で 1px も動かないので、読むだけで足りる）。 */
 function PendingMarks({ game, fieldMe, fieldFoe }: { game: GameState; fieldMe: HTMLElement | null; fieldFoe: HTMLElement | null }) {
-  if (game.pending.length === 0) return null;
+  const reserves: { key: number; x0: number; y0: number; x1: number; y1: number }[] = [];
+  for (const p of [0, 1] as const) {
+    for (const u of game.players[p].field) {
+      if (!u?.reserved) continue;
+      const tgt = u.reserved.kind === 'player' ? heroEl(p === 0 ? 1 : 0) : unitEl(u.reserved.uid);
+      const a = centerOf(unitEl(u.uid));
+      const b = centerOf(tgt);
+      if (a && b) reserves.push({ key: u.uid, x0: a.x, y0: a.y, x1: b.x, y1: b.y });
+    }
+  }
+  if (game.pending.length === 0 && reserves.length === 0) return null;
   const lines: { key: number; x0: number; y0: number; x1: number; y1: number; mine: boolean; t: number }[] = [];
   const areas: { key: number; r: DOMRect; mine: boolean; t: number }[] = [];
   for (const x of game.pending) {
@@ -884,6 +916,13 @@ function PendingMarks({ game, fieldMe, fieldFoe }: { game: GameState; fieldMe: H
         />
       ))}
       <svg className="aim" aria-hidden="true">
+        {reserves.map((m) => (
+          <g key={`r${m.key}`} className="reserve">
+            <line x1={m.x0} y1={m.y0} x2={m.x1} y2={m.y1} className="reserve-line" />
+            <circle cx={m.x1} cy={m.y1} r={11} className="reserve-badge" />
+            <path d={`M${m.x1} ${m.y1 - 6} V${m.y1} H${m.x1 + 5}`} className="reserve-hand" />
+          </g>
+        ))}
         {lines.map((m) => (
           <g key={m.key} className={`pending${m.mine ? ' is-mine' : ''}`}>
             <line x1={m.x0} y1={m.y0} x2={m.x0 + (m.x1 - m.x0) * Math.min(1, m.t * 1.6)} y2={m.y0 + (m.y1 - m.y0) * Math.min(1, m.t * 1.6)} className="pending-line" />

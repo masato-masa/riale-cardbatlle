@@ -39,6 +39,7 @@ function place(s: GameState, p: PlayerIndex, slot: number, card: CardId, hp?: nu
     barrier: !!ab.barrier,
     stealth: !!ab.stealth,
     pulseAt: ab.pulse ? s.time + ab.pulse.everyMs : null,
+    reserved: null,
   };
   const field = [...s.players[p].field];
   field[slot] = unit;

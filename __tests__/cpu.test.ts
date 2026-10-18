@@ -17,6 +17,7 @@ function setup(hand: CardId[], mine: CardId[], foe: [CardId, number?][]): GameSt
     barrier: !!CARDS[card].ab.barrier,
     stealth: !!CARDS[card].ab.stealth,
     pulseAt: CARDS[card].ab.pulse ? 5000 + CARDS[card].ab.pulse!.everyMs : null,
+    reserved: null,
   });
   const field = (list: [CardId, number?][]) =>
     Array.from({ length: FIELD_SLOTS }, (_, i) => (list[i] ? mk(list[i]![0], list[i]![1]) : null));

@@ -30,6 +30,8 @@ export interface Unit {
   stealth: boolean;
   /** 建築物が次に効く時刻（生産・砲撃）。無ければ null。 */
   pulseAt: number | null;
+  /** 攻撃の予約。クールタイムが明けた瞬間にこの対象への攻撃を始める。狙えなくなったら消える。 */
+  reserved: Target | null;
 }
 
 export interface PlayerState {
@@ -60,6 +62,10 @@ export type GameEvent =
   | { id: number; kind: 'windup'; p: PlayerIndex; pending: Pending }
   /** 召喚時の狙撃・足止が効いた瞬間（溜めのあと）。 */
   | { id: number; kind: 'ability'; p: PlayerIndex; uid: number; target: number }
+  /** 攻撃を予約した（クールタイム中に対象を選んだ）。 */
+  | { id: number; kind: 'reserve'; p: PlayerIndex; uid: number; target: Target }
+  /** 予約が消えた（対象が倒れた・ブロッカーや壁で狙えなくなった・取り消した）。 */
+  | { id: number; kind: 'unreserve'; p: PlayerIndex; uid: number }
   /** 溜めの間に攻撃元か対象が消えて、中断した。 */
   | { id: number; kind: 'cancel'; p: PlayerIndex; pending: Pending }
   /** p は受けた側。amount は実際に減った HP。guard は防いだ理由。 */
@@ -101,7 +107,9 @@ export type Action =
   /** target は「狙撃」「足止」・単体の呪文で選んだ相手のカード。狙撃・足止は無ければ空振り。
    *  呪文は場に出ないので slot は見ない（-1 でよい）。 */
   | { type: 'summon'; p: PlayerIndex; handIndex: number; slot: number; target?: number }
-  | { type: 'attack'; p: PlayerIndex; uid: number; target: Target };
+  | { type: 'attack'; p: PlayerIndex; uid: number; target: Target }
+  /** 攻撃の予約。target が null なら予約を取り消す。 */
+  | { type: 'reserve'; p: PlayerIndex; uid: number; target: Target | null };
 
 const EVENT_KEEP = 60;
 
@@ -171,7 +179,11 @@ export function coinBoostOf(player: PlayerState): number {
 
 /** p から見て、いま攻撃対象に選べる相手。ブロッカーがいればブロッカーだけ、壁ならプレイヤーは選べない。 */
 export function legalTargets(state: GameState, p: PlayerIndex): Target[] {
-  const foe = state.players[other(p)];
+  return targetsAgainst(state.players[other(p)]);
+}
+
+/** 相手の盤面から、いま狙える対象。 */
+function targetsAgainst(foe: PlayerState): Target[] {
   // ステルス中のカードは存在しない扱い（選べない）
   const all = units(foe).filter((u) => !u.stealth);
   const blockers = all.filter((u) => isBlocker(u.card));
@@ -179,6 +191,15 @@ export function legalTargets(state: GameState, p: PlayerIndex): Target[] {
   const list: Target[] = all.map((u) => ({ kind: 'unit' as const, uid: u.uid }));
   if (!isWalled(foe)) list.unshift({ kind: 'player' });
   return list;
+}
+
+function sameTarget(a: Target, b: Target): boolean {
+  return a.kind === b.kind && (a.kind === 'player' || (b.kind === 'unit' && a.uid === b.uid));
+}
+
+/** 相手の盤面に対して、その対象をいま狙えるか。 */
+function legalAgainst(foe: PlayerState, target: Target): boolean {
+  return targetsAgainst(foe).some((t) => sameTarget(t, target));
 }
 
 export function isLegalTarget(state: GameState, p: PlayerIndex, target: Target): boolean {
@@ -303,6 +324,7 @@ function place(d: Draft, p: PlayerIndex, card: CardId, slot: number, token: bool
     barrier: !!ab.barrier,
     stealth: !!ab.stealth,
     pulseAt: ab.pulse ? d.time + ab.pulse.everyMs : null,
+    reserved: null,
   };
   d.players[p].field[slot] = unit;
   d.events.push({ kind: 'summon', p, uid: unit.uid, slot, card, token });
@@ -348,6 +370,7 @@ function tick(state: GameState, dt: number): GameState {
     next = resolvePending(next);
     if (next.result) return next;
   }
+  if (next.players.some((pl) => pl.field.some((u) => u?.reserved))) next = runReservations(next);
   if (players.some((pl) => pl.field.some((u) => u && u.pulseAt !== null && u.pulseAt <= end))) {
     next = pulses(next);
     if (next.result) return next;
@@ -390,6 +413,52 @@ function pulses(state: GameState): GameState {
     }
   }
   sweepDead(d);
+  return finish(state, d);
+}
+
+/** 攻撃の予約を進める。狙えなくなった予約は消し、クールタイムが明けた予約は攻撃（溜め）に変える。 */
+function runReservations(state: GameState): GameState {
+  const d = draftOf(state);
+  let changed = false;
+  for (const p of [0, 1] as const) {
+    const me = d.players[p];
+    const foe = d.players[other(p)];
+    for (const u of me.field) {
+      if (!u?.reserved) continue;
+      if (!legalAgainst(foe, u.reserved)) {
+        u.reserved = null;
+        d.events.push({ kind: 'unreserve', p, uid: u.uid });
+        changed = true;
+        continue;
+      }
+      if (d.time < u.readyAt || d.pending.some((x) => x.kind === 'attack' && x.uid === u.uid)) continue;
+      const target = u.reserved;
+      u.reserved = null;
+      u.readyAt = d.time + cooldownOf(me, u.card);
+      u.stealth = false;
+      windup(d, { id: d.nextUid++, kind: 'attack', p, uid: u.uid, target, at: d.time + WINDUP_MS });
+      changed = true;
+    }
+  }
+  return changed ? finish(state, d) : state;
+}
+
+/** 攻撃の予約。クールタイム中（または溜め中）のユニットだけ予約できる。すぐ攻撃できるなら予約ではなく attack を使う。 */
+function reserve(state: GameState, p: PlayerIndex, uid: number, target: Target | null): GameState {
+  if (state.result) return state;
+  const found = findUnit(state.players[p], uid);
+  if (!found || CARDS[found.unit.card].type !== 'unit') return state;
+  if (target === null) {
+    if (!found.unit.reserved) return state;
+  } else {
+    if (!isLegalTarget(state, p, target)) return state;
+    const busy = state.time < found.unit.readyAt || state.pending.some((x) => x.kind === 'attack' && x.uid === uid);
+    if (!busy) return state;
+  }
+  const d = draftOf(state);
+  const u = findUnit(d.players[p], uid)!.unit;
+  u.reserved = target;
+  d.events.push(target ? { kind: 'reserve', p, uid, target } : { kind: 'unreserve', p, uid });
   return finish(state, d);
 }
 
@@ -452,6 +521,7 @@ function applyAttack(d: Draft, p: PlayerIndex, uid: number, target: Target): boo
   if (!unit) return false;
   const hit = target.kind === 'unit' ? findUnit(foe, target.uid)?.unit : undefined;
   if (target.kind === 'unit' && !hit) return false;
+  if (!legalAgainst(foe, target)) return false;
   const ab = CARDS[unit.card].ab;
   const atk = attackOf(me, unit);
   d.events.push({ kind: 'attack', p, uid, target });
@@ -540,6 +610,7 @@ function attack(state: GameState, p: PlayerIndex, uid: number, target: Target): 
   const { unit } = findUnit(me, uid)!;
   unit.readyAt = d.time + cooldownOf(me, unit.card);
   unit.stealth = false; // 自分で攻撃を選んだらステルスは解ける
+  unit.reserved = null;
   windup(d, { id: d.nextUid++, kind: 'attack', p, uid, target, at: d.time + WINDUP_MS });
   return finish(state, d);
 }
@@ -552,6 +623,8 @@ export function step(state: GameState, action: Action): GameState {
       return summon(state, action.p, action.handIndex, action.slot, action.target);
     case 'attack':
       return attack(state, action.p, action.uid, action.target);
+    case 'reserve':
+      return reserve(state, action.p, action.uid, action.target);
   }
 }
 
