@@ -351,6 +351,15 @@ export function playDeath(): void {
   });
 }
 
+/** 自分のユニットのクールタイムが明けた: 短く明るい「チン」。生成した音は使わず、
+ *  ほかの音と聞き分けられるよう高い 2 音の合成にする。 */
+export function playReady(): void {
+  play(true, (c) => {
+    tone(c, { freq: 1318, duration: 0.09, type: 'triangle', gain: 0.07 });
+    tone(c, { freq: 1976, duration: 0.16, type: 'sine', gain: 0.06, delay: 0.06 });
+  });
+}
+
 /** HP の回復: きらめき。 */
 export function playHeal(): void {
   play(true, (c) => {

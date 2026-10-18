@@ -296,7 +296,7 @@ function summonCandidates(state: GameState, p: PlayerIndex, t: Tuning): Candidat
     if (ab.onSummon?.kind === 'token' && filled + 1 < FIELD_SLOTS) s += 1.3 * t.skill;
     // 修復: 減っているぶんだけ価値がある
     if (ab.onSummon?.kind === 'heal') s += Math.min(PLAYER_HP - me.hp, ab.onSummon.amount) * 0.4 * t.skill - 0.3;
-    // 壁: 場の 5 枚目で押されているなら価値が高い（ただの 5 枚目でも少し）
+    // 壁: 場の最後の 1 枠で押されているなら価値が高い（ただ埋めるだけでも少し）
     if (!isWalled(me) && filled === FIELD_SLOTS - 1) s += (press * 2.4 + (me.hp < foe.hp ? 0.6 : 0.2)) * t.defend;
     // 薙払: 相手の場が厚いほど出したい
     if (ab.splash) s += Math.min(foeUnits.length, 4) * 0.12 * t.skill;

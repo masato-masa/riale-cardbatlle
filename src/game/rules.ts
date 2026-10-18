@@ -11,7 +11,7 @@ export const COIN_MS = 3500;
 export const COIN_MAX = 10;
 export const COIN_START = 5;
 /** 場の枠の数。 */
-export const FIELD_SLOTS = 5;
+export const FIELD_SLOTS = 3;
 /** 手札の枚数（このほかに「次のカード」を 1 枚見せる）。 */
 export const HAND_SIZE = 4;
 

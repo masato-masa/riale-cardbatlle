@@ -28,13 +28,13 @@ import {
   type Unit,
 } from '@/game/engine';
 import { makeRng } from '@/game/rng';
-import { COIN_MAX, DOUBLE_COIN_FROM_MS, MATCH_MS } from '@/game/rules';
+import { COIN_MAX, DOUBLE_COIN_FROM_MS, FIELD_SLOTS, MATCH_MS } from '@/game/rules';
 
 import { COIN_URL, FIELD_URL } from './art';
 import { setBgmTension, startBgm, stopBgm } from './bgm';
 import { CardFace, type CardState } from './CardFace';
 import { CardDetail, HeroBadge } from './GameParts';
-import { hapticImpact, hapticLose, hapticReject, hapticUseCard, hapticWin } from './haptics';
+import { hapticImpact, hapticLose, hapticReady, hapticReject, hapticUseCard, hapticWin } from './haptics';
 import { Sheet } from './Sheets';
 import {
   playBarrier,
@@ -43,6 +43,7 @@ import {
   playHit,
   playHorn,
   playLose,
+  playReady,
   playReject,
   playStun,
   playSummon,
@@ -305,6 +306,30 @@ export function Game({ level, deck, onExit }: { level: CpuLevel; deck: CardId[];
     animate(atkEl, { x: [0, dx, 0], y: [0, dy, 0], scale: [1, 1.14, 1] }, { duration: 0.36, times: [0, 0.42, 1], ease: 'easeOut' });
   }
 
+  // 自分のユニットのクールタイムが明けた瞬間: 音・振動・カードが弾んで光る
+  const waitingRef = useRef(new Set<number>());
+  const [justReady, setJustReady] = useState<Set<number>>(() => new Set());
+  useEffect(() => {
+    if (game.result) return;
+    const waiting = new Set<number>();
+    const ready: number[] = [];
+    for (const u of game.players[0].field) {
+      if (!u || CARDS[u.card].type !== 'unit') continue;
+      if (game.time < u.readyAt) waiting.add(u.uid);
+      else if (waitingRef.current.has(u.uid)) ready.push(u.uid);
+    }
+    waitingRef.current = waiting;
+    if (ready.length === 0) return;
+    playReady();
+    hapticReady();
+    setJustReady((s) => new Set([...s, ...ready]));
+    for (const uid of ready) {
+      const el = unitEl(uid);
+      if (el) animate(el, { scale: [1, 1.13, 1] }, { type: 'spring', stiffness: 520, damping: 14 });
+    }
+    window.setTimeout(() => setJustReady((s) => new Set([...s].filter((uid) => !ready.includes(uid)))), 700);
+  }, [game]);
+
   // 足止め・遅延が明けたら鎖を外す
   useEffect(() => {
     if (stunned.size === 0) return;
@@ -485,7 +510,7 @@ export function Game({ level, deck, onExit }: { level: CpuLevel; deck: CardId[];
     if (!target) return;
     const block = attackBlock(s, 0, d.uid, target);
     if (block === 'target' && target.kind === 'player' && isWalled(s.players[1])) {
-      return reject('相手の場が 5 枚で壁になっています');
+      return reject(`相手の場が ${FIELD_SLOTS} 枚で壁になっています`);
     }
     if (block) return reject(ATTACK_REASON[block]);
     commit(step(s, { type: 'attack', p: 0, uid: d.uid, target }));
@@ -552,6 +577,7 @@ export function Game({ level, deck, onExit }: { level: CpuLevel; deck: CardId[];
     if (side === 1 && aiming) cls.push('is-target');
     if (side === 1 && (unitDrag?.over === key ? legal.has(key) : handDrag?.over === key)) cls.push('is-over');
     if (unitDrag?.uid === u.uid) cls.push('is-aiming');
+    if (justReady.has(u.uid)) cls.push('is-just-ready');
     if (u.stealth) cls.push('is-stealth');
     const pl = game.players[side];
     return (
@@ -580,7 +606,11 @@ export function Game({ level, deck, onExit }: { level: CpuLevel; deck: CardId[];
           onContextMenu={(e) => e.preventDefault()}
         >
           <CardFace card={u.card} hp={u.hp} atk={attackOf(pl, u)} states={statesOf(u, left)} />
-          {left > 0 ? <span className="unit-cd" style={{ ['--cd' as string]: `${left * 360}deg` }} aria-hidden="true" /> : null}
+          {left > 0 ? (
+            <span className="unit-cd" style={{ ['--cd' as string]: `${left * 360}deg` }} aria-hidden="true">
+              <span className="unit-cd-num">{Math.ceil((u.readyAt - game.time) / 1000)}</span>
+            </span>
+          ) : null}
         </div>
       </motion.div>
     );

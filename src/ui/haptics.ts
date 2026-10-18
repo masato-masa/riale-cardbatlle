@@ -39,6 +39,11 @@ export function hapticLose(): void {
   vibrate([70, 40, 30]);
 }
 
+/** 自分のユニットが攻撃できるようになった: ごく軽い 1 回 */
+export function hapticReady(): void {
+  vibrate(8);
+}
+
 /** ボタンを押した: 指に「押せた」と返すだけの、いちばん短い 1 回 */
 export function hapticTap(): void {
   vibrate(6);

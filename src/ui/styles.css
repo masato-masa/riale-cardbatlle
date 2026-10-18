@@ -145,9 +145,12 @@ body {
   gap: 10px;
 }
 
+/* 場は 3 枠（rules.ts の FIELD_SLOTS）。カードが大きく見える。 */
 .field {
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  width: 82%;
+  justify-self: center;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 6px;
 }
 
@@ -974,4 +977,43 @@ body {
 /* ステルス中は半透明（相手から見えていない） */
 .unit.is-stealth .face-body {
   opacity: 0.55;
+}
+
+/* クールタイムの残り秒数（扇の真ん中） */
+.unit-cd {
+  display: grid;
+  place-items: center;
+}
+
+.unit-cd-num {
+  font-size: 22px;
+  font-weight: 900;
+  color: #fff;
+  -webkit-text-stroke: 1.5px var(--ink);
+  paint-order: stroke fill;
+  font-variant-numeric: tabular-nums;
+}
+
+/* クールタイムが明けた瞬間: 金色の輪が広がって消える */
+.unit.is-just-ready::before {
+  content: '';
+  position: absolute;
+  inset: -4px;
+  border-radius: 13px;
+  border: 3px solid #ffd84a;
+  box-shadow: 0 0 18px 4px rgb(255 216 74 / 0.9);
+  pointer-events: none;
+  animation: ready-burst 0.7s ease-out forwards;
+  z-index: 3;
+}
+
+@keyframes ready-burst {
+  from {
+    opacity: 1;
+    transform: scale(0.92);
+  }
+  to {
+    opacity: 0;
+    transform: scale(1.25);
+  }
 }

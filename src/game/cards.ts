@@ -1,3 +1,5 @@
+import { FIELD_SLOTS } from './rules';
+
 // カードの定義。値と能力はカードごとに固定。
 // 種類は 3 つ: ユニット（攻撃する）・建築物（場にあるだけで効く。HP だけ）・呪文（場に出ず、すぐ効く）。
 
@@ -257,4 +259,4 @@ export function usageNote(card: CardId): string | null {
 }
 
 /** 壁の説明（ヘルプと案内で使う）。 */
-export const WALL_TEXT = '場が 5 枚うまっている間、そのプレイヤーは攻撃されない（壁）';
+export const WALL_TEXT = `場が ${FIELD_SLOTS} 枚うまっている間、そのプレイヤーは攻撃されない（壁）`;
