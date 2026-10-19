@@ -8,6 +8,7 @@ import { startBgm } from './ui/bgm';
 import { DeckScreen } from './ui/DeckScreen';
 import { Game } from './ui/Game';
 import { Home } from './ui/Home';
+import { SoundLab } from './ui/SoundLab';
 import './ui/shared/tokens.css';
 import './ui/shared/chrome.css';
 import './ui/styles.css';
@@ -20,6 +21,8 @@ if (import.meta.env.DEV) void import('./ui/audio-lab');
 type Screen = { kind: 'home' } | { kind: 'deck' } | { kind: 'game'; level: CpuLevel };
 
 export function App() {
+  // ?sounds: サウンドテスト（聞き比べ）
+  if (new URLSearchParams(location.search).has('sounds')) return <SoundLab />;
   const [screen, setScreen] = useState<Screen>({ kind: 'home' });
   const [deck, setDeck] = useState<CardId[]>(loadDeck);
   const inGame = screen.kind === 'game';

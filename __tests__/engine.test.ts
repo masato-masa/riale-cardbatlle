@@ -353,12 +353,25 @@ describe('能力: 攻撃まわり', () => {
     expect(s.players[0].field[1]!.readyAt).toBe(s.time + CARDS.spy.cd);
   });
 
-  it('奇襲: プレイヤーへのダメージだけ +1（カード相手には乗らない）', () => {
-    let [s, a] = place(withHand(HAND4), 0, 0, 'spy');
-    let b: Unit;
-    [s, b] = place(s, 1, 0, 'herald', 5);
-    expect(hit(s, 0, a.uid, FACE).players[1].hp).toBe(PLAYER_HP - CARDS.spy.atk - 1);
-    expect(hpOf(hit(s, 0, a.uid, U(b.uid)), 1, b.uid)).toBe(5 - CARDS.spy.atk);
+  it('奇襲: プレイヤーへのダメージだけ +1（カード相手には乗らない）。能力は残してあるが、今はこの能力を持つカードは無い', () => {
+    // カゲマルの奇襲はバランス調整で外した。能力そのものの動きは、持たせて確かめる
+    const ab = CARDS.spy.ab as { faceBonus?: number };
+    ab.faceBonus = 1;
+    try {
+      let [s, a] = place(withHand(HAND4), 0, 0, 'spy');
+      let b: Unit;
+      [s, b] = place(s, 1, 0, 'herald', 5);
+      expect(hit(s, 0, a.uid, FACE).players[1].hp).toBe(PLAYER_HP - CARDS.spy.atk - 1);
+      expect(hpOf(hit(s, 0, a.uid, U(b.uid)), 1, b.uid)).toBe(5 - CARDS.spy.atk);
+    } finally {
+      delete ab.faceBonus;
+    }
+  });
+
+  it('カゲマル: ステルスだけで、顔へのダメージは攻撃力のまま', () => {
+    const [s, a] = place(withHand(HAND4), 0, 0, 'spy');
+    expect(CARDS.spy.ab.faceBonus).toBeUndefined();
+    expect(hit(s, 0, a.uid, FACE).players[1].hp).toBe(PLAYER_HP - CARDS.spy.atk);
   });
 
   it('討伐: カードへのダメージ +2、顔には乗らない', () => {
@@ -474,7 +487,7 @@ describe('能力: 攻撃まわり', () => {
     [s, h] = place(s, 0, 1, 'spy');
     expect(attackOf(s.players[0], f)).toBe(0);
     expect(attackOf(s.players[0], h)).toBe(CARDS.spy.atk + 1);
-    expect(hit(s, 0, h.uid, FACE).players[1].hp).toBe(PLAYER_HP - CARDS.spy.atk - 1 - 1); // 鼓舞 + 奇襲
+    expect(hit(s, 0, h.uid, FACE).players[1].hp).toBe(PLAYER_HP - CARDS.spy.atk - 1); // 鼓舞
   });
 
   it('鼓舞: 反撃にも乗る。商館が 2 枚なら足される', () => {
@@ -574,18 +587,25 @@ describe('能力: 召喚時・コイン・遺言', () => {
     expect(gone(z, 1, w.uid)).toBe(true);
   });
 
-  it('狙撃: target が無い・存在しない・自分のカードなら空振り（召喚は成立）', () => {
+  it('狙撃: 選べる敵がいるのに target が無い・存在しない・自分のカードなら配置失敗（コインも減らない）', () => {
     const [s, h] = place(withHand(['taxman', 'herald', 'herald', 'herald']), 1, 0, 'craftsman');
     for (const target of [undefined, 9999]) {
-      const n = step(s, { type: 'summon', p: 0, handIndex: 0, slot: 0, target });
-      expect(n.players[0].field[0]!.card).toBe('taxman');
-      expect(n.players[0].coins).toBe(COIN_MAX - CARDS.taxman.summon);
-      expect(hpOf(n, 1, h.uid)).toBe(CARDS.craftsman.hp);
-      expect(n.events.some((e) => e.kind === 'damage')).toBe(false);
+      expect(summonBlock(s, 0, 0, 0, target)).toBe('target');
+      expect(step(s, { type: 'summon', p: 0, handIndex: 0, slot: 0, target })).toBe(s);
     }
     const [s2, mine] = place(s, 0, 3, 'guard');
-    const n2 = step(s2, { type: 'summon', p: 0, handIndex: 0, slot: 0, target: mine.uid });
-    expect(hpOf(n2, 0, mine.uid)).toBe(CARDS.guard.hp);
+    expect(summonBlock(s2, 0, 0, 0, mine.uid)).toBe('target');
+    expect(step(s2, { type: 'summon', p: 0, handIndex: 0, slot: 0, target: mine.uid })).toBe(s2);
+    expect(hpOf(s2, 1, h.uid)).toBe(CARDS.craftsman.hp);
+  });
+
+  it('狙撃: 選べる敵がいなければ、target なしで置ける（能力は空振り）', () => {
+    const s = withHand(['taxman', 'herald', 'herald', 'herald']);
+    expect(summonBlock(s, 0, 0, 0)).toBeNull();
+    const n = step(s, { type: 'summon', p: 0, handIndex: 0, slot: 0 });
+    expect(n.players[0].field[0]!.card).toBe('taxman');
+    expect(n.players[0].coins).toBe(COIN_MAX - CARDS.taxman.summon);
+    expect(n.events.some((e) => e.kind === 'damage')).toBe(false);
   });
 
   it('target は狙撃・足止以外のカードでは無視される', () => {

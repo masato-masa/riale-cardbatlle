@@ -98,7 +98,7 @@ describe('攻撃の溜め', () => {
     expect(s.events.some((e) => e.kind === 'cancel' && e.pending.kind === 'attack' && e.pending.uid === a.uid)).toBe(true);
   });
 
-  it('対象が先に倒れたら中断（別の攻撃で倒れた場合）。攻撃元のクールタイムは戻らない', () => {
+  it('対象が先に倒れたら中断（別の攻撃で倒れた場合）。攻撃元のクールタイムはやり直しにならず、すぐ攻撃できる', () => {
     let s = withHand(HAND4);
     let a: Unit, c: Unit, t: Unit;
     [s, a] = place(s, 0, 0, 'craftsman');
@@ -110,7 +110,8 @@ describe('攻撃の溜め', () => {
     expect(findUnit(s.players[1], t.uid)).toBeNull();
     expect(s.events.filter((e) => e.kind === 'cancel')).toHaveLength(1);
     expect(findUnit(s.players[0], c.uid)!.unit.hp).toBe(CARDS.taxman.hp); // 反撃もなし
-    expect(findUnit(s.players[0], c.uid)!.unit.readyAt).toBeGreaterThan(s.time);
+    // 中断してもクールタイムは選ぶ前に戻る（やり直しにならない）。召喚直後のクールタイムも、選ぶ前の値のまま
+    expect(findUnit(s.players[0], c.uid)!.unit.readyAt).toBeLessThanOrEqual(s.time);
   });
 
   it('決着したら溜めは消える', () => {

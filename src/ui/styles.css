@@ -606,7 +606,6 @@ body {
   stroke: var(--danger);
   stroke-width: 6;
   stroke-linecap: round;
-  stroke-dasharray: 2 12;
   filter: drop-shadow(0 0 3px rgb(255 255 255 / 0.9));
 }
 
@@ -1030,8 +1029,6 @@ body {
   stroke: var(--danger);
   stroke-width: 5;
   stroke-linecap: round;
-  stroke-dasharray: 3 10;
-  animation: pending-march 0.5s linear infinite;
   filter: drop-shadow(0 0 3px rgb(255 255 255 / 0.9));
 }
 
@@ -1091,7 +1088,6 @@ body {
   stroke: #4fa3ff;
   stroke-width: 3;
   stroke-linecap: round;
-  stroke-dasharray: 2 8;
   opacity: 0.85;
   filter: drop-shadow(0 0 2px rgb(255 255 255 / 0.9));
 }

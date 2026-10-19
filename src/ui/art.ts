@@ -49,6 +49,12 @@ export const CARD_ART: Record<CardId, string> = {
   inspector: inspectorUrl,
   architect: architectUrl,
   boss: bossUrl,
+  // コスト 6 以上の新ユニットは、専用の絵ができるまで仮の絵
+  veteran: bossUrl,
+  executioner: craftsmanUrl,
+  strategist: bankerUrl,
+  colossus: blockaderUrl,
+  archmage: doubleUrl,
   banker: bankerUrl,
   double: doubleUrl,
   informer: informerUrl,

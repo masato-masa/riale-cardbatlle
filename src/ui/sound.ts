@@ -84,3 +84,6 @@ export function playLose(): void {
   stopBgm(0.5);
   play('lose', true);
 }
+
+/** サウンドテスト画面用: 名前を指定して鳴らす（間引きなし）。 */
+export const playVoice = (name: VoiceName): void => play(name, true);

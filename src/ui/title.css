@@ -566,3 +566,88 @@ body {
     height: 66px;
   }
 }
+
+/* ---- サウンドテスト（?sounds） ---- */
+.lab {
+  min-height: 100dvh;
+  padding: calc(18px + env(safe-area-inset-top)) 16px 32px;
+  display: grid;
+  align-content: start;
+  gap: 16px;
+  max-width: 480px;
+  margin: 0 auto;
+  color: #fff;
+}
+
+.lab-title {
+  margin: 0;
+  font-size: 26px;
+  font-weight: 900;
+  letter-spacing: 0.06em;
+  color: var(--gold-1);
+}
+
+.lab-sub {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.6;
+  color: #cfc7ee;
+}
+
+.lab-group h2 {
+  margin: 0 0 8px;
+  font-size: 14px;
+  letter-spacing: 0.1em;
+  color: var(--gold-2);
+}
+
+.lab-row,
+.lab-list {
+  display: grid;
+  gap: 8px;
+}
+
+.lab-row {
+  grid-template-columns: repeat(2, 1fr);
+}
+
+.lab-btn,
+.lab-item {
+  border: 2px solid var(--gold-2);
+  border-radius: 12px;
+  padding: 12px 14px;
+  background: linear-gradient(var(--navy-1), var(--navy-2));
+  color: #fff;
+  font: inherit;
+  font-size: 15px;
+  font-weight: 800;
+  text-align: left;
+  cursor: pointer;
+  box-shadow: 0 3px 0 rgb(0 0 0 / 0.4);
+}
+
+.lab-btn:active,
+.lab-item:active {
+  transform: translateY(2px);
+  box-shadow: 0 1px 0 rgb(0 0 0 / 0.4);
+}
+
+.lab-btn.is-on {
+  background: linear-gradient(#ffe98a, var(--gold-2) 60%, #d89410);
+  color: #3a2300;
+}
+
+.lab-btn.is-stop {
+  border-color: #ff9a9a;
+}
+
+.lab-item {
+  display: grid;
+  gap: 2px;
+}
+
+.lab-item small {
+  font-size: 12px;
+  font-weight: 600;
+  color: #b9b0e0;
+}

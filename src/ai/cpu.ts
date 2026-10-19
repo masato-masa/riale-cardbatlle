@@ -10,6 +10,7 @@ import {
   other,
   step,
   summonBlock,
+  summonTargets,
   units,
   type Action,
   type GameState,
@@ -151,6 +152,11 @@ function strikeValue(foe: PlayerState, u: Unit, amount: number, t: Tuning): numb
   return (eff * 0.45 + attackOf(foe, u) * 0.12) * t.skill;
 }
 
+/** 破壊で相手のユニット u を取り除く損得（結界・軽減は関係なく、必ず倒れる）。大物ほど高い。 */
+function destroyValue(foe: PlayerState, u: Unit, t: Tuning): number {
+  return (1.8 + unitWorth(foe, u) * 0.9 * t.trade - deathCost(u)) * (0.5 + 0.5 * t.skill);
+}
+
 /** 足止で相手のカード u を止める損得。攻撃待ちが明けそうな強いカードほど高い。 */
 function stunValue(state: GameState, foe: PlayerState, u: Unit, ms: number, t: Tuning): number {
   const wait = Math.max(0, u.readyAt - state.time);
@@ -278,7 +284,9 @@ function summonCandidates(state: GameState, p: PlayerIndex, t: Tuning): Candidat
       out.push(...spellCandidates(state, p, handIndex, card, t));
       return;
     }
-    if (slot < 0 || summonBlock(state, p, handIndex, slot)) return;
+    // 登場時に敵を選ぶカードは、選べる敵がいるなら対象つきでないと置けない（配置失敗）
+    const choices = needsTarget(card) ? summonTargets(foe, card) : [];
+    if (slot < 0 || summonBlock(state, p, handIndex, slot, choices[0]?.uid)) return;
     let s = cardWorth(card, filled) * 0.55 + d.summon * 0.15;
     // コインが余っているほど急いで出す、枠が空いているほど出す
     s += (me.coins - d.summon) * 0.05 + (FIELD_SLOTS - filled) * 0.25;
@@ -315,14 +323,29 @@ function summonCandidates(state: GameState, p: PlayerIndex, t: Tuning): Candidat
     if (d.type === 'building') s += buildingValue(state, me, foe, card, t);
 
     const os = ab.onSummon;
-    if (needsTarget(card) && (os?.kind === 'strike' || os?.kind === 'stun')) {
-      if (foeUnits.length === 0) {
+    // 号令: 自分のほかのユニットの待ち時間が縮む
+    if (os?.kind === 'cdCut') {
+      for (const u of units(me)) {
+        if (CARDS[u.card].type !== 'unit') continue;
+        const wait = Math.max(0, u.readyAt - state.time);
+        s += (Math.min(wait, os.ms) / 1000) * 0.12 * (0.5 + attackOf(me, u) * 0.15) * t.skill;
+      }
+    }
+    // 全破壊: 相手の戦力を消すぶんの得と、自分の戦力を失うぶんの損
+    if (os?.kind === 'wipe') {
+      const foeLoss = units(foe).filter((u) => CARDS[u.card].type === 'unit').reduce((n, u) => n + unitWorth(foe, u), 0);
+      const myLoss = units(me).filter((u) => CARDS[u.card].type === 'unit').reduce((n, u) => n + unitWorth(me, u), 0);
+      s += (foeLoss * 0.85 - myLoss) * 0.5 * t.skill - 1.0;
+    }
+    if (needsTarget(card) && (os?.kind === 'strike' || os?.kind === 'stun' || os?.kind === 'destroy')) {
+      if (choices.length === 0) {
         // 的が無い。出しても能力が空振りするので、的が来るまで少し待つ
         out.push({ action: { type: 'summon', p, handIndex, slot }, score: s - 1.2 * t.skill, lethal: false });
         return;
       }
-      for (const u of foeUnits) {
-        const v = os.kind === 'strike' ? strikeValue(foe, u, os.amount, t) : stunValue(state, foe, u, os.ms, t);
+      for (const u of choices) {
+        const v =
+          os.kind === 'strike' ? strikeValue(foe, u, os.amount, t) : os.kind === 'stun' ? stunValue(state, foe, u, os.ms, t) : destroyValue(foe, u, t);
         out.push({ action: { type: 'summon', p, handIndex, slot, target: u.uid }, score: s + v, lethal: false });
       }
       return;
@@ -430,6 +453,7 @@ function incoming(state: GameState, owner: PlayerIndex): Map<number, number> {
     } else if (x.kind === 'ability') {
       const os = CARDS[x.card].ab.onSummon;
       if (os?.kind === 'strike') add(x.target, os.amount);
+      if (os?.kind === 'destroy') add(x.target, 999);
     } else if (x.kind === 'spell' && x.target !== null) {
       const sp = CARDS[x.card].ab.spell;
       if (sp?.kind === 'bolt') add(x.target, sp.amount);

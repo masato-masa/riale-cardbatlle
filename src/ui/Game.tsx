@@ -22,6 +22,7 @@ import {
   legalTargets,
   step,
   summonBlock,
+  summonTargets,
   type GameEvent,
   type GameState,
   type Target,
@@ -180,8 +181,10 @@ export function Game({ level, deck, onExit }: { level: CpuLevel; deck: CardId[];
   const [detail, setDetail] = useState<{ card: CardId; hp?: number } | null>(null);
   /** 対戦中のメニュー（止めてから、つづける・あそびかた・やり直し・ホームへ）。 */
   const [menu, setMenu] = useState<'menu' | 'help' | null>(null);
+  /** 登場時に敵を選ぶカードを置いたあと、効かせる敵をタップして選ぶ待ち。選ぶまで時間は止まる。 */
+  const [pick, setPick] = useState<{ index: number; slot: number; card: CardId } | null>(null);
   const pausedRef = useRef(false);
-  pausedRef.current = detail !== null || menu !== null;
+  pausedRef.current = detail !== null || menu !== null || pick !== null;
   /** 開始の演出（VS）のあいだは時間を進めない。 */
   const introRef = useRef(true);
 
@@ -368,7 +371,10 @@ export function Game({ level, deck, onExit }: { level: CpuLevel; deck: CardId[];
         if (e.p === 0) playReject();
       }
       if (e.kind === 'attack') lunge(e);
-      if (e.kind === 'ability') shoot(unitEl(e.uid), unitEl(e.target));
+      if (e.kind === 'ability') {
+        const card = unitEl(e.uid)?.getAttribute('data-card') as CardId | null;
+        shoot(unitEl(e.uid), unitEl(e.target), card && CARDS[card].ab.onSummon?.kind === 'destroy' ? 'magic' : 'arrow');
+      }
       if (e.kind === 'spell') {
         const eff = CARDS[e.card].ab.spell!;
         // 全体・遅延は相手の場ごと、再動は自分の場ごと光らせる。単体は使った側から弾を飛ばす。
@@ -445,6 +451,28 @@ export function Game({ level, deck, onExit }: { level: CpuLevel; deck: CardId[];
           }
         }
         if (e.kind === 'death') addBurst(unitEl(e.uid), 'puff');
+        if (e.kind === 'ability') {
+          const card = unitEl(e.uid)?.getAttribute('data-card') as CardId | null;
+          if (card && CARDS[card].ab.onSummon?.kind === 'destroy') {
+            addBurst(unitEl(e.target), 'blast');
+            shake(7);
+          }
+        }
+        if (e.kind === 'cdcut') {
+          addPopup(unitEl(e.uid), `-${Math.round(e.ms / 1000)}秒`, 'heal');
+          flash(unitEl(e.uid));
+          playHeal();
+        }
+        if (e.kind === 'wipe') {
+          // 全破壊: すべてのユニットの上で爆発、画面の閃光と大きな揺れ
+          document.querySelectorAll('.unit[data-card]').forEach((el, i) => {
+            if (el.getAttribute('data-uid') !== String(e.uid)) window.setTimeout(() => addBurst(el, i % 2 ? 'blast' : 'face'), i * 60);
+          });
+          shake(14);
+          setFlash(true);
+          window.setTimeout(() => setFlash(false), 450);
+          playHit('player');
+        }
         if (e.kind === 'heal') {
           addPopup(heroEl(e.p), `+${e.amount}`, 'heal');
           playHeal();
@@ -621,7 +649,7 @@ export function Game({ level, deck, onExit }: { level: CpuLevel; deck: CardId[];
 
   const handOver = (index: number, x: number, y: number): string | null => {
     const card = gameRef.current.players[0].hand[index];
-    if (!card || !needsTarget(card)) return null;
+    if (!card || CARDS[card].type !== 'spell' || !needsTarget(card)) return null;
     const key = dropKeyAt(x, y);
     return key?.startsWith('foe:') ? key : null;
   };
@@ -682,20 +710,23 @@ export function Game({ level, deck, onExit }: { level: CpuLevel; deck: CardId[];
         commit(step(s, { type: 'summon', p: 0, handIndex: d.index, slot: -1, target }));
         return;
       }
-      // 狙撃・足止を相手のカードの上で離した: 空いている枠に出して、そのカードを狙う
-      if (target !== undefined) {
-        const slot = firstEmptySlot(s.players[0]);
-        if (slot < 0) return reject(SUMMON_REASON.slot);
-        const block = summonBlock(s, 0, d.index, slot);
-        if (block) return reject(SUMMON_REASON[block]);
-        commit(step(s, { type: 'summon', p: 0, handIndex: d.index, slot, target }));
-        return;
-      }
       if (d.slot === null) {
         const r = fieldRef.current?.getBoundingClientRect();
         const nearField = r && d.y > r.top - 40 && d.y < r.bottom + 40;
         if (nearField && firstEmptySlot(s.players[0]) < 0) reject(SUMMON_REASON.slot);
         return;
+      }
+      // 登場時に敵を選ぶカード（狙撃・足止・破壊）: 場に置く操作のあと、効かせる敵をタップして選ぶ。
+      // 選ばなければ配置失敗。選べる敵がいなければ、そのまま置く
+      if (needsTarget(card)) {
+        const choices = summonTargets(s.players[1], card);
+        if (choices.length > 0) {
+          const block0 = summonBlock(s, 0, d.index, d.slot, choices[0]!.uid);
+          if (block0) return reject(SUMMON_REASON[block0]);
+          playSelect();
+          setPick({ index: d.index, slot: d.slot, card });
+          return;
+        }
       }
       const block = summonBlock(s, 0, d.index, d.slot);
       if (block) return reject(SUMMON_REASON[block]);
@@ -727,6 +758,24 @@ export function Game({ level, deck, onExit }: { level: CpuLevel; deck: CardId[];
     commit(step(s, { type: 'attack', p: 0, uid: d.uid, target }));
   };
 
+  /** 敵カードをタップして選んだ: 置いて、効果を溜める。 */
+  const confirmPick = (uid: number) => {
+    const p = pick;
+    if (!p) return;
+    const s = gameRef.current;
+    const block = summonBlock(s, 0, p.index, p.slot, uid);
+    setPick(null);
+    if (block) return reject(SUMMON_REASON[block]);
+    commit(step(s, { type: 'summon', p: 0, handIndex: p.index, slot: p.slot, target: uid }));
+  };
+
+  /** 敵を選ばずにやめた: 配置失敗（手札もコインもそのまま）。 */
+  const cancelPick = (text = '敵を選ばなかったので置けませんでした') => {
+    if (!pick) return;
+    setPick(null);
+    reject(text);
+  };
+
   const onPressCancel = () => {
     const press = pressRef.current;
     if (press) window.clearTimeout(press.timer);
@@ -741,7 +790,7 @@ export function Game({ level, deck, onExit }: { level: CpuLevel; deck: CardId[];
   const unitDrag = drag?.kind === 'unit' ? drag : null;
   const handDrag = drag?.kind === 'hand' ? drag : null;
   const handDragCard = handDrag ? me.hand[handDrag.index] : undefined;
-  const aiming = !!handDragCard && needsTarget(handDragCard);
+  const aiming = !!handDragCard && CARDS[handDragCard].type === 'spell' && needsTarget(handDragCard);
   const dragSpell = !!handDragCard && CARDS[handDragCard].type === 'spell';
   const dragBlock = unitDrag ? attackBlock(game, 0, unitDrag.uid) : null;
 
@@ -786,6 +835,8 @@ export function Game({ level, deck, onExit }: { level: CpuLevel; deck: CardId[];
     if (side === 0 && isUnit && left === 0 && !game.result) cls.push('is-ready');
     if (side === 1 && unitDrag) cls.push(legal.has(key) ? 'is-target' : 'is-off');
     if (side === 1 && aiming) cls.push('is-target');
+    const pickable = !!pick && side === 1 && summonTargets(foe, pick.card).some((x) => x.uid === u.uid);
+    if (pick && side === 1) cls.push(pickable ? 'is-target is-pick' : 'is-off');
     if (side === 1 && (unitDrag?.over === key ? legal.has(key) : handDrag?.over === key)) cls.push('is-over');
     if (unitDrag?.uid === u.uid) cls.push('is-aiming');
     if (justReady.has(u.uid)) cls.push('is-just-ready');
@@ -813,6 +864,8 @@ export function Game({ level, deck, onExit }: { level: CpuLevel; deck: CardId[];
           data-uid={u.uid}
           data-card={u.card}
           data-drop={side === 1 ? key : undefined}
+          data-pickable={pickable ? u.uid : undefined}
+          onClick={pickable ? () => confirmPick(u.uid) : undefined}
           onPointerDown={side === 0 ? (e) => onPressStart(e, { kind: 'unit', uid: u.uid }) : undefined}
           onPointerMove={side === 0 ? onPressMove : undefined}
           onPointerUp={side === 0 ? onPressEnd : undefined}
@@ -838,6 +891,11 @@ export function Game({ level, deck, onExit }: { level: CpuLevel; deck: CardId[];
         data-slot={side === 0 ? i : undefined}
       >
         <AnimatePresence>{u ? renderUnit(u, side) : null}</AnimatePresence>
+        {pick && side === 0 && pick.slot === i ? (
+          <div className="slot-preview" aria-hidden="true">
+            <CardFace card={pick.card} />
+          </div>
+        ) : null}
       </div>
     ));
 
@@ -856,6 +914,12 @@ export function Game({ level, deck, onExit }: { level: CpuLevel; deck: CardId[];
   return (
     <div
       className="app-battle"
+      onPointerDown={(e) => {
+        // 敵を選ぶ待ち: 選べる敵のカードと、取りやめボタン以外をタップしたら取りやめ（配置失敗）
+        if (!pick) return;
+        if ((e.target as Element).closest('[data-pickable], .pick-bar')) return;
+        cancelPick();
+      }}
       style={{ backgroundImage: `url(${FIELD_URL})`, backgroundSize: floorBg?.size, backgroundPosition: floorBg?.pos }}
     >
       <main className={`battle${castReady ? ' is-casting' : ''}`}>
@@ -948,6 +1012,15 @@ export function Game({ level, deck, onExit }: { level: CpuLevel; deck: CardId[];
             </div>
           </div>
         </div>
+
+        {pick ? (
+          <div className="pick-bar" role="status">
+            <span>効かせる敵カードをタップ</span>
+            <button className="pick-cancel" onClick={() => cancelPick('取りやめました')}>
+              やめる
+            </button>
+          </div>
+        ) : null}
 
         <AnimatePresence>
           {hint ? (

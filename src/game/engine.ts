@@ -52,7 +52,8 @@ export type Target = { kind: 'player' } | { kind: 'unit'; uid: number };
 /** 溜め中の行動。at になったら効く（WINDUP_MS）。
  *  attack: ユニットの攻撃。spell: 呪文（target は単体のときだけ）。ability: 召喚時の狙撃・足止（uid は召喚したカード）。 */
 export type Pending =
-  | { id: number; kind: 'attack'; p: PlayerIndex; uid: number; target: Target; at: number }
+  /** readyBefore/readyAfter: 選ぶ前と選んだ直後のクールタイム明け時刻。中断したら、選ぶ前に戻す（やり直しにしない）。 */
+  | { id: number; kind: 'attack'; p: PlayerIndex; uid: number; target: Target; at: number; readyBefore: number; readyAfter: number }
   | { id: number; kind: 'spell'; p: PlayerIndex; card: CardId; target: number | null; at: number }
   | { id: number; kind: 'ability'; p: PlayerIndex; uid: number; card: CardId; target: number; at: number };
 
@@ -76,6 +77,10 @@ export type GameEvent =
   | { id: number; kind: 'damage'; p: PlayerIndex; target: Target; amount: number; guard: 'barrier' | 'armor' | null }
   | { id: number; kind: 'heal'; p: PlayerIndex; amount: number }
   | { id: number; kind: 'stun'; p: PlayerIndex; uid: number }
+  /** 召喚時にクールタイムを減らした（ms 減った）。 */
+  | { id: number; kind: 'cdcut'; p: PlayerIndex; uid: number; ms: number }
+  /** 召喚時にほかのユニットをすべて破壊した（uid は召喚したカード）。 */
+  | { id: number; kind: 'wipe'; p: PlayerIndex; uid: number }
   /** クールタイムがなくなった（祝祭） */
   | { id: number; kind: 'ready'; p: PlayerIndex; uid: number }
   /** 呪文を使った。target は単体の呪文で選んだ相手のカード。 */
@@ -219,6 +224,13 @@ export function cooldownOf(player: PlayerState, card: CardId): number {
   return Math.round(CARDS[card].cd * COOLDOWN_SCALE * Math.max(0.4, 1 - cut));
 }
 
+/** 登場時に敵を選ぶカード（狙撃・足止・破壊）で、いま選べる敵。足止・破壊はユニットだけ。 */
+export function summonTargets(foe: PlayerState, card: CardId): Unit[] {
+  const kind = CARDS[card].ab.onSummon?.kind;
+  const all = units(foe).filter((u) => !u.stealth);
+  return kind === 'stun' || kind === 'destroy' ? all.filter((u) => CARDS[u.card].type === 'unit') : all;
+}
+
 export type SummonBlock = 'coins' | 'slot' | 'target' | 'over' | null;
 
 export function summonBlock(
@@ -238,6 +250,11 @@ export function summonBlock(
     return null;
   }
   if (slot < 0 || slot >= FIELD_SLOTS) return 'slot';
+  // 登場時に敵を選ぶカード: 選べる敵がいるのに選ばなければ、置けない（配置失敗）
+  if (needsTarget(card)) {
+    const choices = summonTargets(state.players[other(p)], card);
+    if (choices.length > 0 && (target === undefined || !choices.some((u) => u.uid === target))) return 'target';
+  }
   return null;
 }
 
@@ -437,9 +454,10 @@ function runReservations(state: GameState): GameState {
       }
       if (d.time < u.readyAt || d.pending.some((x) => x.kind === 'attack' && x.uid === u.uid)) continue;
       const target = u.reserved;
+      const readyBefore = u.readyAt;
       u.readyAt = d.time + cooldownOf(me, u.card);
       u.stealth = false;
-      windup(d, { id: d.nextUid++, kind: 'attack', p, uid: u.uid, target, at: d.time + WINDUP_MS });
+      windup(d, { id: d.nextUid++, kind: 'attack', p, uid: u.uid, target, at: d.time + WINDUP_MS, readyBefore, readyAfter: u.readyAt });
       changed = true;
     }
   }
@@ -555,6 +573,8 @@ function applyAbility(d: Draft, p: PlayerIndex, uid: number, card: CardId, targe
     hit.readyAt = Math.max(hit.readyAt, d.time) + os.ms;
     d.events.push({ kind: 'stun', p: q, uid: hit.uid });
   }
+  // 破壊: 結界・軽減を無視して HP を 0 にする（倒れたカードは sweepDead が場から除く）
+  if (os?.kind === 'destroy') hit.hp = 0;
   return true;
 }
 
@@ -572,7 +592,14 @@ function resolvePending(state: GameState): GameState {
         : x.kind === 'spell'
           ? applySpell(d, x.p, x.card, x.target)
           : applyAbility(d, x.p, x.uid, x.card, x.target);
-    if (!ok) d.events.push({ kind: 'cancel', p: x.p, pending: x });
+    if (!ok) {
+      d.events.push({ kind: 'cancel', p: x.p, pending: x });
+      // 攻撃が中断されても、クールタイムはやり直しにしない（選ぶ前に戻す。足止などで延びたぶんは残す）
+      if (x.kind === 'attack') {
+        const u = findUnit(d.players[x.p], x.uid)?.unit;
+        if (u) u.readyAt = x.readyBefore + Math.max(0, u.readyAt - x.readyAfter);
+      }
+    }
     sweepDead(d);
   }
   return finish(state, d);
@@ -607,6 +634,22 @@ function summon(state: GameState, p: PlayerIndex, handIndex: number, slot: numbe
       pl.hp += healed;
       d.events.push({ kind: 'heal', p, amount: healed });
     }
+  } else if (os?.kind === 'cdCut') {
+    for (const u of units(pl)) {
+      if (u.uid === placed.uid || CARDS[u.card].type !== 'unit') continue;
+      const next = Math.max(d.time, u.readyAt - os.ms);
+      if (next < u.readyAt) {
+        d.events.push({ kind: 'cdcut', p, uid: u.uid, ms: u.readyAt - next });
+        u.readyAt = next;
+      }
+    }
+  } else if (os?.kind === 'wipe') {
+    d.events.push({ kind: 'wipe', p, uid: placed.uid });
+    for (const side of [0, 1] as const) {
+      for (const u of units(d.players[side])) {
+        if (u.uid !== placed.uid && CARDS[u.card].type === 'unit') u.hp = 0;
+      }
+    }
   } else if (needsTarget(card) && target !== undefined && pickable(d.players[q], target)) {
     windup(d, { id: d.nextUid++, kind: 'ability', p, uid: placed.uid, card, target, at: d.time + WINDUP_MS });
   }
@@ -619,10 +662,11 @@ function attack(state: GameState, p: PlayerIndex, uid: number, target: Target): 
   const d = draftOf(state);
   const me = d.players[p];
   const { unit } = findUnit(me, uid)!;
+  const readyBefore = unit.readyAt;
   unit.readyAt = d.time + cooldownOf(me, unit.card);
   unit.stealth = false; // 自分で攻撃を選んだらステルスは解ける
   unit.reserved = target; // 攻撃した対象をターゲットとして残す（明けるたびに攻撃し続ける）
-  windup(d, { id: d.nextUid++, kind: 'attack', p, uid, target, at: d.time + WINDUP_MS });
+  windup(d, { id: d.nextUid++, kind: 'attack', p, uid, target, at: d.time + WINDUP_MS, readyBefore, readyAfter: unit.readyAt });
   return finish(state, d);
 }
 

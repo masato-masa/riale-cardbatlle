@@ -1396,3 +1396,57 @@
     filter: drop-shadow(0 0 7px rgb(255 216 74 / 0.85));
   }
 }
+
+/* 登場時に敵を選ぶ待ち（配置 → 敵をタップ） */
+.pick-bar {
+  position: absolute;
+  left: 50%;
+  top: 44%;
+  translate: -50% 0;
+  z-index: 6;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 8px 7px 16px;
+  border: 2px solid var(--gold-2);
+  border-radius: 999px;
+  background: linear-gradient(var(--navy-1), var(--navy-2));
+  box-shadow: 0 0 0 2px var(--navy-3), 0 4px 12px rgb(0 0 0 / 0.5);
+  font-size: 14px;
+  font-weight: 800;
+  color: #fff;
+  white-space: nowrap;
+}
+
+.pick-cancel {
+  border: 2px solid #ff9a9a;
+  border-radius: 999px;
+  padding: 4px 12px;
+  background: rgb(120 30 40 / 0.85);
+  color: #fff;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+/* 選べる敵: 赤く脈打つ。選べない敵は暗く */
+.unit.is-pick {
+  cursor: pointer;
+  animation: pick-pulse 0.9s ease-in-out infinite;
+}
+
+@keyframes pick-pulse {
+  50% {
+    box-shadow: 0 0 0 3px #fff, 0 0 0 6px var(--danger), 0 0 20px 6px rgb(229 72 77 / 0.85);
+  }
+}
+
+/* 置く予定の枠: 半透明のカード */
+.slot-preview {
+  position: absolute;
+  inset: 0;
+  opacity: 0.55;
+  pointer-events: none;
+  filter: saturate(0.8);
+}

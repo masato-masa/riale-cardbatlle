@@ -19,6 +19,11 @@ export type CardId =
   | 'blockader'
   | 'architect'
   | 'boss'
+  | 'veteran'
+  | 'executioner'
+  | 'strategist'
+  | 'colossus'
+  | 'archmage'
   | 'apprentice'
   // 建築物
   | 'wall'
@@ -40,7 +45,13 @@ export type OnSummon =
   | { kind: 'token' }
   | { kind: 'heal'; amount: number }
   | { kind: 'strike'; amount: number }
-  | { kind: 'stun'; ms: number };
+  | { kind: 'stun'; ms: number }
+  /** 敵ユニット 1 体を破壊する（結界・軽減を無視）。 */
+  | { kind: 'destroy' }
+  /** 自分の場の、ほかのユニットのクールタイムを減らす。 */
+  | { kind: 'cdCut'; ms: number }
+  /** 場の、ほかのユニットをすべて破壊する（敵味方。建築物は除く）。 */
+  | { kind: 'wipe' };
 
 /** 倒れたときに起きること。 */
 export type OnDeath = { kind: 'face'; amount: number };
@@ -126,6 +137,11 @@ const EPITHET: Partial<Record<CardId, string>> = {
   blockader: '鉄壁の重装兵',
   architect: '癒やしの神官',
   boss: '戦斧の将軍',
+  veteran: '歴戦の剣士',
+  executioner: '無慈悲な処刑人',
+  strategist: '号令の軍師',
+  colossus: '不動の巨人',
+  archmage: '終焉の大魔導',
   apprentice: '駆けつけた若者',
   wall: '石の防壁',
   exchange: '物資の集積地',
@@ -155,6 +171,11 @@ const FLAVOR: Partial<Record<CardId, string>> = {
   blockader: '鉄の壁は、そう簡単には崩れない。',
   architect: '大丈夫、傷はわたしが癒やします。',
   boss: '全軍、俺に続け！ 立ちはだかる者は薙ぎ払う！',
+  veteran: '数え切れない戦場を生き延びた。それだけで十分だ。',
+  executioner: '指名された者は、もう立っていない。',
+  strategist: '全軍、動け。時は待ってくれません。',
+  colossus: '……通さぬ。',
+  archmage: '終わらせましょう。敵も、味方も。',
   apprentice: '俺だって戦える！ 戦わせてくれ！',
   wall: '何百年も敵を阻んできた、石の壁。',
   exchange: '物資さえあれば、兵はいくらでも動く。',
@@ -207,20 +228,26 @@ const spell = (id: CardId, name: string, summon: number, effect: SpellEffect): C
 });
 
 export const CARDS: Record<CardId, CardDef> = {
-  herald: unit('herald', 'ポラン', 1, 2, 2, 10, { haste: true }),
+  herald: unit('herald', 'ポラン', 1, 1, 1, 10, { haste: true }),
   miner: unit('miner', 'ドルガ', 2, 1, 2, 12, { onSummon: { kind: 'token' } }),
   usurer: unit('usurer', 'バルク', 2, 4, 2, 11, { onDeath: { kind: 'face', amount: 2 } }),
-  spy: unit('spy', 'カゲマル', 3, 3, 2, 11, { faceBonus: 1, stealth: true }),
-  craftsman: unit('craftsman', 'ゴルド', 3, 4, 3, 14, { unitBonus: 2 }),
+  spy: unit('spy', 'カゲマル', 3, 3, 2, 11, { stealth: true }),
+  craftsman: unit('craftsman', 'ゴルド', 3, 3, 3, 14, { unitBonus: 2 }),
   guard: unit('guard', 'ロイ', 2, 1, 3, 16, { blocker: true }),
   banker: unit('banker', 'ミレーヌ', 3, 3, 3, 16, { coinBoost: 0.22 }),
   informer: unit('informer', 'シオ', 2, 2, 2, 12, { onSummon: { kind: 'stun', ms: 6000 } }),
-  taxman: unit('taxman', 'リオ', 4, 4, 3, 14, { onSummon: { kind: 'strike', amount: 2 } }),
-  double: unit('double', 'ジーク', 3, 4, 3, 14, { barrier: true }),
+  taxman: unit('taxman', 'リオ', 4, 3, 3, 14, { onSummon: { kind: 'strike', amount: 2 } }),
+  double: unit('double', 'ジーク', 3, 3, 2, 14, { barrier: true }),
   inspector: unit('inspector', 'アリア', 4, 4, 3, 16, { ranged: true }),
-  blockader: unit('blockader', 'ガストン', 4, 4, 4, 16, { blocker: true, armor: 1 }),
-  architect: unit('architect', 'セラ', 5, 4, 4, 16, { onSummon: { kind: 'heal', amount: 3 } }),
+  blockader: unit('blockader', 'ガストン', 4, 2, 4, 16, { blocker: true, armor: 1 }),
+  architect: unit('architect', 'セラ', 5, 4, 5, 16, { onSummon: { kind: 'heal', amount: 3 } }),
   boss: unit('boss', 'ヴァルガ', 5, 3, 6, 20, { splash: 1 }),
+  // コスト 6 以上（基準: 能力なしならスタッツ合計 ≒ コスト×2+1、能力ぶんだけ減らす）
+  veteran: unit('veteran', 'ダリウス', 6, 7, 7, 15),
+  executioner: unit('executioner', 'ネロ', 7, 4, 8, 20, { onSummon: { kind: 'destroy' } }),
+  strategist: unit('strategist', 'ルナ', 8, 8, 8, 10, { onSummon: { kind: 'cdCut', ms: 10000 } }),
+  colossus: unit('colossus', 'グラム', 9, 7, 10, 15, { blocker: true }),
+  archmage: unit('archmage', 'オルガ', 10, 10, 10, 30, { onSummon: { kind: 'wipe' } }),
   apprentice: { ...unit('apprentice', '志願兵', 1, 1, 1, 12), token: true },
 
   wall: building('wall', '城壁', 2, 8, { blocker: true }),
@@ -240,14 +267,14 @@ export const CARDS: Record<CardId, CardDef> = {
 export const STARTER_DECK: CardId[] = [
   'herald',
   'guard',
-  'spy',
   'craftsman',
   'double',
   'taxman',
-  'boss',
-  'cathedral',
-  'factory',
+  'architect',
+  'fortress',
   'quarry',
+  'veteran',
+  'executioner',
 ];
 
 /** CPU のデッキ（10 枚固定）。 */
@@ -259,9 +286,9 @@ export const RIVAL_DECK: CardId[] = [
   'blockader',
   'architect',
   'tradingHouse',
-  'fortress',
   'roadblock',
   'quake',
+  'strategist',
 ];
 
 export function isBlocker(card: CardId): boolean {
@@ -271,7 +298,7 @@ export function isBlocker(card: CardId): boolean {
 /** 使うときに相手のカードを 1 枚選ぶか（狙撃・足止・単体の呪文）。 */
 export function needsTarget(card: CardId): boolean {
   const ab = CARDS[card].ab;
-  return ab.onSummon?.kind === 'strike' || ab.onSummon?.kind === 'stun' || ab.spell?.kind === 'bolt';
+  return ab.onSummon?.kind === 'strike' || ab.onSummon?.kind === 'stun' || ab.onSummon?.kind === 'destroy' || ab.spell?.kind === 'bolt';
 }
 
 /** 選ばないと効かない（単体の呪文）。狙撃・足止は選ばなくても召喚はできる。 */
@@ -297,6 +324,9 @@ export function abilityLines(card: CardId): string[] {
   if (s?.kind === 'heal') lines.push(`召喚時：自分の HP を ${s.amount} 回復`);
   if (s?.kind === 'strike') lines.push(`召喚時：敵カード 1 枚に ${s.amount} ダメージ`);
   if (s?.kind === 'stun') lines.push(`召喚時：敵ユニット 1 体のクールタイム +${s.ms / 1000} 秒`);
+  if (s?.kind === 'destroy') lines.push('召喚時：敵ユニット 1 体を破壊する');
+  if (s?.kind === 'cdCut') lines.push(`召喚時：自分のほかのユニットのクールタイムを ${s.ms / 1000} 秒減らす`);
+  if (s?.kind === 'wipe') lines.push('召喚時：ほかのユニットを敵味方すべて破壊する');
   if (a.ranged) lines.push('攻撃時：反撃を受けない');
   if (a.splash) lines.push(`攻撃時：ほかの敵カード全員に ${a.splash} ダメージ`);
   if (a.onDeath?.kind === 'face') lines.push(`死亡時：敵プレイヤーに ${a.onDeath.amount} ダメージ`);
@@ -320,7 +350,7 @@ export function abilityLines(card: CardId): string[] {
 /** 使い方の補足（説明の下に小さく出す）。 */
 export function usageNote(card: CardId): string | null {
   const def = CARDS[card];
-  if (needsTarget(card)) return def.type === 'spell' ? '敵カードの上へドラッグして使う' : '敵カードの上へドラッグして召喚すると、そのカードに効く';
+  if (needsTarget(card)) return def.type === 'spell' ? '敵カードの上へドラッグして使う' : '場へ置いたあと、効かせる敵カードをタップする（選ばないと置けない）';
   if (def.type === 'spell') return '盤面へドラッグして使う';
   if (def.type === 'building') return '攻撃しない。場にあるだけで効く';
   return null;
