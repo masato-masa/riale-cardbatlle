@@ -54,7 +54,7 @@ import {
   primeAudio,
 } from './sound';
 
-/** 床の絵（field.webp）の寸法と、金の帯の縦の位置（0〜1）。絵を差し替えたら測り直す。 */
+/** 床の絵（arena.webp）の寸法と、金の帯の縦の位置（0〜1）。絵を差し替えたら測り直す。 */
 const FLOOR_W = 800;
 const FLOOR_H = 1200;
 const FLOOR_BAND = 0.443;
