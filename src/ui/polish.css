@@ -1288,3 +1288,57 @@
 .menu-btn:active {
   transform: scale(0.9);
 }
+
+/* 呪文を溜めている間の魔法陣（対象の足元・場の真ん中）。screen で黒を抜く */
+.circles {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 16;
+  mix-blend-mode: screen;
+}
+
+.circle-spin {
+  position: absolute;
+  translate: -50% -50%;
+  background: url('../assets/art/fx/circle.webp') center / contain no-repeat;
+  mix-blend-mode: screen;
+  animation: circle-turn 3.2s linear infinite;
+}
+
+.circle-spin.is-mine {
+  filter: hue-rotate(250deg) saturate(1.2);
+}
+
+@keyframes circle-turn {
+  to {
+    rotate: 360deg;
+  }
+}
+
+/* 2 倍になった瞬間の帯（クラロワのダブルエリクサー） */
+.banner-over {
+  position: fixed;
+  left: 0;
+  right: 0;
+  top: 34%;
+  z-index: 34;
+  display: grid;
+  place-items: center;
+  padding: 12px 0;
+  pointer-events: none;
+  background: linear-gradient(90deg, transparent, rgb(120 40 190 / 0.95) 12%, rgb(120 40 190 / 0.95) 88%, transparent);
+  border-block: 3px solid #ffd84a;
+  box-shadow: 0 0 22px rgb(180 90 255 / 0.7);
+}
+
+.banner-over span {
+  font-size: 32px;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  background: linear-gradient(#fff6cf, #ffd84a 55%, #f09a00);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  filter: drop-shadow(0 3px 0 #3a1a60) drop-shadow(0 0 10px rgb(255 190 60 / 0.8));
+}

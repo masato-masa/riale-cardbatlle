@@ -214,10 +214,14 @@ export function Game({ level, deck, onExit }: { level: CpuLevel; deck: CardId[];
     return () => stopBgm();
   }, []);
   const overtime = game.time >= DOUBLE_COIN_FROM_MS;
+  const [overBanner, setOverBanner] = useState(false);
   useEffect(() => {
     if (!overtime) return;
     setBgmTension(1);
     playHorn();
+    setOverBanner(true);
+    const t = window.setTimeout(() => setOverBanner(false), 2000);
+    return () => window.clearTimeout(t);
   }, [overtime]);
 
   // ---- 出来事ごとの演出 ----
@@ -1085,6 +1089,21 @@ export function Game({ level, deck, onExit }: { level: CpuLevel; deck: CardId[];
         ) : null}
       </AnimatePresence>
 
+      <AnimatePresence>
+        {overBanner ? (
+          <motion.div
+            key="over"
+            className="banner-over"
+            aria-hidden="true"
+            initial={{ x: '110%' }}
+            animate={{ x: 0, transition: { type: 'spring', stiffness: 380, damping: 30 } }}
+            exit={{ x: '-110%', opacity: 0, pointerEvents: 'none', transition: { duration: 0.3 } }}
+          >
+            <span>コイン 2 倍！</span>
+          </motion.div>
+        ) : null}
+      </AnimatePresence>
+
       <div className="popups" aria-hidden="true">
         <AnimatePresence>
           {popups.map((p) => (
@@ -1261,6 +1280,8 @@ function PendingMarks({ game, fieldMe, fieldFoe }: { game: GameState; fieldMe: H
   if (game.pending.length === 0 && reserves.length === 0) return null;
   const lines: { key: number; x0: number; y0: number; x1: number; y1: number; mine: boolean; t: number }[] = [];
   const areas: { key: number; r: DOMRect; mine: boolean; t: number }[] = [];
+  /** 溜めている呪文の魔法陣（対象の足元・場の真ん中）。 */
+  const circles: { key: number; x: number; y: number; size: number; mine: boolean; t: number }[] = [];
   for (const x of game.pending) {
     const t = Math.max(0, Math.min(1, 1 - (x.at - game.time) / WINDUP_MS));
     const mine = x.p === 0;
@@ -1269,7 +1290,11 @@ function PendingMarks({ game, fieldMe, fieldFoe }: { game: GameState; fieldMe: H
       const eff = CARDS[x.card].ab.spell!;
       const toFoe = eff.kind === 'blast' || eff.kind === 'freeze';
       const row = (x.p === 0) === toFoe ? fieldFoe : fieldMe;
-      if (row) areas.push({ key: x.id, r: row.getBoundingClientRect(), mine, t });
+      if (row) {
+        const r = row.getBoundingClientRect();
+        areas.push({ key: x.id, r, mine, t });
+        circles.push({ key: x.id, x: r.left + r.width / 2, y: r.top + r.height / 2, size: Math.min(r.width, 300), mine, t });
+      }
       continue;
     }
     const src = x.kind === 'spell' ? heroEl(x.p) : unitEl(x.uid);
@@ -1278,9 +1303,19 @@ function PendingMarks({ game, fieldMe, fieldFoe }: { game: GameState; fieldMe: H
     const a = centerOf(src);
     const b = centerOf(tgt);
     if (a && b) lines.push({ key: x.id, x0: a.x, y0: a.y, x1: b.x, y1: b.y, mine, t });
+    if (b && x.kind === 'spell') circles.push({ key: x.id, x: b.x, y: b.y, size: 130, mine, t });
   }
   return (
     <>
+      <div className="circles" aria-hidden="true">
+        {circles.map((c) => (
+          <span
+            key={c.key}
+            className={`circle-spin${c.mine ? ' is-mine' : ''}`}
+            style={{ left: c.x, top: c.y, width: c.size, height: c.size, opacity: 0.35 + c.t * 0.65 }}
+          />
+        ))}
+      </div>
       {areas.map((m) => (
         <div
           key={m.key}
