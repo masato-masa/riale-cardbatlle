@@ -5,9 +5,11 @@ import { CARDS, TYPE_NAME, type CardId, type CardType } from '@/game/cards';
 import { averageCost, COLLECTION, saveDeck } from '@/storage/deck';
 
 import { CardFace } from './CardFace';
-import { BackIcon, CardDetail } from './GameParts';
+import { FIELD_URL } from './art';
+import { CardDetail } from './GameParts';
 import { Sheet } from './Sheets';
 import { playSelect, playUiTap } from './sound';
+import { TabBar } from './TabBar';
 
 const TYPE_ORDER: CardType[] = ['unit', 'building', 'spell'];
 
@@ -40,30 +42,12 @@ export function DeckScreen({ deck, onChange, onBack }: { deck: CardId[]; onChang
   };
 
   return (
-    <div className="app app-deck">
-      <header className="header">
-        <div className="header-row">
-          <div className="header-left">
-            <button
-              className="icon-btn"
-              aria-label="もどる"
-              onClick={() => {
-                playUiTap();
-                onBack();
-              }}
-            >
-              <BackIcon />
-            </button>
-          </div>
-          <h1 className="title">デッキ</h1>
-          <div className="header-actions" />
-        </div>
-        <div className="status-bar">
-          <span className="stat">
-            <span className="stat-label">平均コスト</span>
-            <span className="stat-num">{averageCost(deck).toFixed(1)}</span>
-          </span>
-        </div>
+    <div className="ts dk" style={{ backgroundImage: `url(${FIELD_URL})` }}>
+      <header className="dk-top">
+        <h1 className="dk-title">デッキ</h1>
+        <span className="dk-avg">
+          平均コスト <b>{averageCost(deck).toFixed(1)}</b>
+        </span>
       </header>
 
       <main className="deck-main">
@@ -139,6 +123,8 @@ export function DeckScreen({ deck, onChange, onBack }: { deck: CardId[]; onChang
           );
         })}
       </main>
+
+      <TabBar active="deck" onDeck={() => undefined} onBattle={onBack} />
 
       <AnimatePresence>
         {open ? (

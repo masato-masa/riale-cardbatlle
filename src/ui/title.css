@@ -1,0 +1,453 @@
+/* =====================================================================
+   ホーム・デッキ画面・タブバー（クラロワ型）。共通 UI（shared/）は使わない（ユーザー指定）。
+   暗い紫と金。大きな黄色の「バトル」、下に 3 つのタブ。
+   ===================================================================== */
+
+body {
+  background: #120d2c;
+}
+
+.ts {
+  position: relative;
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  color: #fff;
+  background-size: cover;
+  background-position: center;
+  overflow-x: hidden;
+}
+
+.ts::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(110% 70% at 50% 38%, transparent 40%, rgb(12 6 32 / 0.55) 100%),
+    linear-gradient(180deg, rgb(40 26 100 / 0.5) 0%, rgb(54 34 120 / 0.3) 34%, rgb(22 14 56 / 0.8) 74%, #120d2c 100%);
+}
+
+.ts > * {
+  position: relative;
+}
+
+/* ---- 上: 自分の札 ---- */
+.ts-top {
+  width: min(100%, 480px);
+  padding: calc(14px + env(safe-area-inset-top)) 16px 0;
+  display: flex;
+  align-items: center;
+}
+
+.ts-player {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.ts-medal {
+  width: 58px;
+  height: 58px;
+  overflow: hidden;
+  border-radius: 50%;
+  border: 3px solid var(--gold-2);
+  background: var(--navy-3);
+  box-shadow: 0 0 0 2px var(--gold-4), 0 4px 0 rgb(0 0 0 / 0.45);
+}
+
+.ts-medal img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  scale: 1.1;
+}
+
+.ts-name {
+  display: grid;
+  gap: 1px;
+  padding: 4px 14px 4px 10px;
+  border-radius: 10px;
+  background: linear-gradient(rgb(20 14 52 / 0.85), rgb(20 14 52 / 0.6));
+  border: 2px solid rgb(246 197 72 / 0.7);
+}
+
+.ts-name b {
+  font-size: 16px;
+  font-weight: 800;
+  -webkit-text-stroke: 3px rgb(18 8 30 / 0.9);
+  paint-order: stroke fill;
+}
+
+.ts-name small {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--gold-1);
+}
+
+/* ---- 中央: 扇・ロゴ・デッキ ---- */
+.ts-main {
+  flex: 1;
+  width: min(100%, 480px);
+  padding: 8px 16px 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  text-align: center;
+}
+
+.ts-fan {
+  position: relative;
+  width: 300px;
+  height: 178px;
+  margin-bottom: 2px;
+}
+
+.ts-fan::before {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 46%;
+  width: 280px;
+  height: 280px;
+  translate: -50% -50%;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgb(255 214 110 / 0.5), rgb(255 160 60 / 0.12) 55%, transparent 72%);
+  animation: ts-glow 3.2s ease-in-out infinite;
+}
+
+@keyframes ts-glow {
+  50% {
+    scale: 1.12;
+    opacity: 0.75;
+  }
+}
+
+.ts-card {
+  position: absolute;
+  top: 18px;
+  left: 50%;
+  width: 104px;
+  margin-left: -52px;
+  aspect-ratio: 68 / 84;
+  filter: drop-shadow(0 8px 8px rgb(0 0 0 / 0.45));
+}
+
+.ts-card-l {
+  transform: translateX(-74px) rotate(-13deg);
+}
+
+.ts-card-r {
+  transform: translateX(74px) rotate(13deg);
+}
+
+.ts-card-c {
+  top: 2px;
+  width: 124px;
+  margin-left: -62px;
+  z-index: 1;
+  animation: ts-float 3.2s ease-in-out infinite;
+}
+
+@keyframes ts-float {
+  50% {
+    translate: 0 -7px;
+  }
+}
+
+.ts-logo {
+  margin: 0;
+  font-size: 38px;
+  font-weight: 900;
+  letter-spacing: 0.06em;
+  line-height: 1.15;
+  background: linear-gradient(#fff6cf, var(--gold-2) 55%, #e08a10);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  filter: drop-shadow(0 3px 0 #4a2a00) drop-shadow(0 0 1px #4a2a00) drop-shadow(0 0 12px rgb(255 190 60 / 0.55));
+}
+
+.ts-sub {
+  margin: 0 0 6px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #e8e0ff;
+  text-shadow: 0 1px 3px rgb(0 0 0 / 0.8);
+}
+
+/* デッキの一覧（押すとデッキ画面） */
+.ts-deck {
+  width: 100%;
+  padding: 8px 10px 10px;
+  border: 3px solid var(--gold-2);
+  border-radius: 16px;
+  background:
+    repeating-linear-gradient(135deg, rgb(255 255 255 / 0.035) 0 6px, transparent 6px 12px),
+    linear-gradient(rgb(52 41 106 / 0.94), rgb(26 19 56 / 0.94));
+  box-shadow: 0 0 0 2px var(--navy-3), 0 6px 14px rgb(0 0 0 / 0.4), inset 0 2px 0 rgb(255 240 190 / 0.4);
+  color: #fff;
+  font: inherit;
+  cursor: pointer;
+  transition: transform 0.15s var(--ease);
+}
+
+.ts-deck:active {
+  transform: scale(0.98);
+}
+
+.ts-deck-title {
+  display: block;
+  margin-bottom: 6px;
+  text-align: left;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  color: var(--gold-1);
+}
+
+.ts-deck-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 7px 6px;
+}
+
+.ts-deck-card {
+  position: relative;
+  display: block;
+  aspect-ratio: 68 / 84;
+}
+
+/* ---- 下: 難易度・バトル・タブ ---- */
+.ts-bottom {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+
+.ts-levels {
+  width: min(calc(100% - 32px), 360px);
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 4px;
+  padding: 4px;
+  border: 2px solid rgb(246 197 72 / 0.6);
+  border-radius: 999px;
+  background: rgb(10 6 30 / 0.72);
+}
+
+.ts-level {
+  padding: 8px 0;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: #d8d0f4;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 800;
+  cursor: pointer;
+  transition: background-color 0.15s var(--ease), color 0.15s var(--ease);
+}
+
+.ts-level.is-on {
+  background: linear-gradient(#ffe98a, var(--gold-2) 60%, #d89410);
+  color: #3a2300;
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.7), 0 2px 0 rgb(0 0 0 / 0.35);
+}
+
+/* 大きな黄色の「バトル」（クラロワの顔） */
+.ts-battle {
+  position: relative;
+  width: min(calc(100% - 32px), 360px);
+  height: 76px;
+  overflow: hidden;
+  border: 4px solid #6b3f00;
+  border-radius: 18px;
+  background: linear-gradient(#fff08a 0%, #ffc928 45%, #f09a00 100%);
+  box-shadow: 0 7px 0 #a85d00, 0 12px 18px rgb(0 0 0 / 0.5), inset 0 3px 0 rgb(255 255 255 / 0.7);
+  cursor: pointer;
+  font: inherit;
+  transition: transform 0.08s ease, box-shadow 0.08s ease;
+}
+
+.ts-battle span {
+  position: relative;
+  font-size: 32px;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  color: #fff;
+  -webkit-text-stroke: 6px #6b3f00;
+  paint-order: stroke fill;
+  text-shadow: 0 3px 0 rgb(107 63 0 / 0.6);
+}
+
+.ts-battle::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: -40%;
+  width: 28%;
+  background: linear-gradient(105deg, transparent, rgb(255 255 255 / 0.55), transparent);
+  animation: ts-shine 3.2s ease-in-out infinite;
+  pointer-events: none;
+}
+
+@keyframes ts-shine {
+  0%,
+  55% {
+    left: -40%;
+  }
+  100% {
+    left: 130%;
+  }
+}
+
+.ts-battle:active {
+  transform: translateY(5px);
+  box-shadow: 0 2px 0 #a85d00, 0 4px 8px rgb(0 0 0 / 0.5), inset 0 3px 0 rgb(255 255 255 / 0.7);
+}
+
+/* ---- タブ ---- */
+.tabbar {
+  width: 100%;
+  position: sticky;
+  bottom: 0;
+  z-index: 5;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  padding-bottom: env(safe-area-inset-bottom);
+  background: linear-gradient(#2a2058, #140e30);
+  border-top: 3px solid var(--gold-2);
+  box-shadow: 0 -6px 16px rgb(0 0 0 / 0.5), inset 0 2px 0 rgb(255 240 190 / 0.35);
+}
+
+.ts > .tabbar {
+  position: sticky;
+}
+
+.tab {
+  display: grid;
+  justify-items: center;
+  align-content: end;
+  gap: 2px;
+  height: 66px;
+  padding: 0 0 7px;
+  border: 0;
+  background: transparent;
+  color: #b9b0e0;
+  font: inherit;
+  cursor: pointer;
+  transition: background-color 0.15s var(--ease);
+}
+
+.tab-icon {
+  width: 30px;
+  height: 30px;
+  display: grid;
+  place-items: center;
+  transition: transform 0.2s var(--ease);
+}
+
+.tab-icon svg {
+  width: 100%;
+  height: 100%;
+  filter: drop-shadow(0 2px 0 rgb(0 0 0 / 0.4));
+}
+
+.tab-label {
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+}
+
+.tab.is-active {
+  background: linear-gradient(#5b46bb, #34296a);
+  color: var(--gold-1);
+  box-shadow: inset 0 2px 0 rgb(255 255 255 / 0.25);
+}
+
+.tab.is-active .tab-icon {
+  transform: translateY(-5px) scale(1.25);
+}
+
+.tab:active .tab-icon {
+  transform: scale(0.9);
+}
+
+/* ---- デッキ画面 ---- */
+.dk-top {
+  width: min(100%, 480px);
+  padding: calc(16px + env(safe-area-inset-top)) 16px 10px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.dk-title {
+  margin: 0;
+  font-size: 30px;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  background: linear-gradient(#fff6cf, var(--gold-2) 55%, #e08a10);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  filter: drop-shadow(0 3px 0 #4a2a00) drop-shadow(0 0 1px #4a2a00);
+}
+
+.dk-avg {
+  padding: 5px 14px;
+  border: 2px solid var(--gold-2);
+  border-radius: 999px;
+  background: linear-gradient(var(--navy-1), var(--navy-2));
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--gold-1);
+}
+
+.dk-avg b {
+  margin-left: 4px;
+  font-size: 17px;
+  color: #fff;
+}
+
+.dk .deck-main {
+  flex: 1;
+  width: min(100%, 480px);
+  max-width: none;
+  padding: 0 14px 22px;
+}
+
+.dk .collection-title {
+  color: var(--gold-1);
+  letter-spacing: 0.08em;
+  -webkit-text-stroke: 3px rgb(18 8 30 / 0.9);
+  paint-order: stroke fill;
+}
+
+.dk .deck-swap {
+  color: #fff;
+}
+
+/* デッキ画面は画面に固定し、中身だけスクロールする（タブは常に下） */
+.dk {
+  height: 100dvh;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.dk .deck-main {
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.dk .tabbar {
+  position: relative;
+}

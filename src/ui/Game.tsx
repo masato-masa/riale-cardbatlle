@@ -28,6 +28,7 @@ import {
   type Unit,
 } from '@/game/engine';
 import { makeRng } from '@/game/rng';
+import { addResult } from '@/storage/profile';
 import { COIN_MAX, DOUBLE_COIN_FROM_MS, FIELD_SLOTS, MATCH_MS, WINDUP_MS } from '@/game/rules';
 
 import { COIN_URL, FIELD_URL, HERO_FOE_URL, HERO_ME_URL } from './art';
@@ -373,6 +374,7 @@ export function Game({ level, deck, onExit }: { level: CpuLevel; deck: CardId[];
       if (e.kind === 'pulse') flash(unitEl(e.uid));
       if (e.kind === 'end') {
         const r = gameRef.current.result;
+        addResult(r?.winner ?? null);
         if (r?.winner === 0) {
           playWin();
           hapticWin();

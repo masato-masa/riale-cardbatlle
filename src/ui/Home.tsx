@@ -1,70 +1,103 @@
-import { AnimatePresence } from 'motion/react';
 import { useState } from 'react';
 
 import type { CpuLevel } from '@/ai/cpu';
+import type { CardId } from '@/game/cards';
+import { loadLevel, loadRecord, saveLevel } from '@/storage/profile';
 
+import { FIELD_URL, HERO_ME_URL } from './art';
 import { CardFace } from './CardFace';
-import { SettingsIcon } from './icons';
-import { SettingsSheet } from './SettingsSheet';
 import { playUiTap, primeAudio } from './sound';
+import { TabBar } from './TabBar';
 
-export function Home({ onStart, onDeck }: { onStart: (level: CpuLevel) => void; onDeck: () => void }) {
-  const [settings, setSettings] = useState(false);
-  const start = (level: CpuLevel) => {
+const LEVELS: { id: CpuLevel; label: string }[] = [
+  { id: 'easy', label: 'よわい' },
+  { id: 'normal', label: 'ふつう' },
+  { id: 'hard', label: 'つよい' },
+];
+
+/** ホーム（クラロワ型）。上=自分の札、中央=ロゴとデッキ、下=難易度・大きな「バトル」・タブ。 */
+export function Home({ deck, onStart, onDeck }: { deck: CardId[]; onStart: (level: CpuLevel) => void; onDeck: () => void }) {
+  const [level, setLevel] = useState<CpuLevel>(loadLevel);
+  const record = loadRecord();
+  const pick = (l: CpuLevel) => {
+    playUiTap();
+    saveLevel(l);
+    setLevel(l);
+  };
+  const start = () => {
     primeAudio();
     playUiTap();
     onStart(level);
   };
   return (
-    <div className="app app-home">
-      <div className="home-top">
-        <button
-          className="icon-btn"
-          aria-label="設定"
-          onClick={() => {
-            playUiTap();
-            setSettings(true);
-          }}
-        >
-          <SettingsIcon />
-        </button>
-      </div>
-      <div className="home">
-        <div className="home-art home-fan" aria-hidden="true">
-          <div className="fan-card fan-l">
+    <div className="ts" style={{ backgroundImage: `url(${FIELD_URL})` }}>
+      <header className="ts-top">
+        <div className="ts-player">
+          <span className="ts-medal">
+            <img src={HERO_ME_URL} alt="" draggable={false} />
+          </span>
+          <span className="ts-name">
+            <b>あなた</b>
+            <small>
+              {record.win} 勝 {record.lose} 敗
+            </small>
+          </span>
+        </div>
+      </header>
+
+      <main className="ts-main">
+        <div className="ts-fan" aria-hidden="true">
+          <div className="ts-card ts-card-l">
             <CardFace card="guard" />
           </div>
-          <div className="fan-card fan-c">
-            <CardFace card="boss" />
-          </div>
-          <div className="fan-card fan-r">
+          <div className="ts-card ts-card-r">
             <CardFace card="inspector" />
           </div>
+          <div className="ts-card ts-card-c">
+            <CardFace card="boss" />
+          </div>
         </div>
-        <h1 className="home-title">リアルカードバトル</h1>
-        <p className="home-sub">時間でたまるコインでカードを出し、相手の HP を 0 に</p>
-        <div className="home-buttons">
-          <button className="home-btn primary" onClick={() => start('normal')}>
-            CPU と対戦（ふつう）
-          </button>
-          <button
-            className="home-btn"
-            onClick={() => {
-              playUiTap();
-              onDeck();
-            }}
-          >
-            デッキ・カード一覧
-          </button>
-          <button className="home-btn" onClick={() => start('easy')}>
-            よわい CPU
-          </button>
-          <button className="home-btn" onClick={() => start('hard')}>
-            つよい CPU
-          </button>
+        <h1 className="ts-logo">リアルカードバトル</h1>
+        <p className="ts-sub">時間でたまるコインでカードを出し、相手の HP を 0 に</p>
+
+        <button
+          className="ts-deck"
+          onClick={() => {
+            playUiTap();
+            onDeck();
+          }}
+          aria-label="デッキを見る"
+        >
+          <span className="ts-deck-title">あなたのデッキ</span>
+          <span className="ts-deck-grid">
+            {deck.map((id) => (
+              <span key={id} className="ts-deck-card">
+                <CardFace card={id} small />
+              </span>
+            ))}
+          </span>
+        </button>
+      </main>
+
+      <footer className="ts-bottom">
+        <div className="ts-levels" role="radiogroup" aria-label="CPU のつよさ">
+          {LEVELS.map((l) => (
+            <button
+              key={l.id}
+              role="radio"
+              aria-checked={level === l.id}
+              className={`ts-level${level === l.id ? ' is-on' : ''}`}
+              onClick={() => pick(l.id)}
+            >
+              {l.label}
+            </button>
+          ))}
         </div>
-      </div>
-      <AnimatePresence>{settings ? <SettingsSheet key="s" onClose={() => setSettings(false)} /> : null}</AnimatePresence>
+        <button className="ts-battle" onClick={start}>
+          <span>バトル！</span>
+        </button>
+        <TabBar active="battle" onDeck={onDeck} onBattle={() => undefined} />
+      </footer>
     </div>
   );
 }

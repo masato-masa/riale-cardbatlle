@@ -11,6 +11,7 @@ import './ui/shared/tokens.css';
 import './ui/shared/chrome.css';
 import './ui/styles.css';
 import './ui/polish.css';
+import './ui/title.css';
 
 type Screen = { kind: 'home' } | { kind: 'deck' } | { kind: 'game'; level: CpuLevel };
 
@@ -19,5 +20,5 @@ export function App() {
   const [deck, setDeck] = useState<CardId[]>(loadDeck);
   if (screen.kind === 'game') return <Game level={screen.level} deck={deck} onExit={() => setScreen({ kind: 'home' })} />;
   if (screen.kind === 'deck') return <DeckScreen deck={deck} onChange={setDeck} onBack={() => setScreen({ kind: 'home' })} />;
-  return <Home onStart={(level) => setScreen({ kind: 'game', level })} onDeck={() => setScreen({ kind: 'deck' })} />;
+  return <Home deck={deck} onStart={(level) => setScreen({ kind: 'game', level })} onDeck={() => setScreen({ kind: 'deck' })} />;
 }
