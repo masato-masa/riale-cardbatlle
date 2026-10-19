@@ -31,6 +31,16 @@ export function Home({ deck, onStart, onDeck }: { deck: CardId[]; onStart: (leve
   };
   return (
     <div className="ts" style={{ backgroundImage: `url(${FIELD_URL})` }}>
+      <button
+        className="ts-dev"
+        onClick={() => {
+          playUiTap();
+          // サウンドの確認ページ（?sounds）へ
+          window.location.search = '?sounds';
+        }}
+      >
+        テスト用
+      </button>
       <header className="ts-top">
         <div className="ts-player">
           <span className="ts-medal">

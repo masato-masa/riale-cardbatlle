@@ -6,14 +6,17 @@
 // 設定で切ってある場合は、何もせず黙って続行する（例外を投げない）。
 // 直前の音から近すぎる音は間引く（勝ち負け・合図は必ず鳴らす）。
 
-import { getGraph } from './audio-graph';
+import { getGraph, whenGraphCreated } from './audio-graph';
 import { stopBgm } from './bgm';
 import { isSoundEnabled } from './settings';
 import { dbToGain, shouldPlay } from './sound-plan';
+import { chooseBuffer, loadSamples, sampleTrimDb } from './samples';
 import { VOICES, VOICE_TRIM_DB, type VoiceName } from './sfx-voices';
 
+whenGraphCreated((g) => loadSamples(g.ctx));
+
 /** 呼び出し全体を try/catch で包む。鳴らせなくても例外は外に出さない。 */
-function play(name: VoiceName, force = false): void {
+function play(name: VoiceName, force = false, variant?: number): void {
   if (!isSoundEnabled()) return;
   const now = performance.now();
   if (!shouldPlay(now, lastPlayedAt, force)) return;
@@ -21,6 +24,19 @@ function play(name: VoiceName, force = false): void {
   try {
     const g = getGraph();
     if (!g) return;
+    // 録音（ElevenLabs の候補）があればそれを、無ければ合成音を鳴らす
+    const buf = chooseBuffer(name, variant);
+    if (buf) {
+      const src = g.ctx.createBufferSource();
+      src.buffer = buf;
+      src.playbackRate.value = 1 + (Math.random() * 2 - 1) * 0.03; // 鳴らすたびにわずかに音程をゆらす
+      const amp = g.ctx.createGain();
+      amp.gain.value = dbToGain(sampleTrimDb(name)) * (0.92 + Math.random() * 0.16);
+      src.connect(amp);
+      amp.connect(g.sfxBus);
+      src.start(g.ctx.currentTime + 0.005);
+      return;
+    }
     // 音ごとの補正（VOICE_TRIM_DB）を掛けてから効果音バスへ
     const trim = g.ctx.createGain();
     trim.gain.value = dbToGain(VOICE_TRIM_DB[name]);
@@ -86,4 +102,4 @@ export function playLose(): void {
 }
 
 /** サウンドテスト画面用: 名前を指定して鳴らす（間引きなし）。 */
-export const playVoice = (name: VoiceName): void => play(name, true);
+export const playVoice = (name: VoiceName, variant?: number): void => play(name, true, variant);
