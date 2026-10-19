@@ -2,6 +2,8 @@
 
 /** プレイヤーの HP。 */
 export const PLAYER_HP = 20;
+/** プレイヤーの攻撃力。プレイヤーを攻撃したユニットは、この分の反撃を受ける（遠隔は受けない）。 */
+export const PLAYER_ATK = 2;
 /** 試合の長さ（ms）。 */
 export const MATCH_MS = 180_000;
 /** この時刻（ms）からコインが 2 倍速になる。 */

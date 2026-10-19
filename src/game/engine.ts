@@ -12,6 +12,7 @@ import {
   FIELD_SLOTS,
   HAND_SIZE,
   MATCH_MS,
+  PLAYER_ATK,
   PLAYER_HP,
   WINDUP_MS,
 } from './rules';
@@ -529,6 +530,8 @@ function applyAttack(d: Draft, p: PlayerIndex, uid: number, target: Target): boo
   d.events.push({ kind: 'attack', p, uid, target });
   if (!hit) {
     hurtPlayer(d, q, atk + (ab.faceBonus ?? 0));
+    // プレイヤーも反撃する（攻撃力 PLAYER_ATK）。遠隔は受けない
+    if (!ab.ranged) hurtUnit(d, p, unit, PLAYER_ATK);
   } else {
     // 反撃は殴られる前の値で決まる（同時にぶつかる）。討伐は攻撃時だけで、反撃には乗らない
     const back = attackOf(foe, hit);

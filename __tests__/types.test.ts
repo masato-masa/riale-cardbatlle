@@ -70,7 +70,8 @@ const fill = (s: GameState, p: PlayerIndex, card: CardId, from = 0): GameState =
 
 describe('クールタイム（カードごと）', () => {
   it('攻撃したユニットは、そのカードの cd 後まで攻撃できない（カードごとに違う）', () => {
-    for (const card of ['herald', 'spy', 'boss'] as CardId[]) {
+    // プレイヤーの反撃（2）で倒れない HP のカードで確かめる
+    for (const card of ['craftsman', 'inspector', 'boss'] as CardId[]) {
       const [s, u] = place(withHand(HAND4), 0, 0, card);
       const n = hit(s, 0, u.uid, FACE);
       expect(findUnit(n.players[0], u.uid)!.unit.readyAt).toBe(s.time + CARDS[card].cd);

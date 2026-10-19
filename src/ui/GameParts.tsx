@@ -1,5 +1,5 @@
 import { abilityLines, CARDS, TYPE_NAME, usageNote, WALL_TEXT, type CardId } from '@/game/cards';
-import { PLAYER_HP } from '@/game/rules';
+import { PLAYER_ATK, PLAYER_HP } from '@/game/rules';
 
 import { CardFace } from './CardFace';
 
@@ -8,6 +8,9 @@ export function HeroBadge({ hp, label, walled }: { hp: number; label: string; wa
   return (
     <span className={`hero-badge${ratio <= 0.3 ? ' is-low' : ''}`}>
       <span className="hero-label">{label}</span>
+      <span className="hero-atk" aria-label={`攻撃力 ${PLAYER_ATK}（攻撃されたら反撃する）`}>
+        {PLAYER_ATK}
+      </span>
       <span className="hero-hp">
         <HeartMark />
         <b>{hp}</b>

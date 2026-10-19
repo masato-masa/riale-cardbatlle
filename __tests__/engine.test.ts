@@ -23,6 +23,7 @@ import {
   DOUBLE_COIN_FROM_MS,
   FIELD_SLOTS,
   MATCH_MS,
+  PLAYER_ATK,
   PLAYER_HP,
   WINDUP_MS,
 } from '../src/game/rules';
@@ -238,12 +239,15 @@ describe('攻撃', () => {
     expect(me.readyAt).toBe(n.time - WINDUP_MS + CARDS.guard.cd);
     expect(tick(n, 60_000).players[0].field[0]!.hp).toBe(CARDS.guard.hp - CARDS.herald.atk);
   });
-  it('プレイヤー攻撃は反撃なし、HP は 0 未満にならない', () => {
+  it('プレイヤーも攻撃力 PLAYER_ATK で反撃する（遠隔は受けない）。HP は 0 未満にならない', () => {
     let s = withHand(['herald', 'herald', 'herald', 'herald']);
-    let a: Unit;
+    let a: Unit, r: Unit;
     [s, a] = place(s, 0, 0, 'architect');
+    [s, r] = place(s, 0, 1, 'inspector');
     const n = step(s, { type: 'attack', p: 0, uid: a.uid, target: { kind: 'player' } });
-    expect(findUnit(n.players[0], a.uid)!.unit.hp).toBe(CARDS.architect.hp);
+    expect(findUnit(n.players[0], a.uid)!.unit.hp).toBe(CARDS.architect.hp - PLAYER_ATK);
+    const nr = step(s, { type: 'attack', p: 0, uid: r.uid, target: { kind: 'player' } });
+    expect(findUnit(nr.players[0], r.uid)!.unit.hp).toBe(CARDS.inspector.hp);
     expect(n.players[1].hp).toBe(PLAYER_HP - CARDS.architect.atk);
     const low: GameState = { ...n, players: [n.players[0], { ...n.players[1], hp: 2 }] };
     const dead = step({ ...low, time: 99_999 }, { type: 'attack', p: 0, uid: a.uid, target: { kind: 'player' } });

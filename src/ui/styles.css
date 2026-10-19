@@ -1113,3 +1113,19 @@ body {
 .slot.is-replace .unit {
   filter: grayscale(0.7) brightness(0.7);
 }
+
+/* プレイヤーの攻撃力（攻撃されたら反撃する）。カードの攻撃力と同じ赤い四角 */
+.hero-atk {
+  min-width: 24px;
+  height: 24px;
+  display: grid;
+  place-items: center;
+  padding: 0 4px;
+  border: 1.5px solid var(--ink);
+  border-radius: 6px;
+  background: var(--atk);
+  color: #fff;
+  font-size: 15px;
+  font-weight: 800;
+  text-shadow: 0 1px 0 rgb(0 0 0 / 0.55);
+}
