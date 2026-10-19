@@ -177,6 +177,8 @@ export function Game({ level, deck, onExit }: { level: CpuLevel; deck: CardId[];
   const [detail, setDetail] = useState<{ card: CardId; hp?: number } | null>(null);
   const pausedRef = useRef(false);
   pausedRef.current = detail !== null;
+  /** 開始の演出（VS）のあいだは時間を進めない。 */
+  const introRef = useRef(true);
 
   const commit = useCallback((s: GameState) => {
     gameRef.current = s;
@@ -191,7 +193,7 @@ export function Game({ level, deck, onExit }: { level: CpuLevel; deck: CardId[];
       const dt = Math.min(100, now - last);
       last = now;
       const cur = gameRef.current;
-      if (!pausedRef.current && !cur.result) {
+      if (!pausedRef.current && !introRef.current && !cur.result) {
         let s = step(cur, { type: 'tick', dt });
         const r = cpuStep(s, 1, brainRef.current, level, randRef.current);
         brainRef.current = r.brain;
@@ -256,7 +258,11 @@ export function Game({ level, deck, onExit }: { level: CpuLevel; deck: CardId[];
   const [intro, setIntro] = useState(true);
   useEffect(() => {
     setIntro(true);
-    const t = window.setTimeout(() => setIntro(false), 1500);
+    introRef.current = true;
+    const t = window.setTimeout(() => {
+      introRef.current = false;
+      setIntro(false);
+    }, 2000);
     return () => window.clearTimeout(t);
   }, [seed]);
 
@@ -1014,19 +1020,48 @@ export function Game({ level, deck, onExit }: { level: CpuLevel; deck: CardId[];
             key="intro"
             className="intro"
             aria-hidden="true"
-            initial={{ opacity: 1 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0, pointerEvents: 'none', transition: { duration: 0.3 } }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1, transition: { duration: 0.15 } }}
+            exit={{ opacity: 0, pointerEvents: 'none', transition: { duration: 0.35 } }}
           >
+            <div className="intro-duel">
+              <motion.div
+                className="intro-side is-me"
+                initial={{ x: -260, opacity: 0 }}
+                animate={{ x: 0, opacity: 1, transition: { type: 'spring', stiffness: 260, damping: 22, delay: 0.1 } }}
+              >
+                <span className="intro-medal">
+                  <img src={HERO_ME_URL} alt="" draggable={false} />
+                </span>
+                <b>あなた</b>
+              </motion.div>
+              <motion.span
+                className="intro-vs"
+                initial={{ scale: 3, opacity: 0, rotate: -12 }}
+                animate={{ scale: 1, opacity: 1, rotate: 0, transition: { delay: 0.45, type: 'spring', stiffness: 500, damping: 16 } }}
+              >
+                VS
+              </motion.span>
+              <motion.div
+                className="intro-side is-foe"
+                initial={{ x: 260, opacity: 0 }}
+                animate={{ x: 0, opacity: 1, transition: { type: 'spring', stiffness: 260, damping: 22, delay: 0.1 } }}
+              >
+                <span className="intro-medal">
+                  <img src={HERO_FOE_URL} alt="" draggable={false} />
+                </span>
+                <b>あいて</b>
+              </motion.div>
+            </div>
             <motion.div
               className="intro-band"
               initial={{ scaleY: 0 }}
-              animate={{ scaleY: 1, transition: { type: 'spring', stiffness: 420, damping: 30 } }}
+              animate={{ scaleY: 1, transition: { delay: 0.75, type: 'spring', stiffness: 420, damping: 30 } }}
             >
               <motion.span
                 className="intro-text"
                 initial={{ x: 140, opacity: 0, scale: 1.3 }}
-                animate={{ x: 0, opacity: 1, scale: 1, transition: { delay: 0.12, type: 'spring', stiffness: 360, damping: 22 } }}
+                animate={{ x: 0, opacity: 1, scale: 1, transition: { delay: 0.85, type: 'spring', stiffness: 360, damping: 22 } }}
               >
                 バトル開始！
               </motion.span>
@@ -1081,15 +1116,49 @@ export function Game({ level, deck, onExit }: { level: CpuLevel; deck: CardId[];
               initial={{ scale: 0.7, y: 20 }}
               animate={{ scale: 1, y: 0, transition: { delay: 0.5, type: 'spring', stiffness: 380, damping: 22 } }}
             >
-              <p className={`result-title is-${game.result.winner === 0 ? 'win' : game.result.winner === null ? 'draw' : 'lose'}`}>
-                {game.result.winner === 0 ? 'かち！' : game.result.winner === null ? 'ひきわけ' : 'まけ…'}
-              </p>
-              <p className="result-sub">
-                {game.result.reason === 'time' ? '時間切れ' : 'HP が 0 になった'}　あなた {me.hp} / あいて {foe.hp}
-              </p>
+              {(() => {
+                const w = game.result.winner;
+                const tone = w === 0 ? 'win' : w === null ? 'draw' : 'lose';
+                const stars = w === 0 ? 3 : w === null ? 1 : 0;
+                return (
+                  <>
+                    <div className={`result-ribbon is-${tone}`}>
+                      <p className={`result-title is-${tone}`}>{w === 0 ? 'かち！' : w === null ? 'ひきわけ' : 'まけ…'}</p>
+                    </div>
+                    <div className="result-stars" aria-hidden="true">
+                      {[0, 1, 2].map((i) => (
+                        <motion.svg
+                          key={i}
+                          viewBox="0 0 32 32"
+                          className={`result-star${i < stars ? ' is-lit' : ''}`}
+                          initial={{ scale: 0, rotate: -40 }}
+                          animate={{ scale: 1, rotate: 0, transition: { delay: 0.9 + i * 0.18, type: 'spring', stiffness: 420, damping: 14 } }}
+                        >
+                          <path d="M16 2.5 L20.2 11.2 L29.6 12.4 L22.7 19 L24.5 28.4 L16 23.8 L7.5 28.4 L9.3 19 L2.4 12.4 L11.8 11.2 Z" />
+                        </motion.svg>
+                      ))}
+                    </div>
+                    <div className="result-duel">
+                      <span className="result-side is-me">
+                        <span className="result-medal">
+                          <img src={HERO_ME_URL} alt="" draggable={false} />
+                        </span>
+                        <b>{me.hp}</b>
+                      </span>
+                      <span className="result-vs">{game.result.reason === 'time' ? '時間切れ' : 'VS'}</span>
+                      <span className="result-side is-foe">
+                        <span className="result-medal">
+                          <img src={HERO_FOE_URL} alt="" draggable={false} />
+                        </span>
+                        <b>{foe.hp}</b>
+                      </span>
+                    </div>
+                  </>
+                );
+              })()}
               <div className="result-buttons">
                 <button
-                  className="home-btn primary"
+                  className="res-btn is-gold"
                   onClick={() => {
                     playUiTap();
                     restart();
@@ -1098,7 +1167,7 @@ export function Game({ level, deck, onExit }: { level: CpuLevel; deck: CardId[];
                   もう一度
                 </button>
                 <button
-                  className="home-btn"
+                  className="res-btn"
                   onClick={() => {
                     playUiTap();
                     onExit();
