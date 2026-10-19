@@ -34,7 +34,7 @@ import { COIN_MAX, DOUBLE_COIN_FROM_MS, FIELD_SLOTS, MATCH_MS, WINDUP_MS } from 
 import { COIN_URL, FIELD_URL, HERO_FOE_URL, HERO_ME_URL } from './art';
 import { setBgmTension, startBgm, stopBgm } from './bgm';
 import { CardFace, type CardState } from './CardFace';
-import { CardDetail, HeroBadge } from './GameParts';
+import { CardDetail, HelpBody, HeroBadge } from './GameParts';
 import { hapticImpact, hapticLose, hapticReady, hapticReject, hapticUseCard, hapticWin } from './haptics';
 import { Sheet } from './Sheets';
 import {
@@ -175,8 +175,10 @@ export function Game({ level, deck, onExit }: { level: CpuLevel; deck: CardId[];
   const randRef = useRef(makeRng(seed ^ 0x9e3779b9));
   /** 長押しで開いたカードの説明。開いている間は止める。 */
   const [detail, setDetail] = useState<{ card: CardId; hp?: number } | null>(null);
+  /** 対戦中のメニュー（止めてから、つづける・あそびかた・やり直し・ホームへ）。 */
+  const [menu, setMenu] = useState<'menu' | 'help' | null>(null);
   const pausedRef = useRef(false);
-  pausedRef.current = detail !== null;
+  pausedRef.current = detail !== null || menu !== null;
   /** 開始の演出（VS）のあいだは時間を進めない。 */
   const introRef = useRef(true);
 
@@ -864,6 +866,20 @@ export function Game({ level, deck, onExit }: { level: CpuLevel; deck: CardId[];
           </div>
         </div>
 
+        <button
+          className="menu-btn"
+          aria-label="メニュー"
+          onClick={() => {
+            playUiTap();
+            setMenu('menu');
+          }}
+        >
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <rect x="6" y="5" width="4.2" height="14" rx="1.4" />
+            <rect x="13.8" y="5" width="4.2" height="14" rx="1.4" />
+          </svg>
+        </button>
+
         <div className="tray" ref={trayRef}>
           <div className={`coin-gauge${coinInt >= COIN_MAX ? ' is-full' : ''}`} aria-label={`コイン ${coinInt}`}>
             <span className="coin-count">
@@ -1178,6 +1194,41 @@ export function Game({ level, deck, onExit }: { level: CpuLevel; deck: CardId[];
               </div>
             </motion.div>
           </motion.div>
+        ) : null}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {menu === 'menu' ? (
+          <Sheet key="menu" title="一時停止" onClose={() => setMenu(null)}>
+            <div className="sheet-buttons">
+              <button className="sheet-btn" onClick={() => setMenu(null)}>
+                つづける
+              </button>
+              <button className="sheet-btn quiet" onClick={() => setMenu('help')}>
+                あそびかた
+              </button>
+              <button
+                className="sheet-btn quiet"
+                onClick={() => {
+                  setMenu(null);
+                  restart();
+                }}
+              >
+                さいしょからやり直す
+              </button>
+              <button className="sheet-btn quiet" onClick={onExit}>
+                ホームへもどる
+              </button>
+            </div>
+          </Sheet>
+        ) : null}
+        {menu === 'help' ? (
+          <Sheet key="help" title="あそびかた" onClose={() => setMenu('menu')}>
+            <HelpBody />
+            <button className="sheet-btn" onClick={() => setMenu('menu')}>
+              もどる
+            </button>
+          </Sheet>
         ) : null}
       </AnimatePresence>
 

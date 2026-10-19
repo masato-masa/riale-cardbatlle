@@ -1242,3 +1242,49 @@
   color: transparent;
   filter: drop-shadow(0 3px 0 #4a2a00) drop-shadow(0 0 12px rgb(255 190 60 / 0.8));
 }
+
+/* 盤面は縦に伸びて、余った高さは仕切りの周り（川にあたる幅）に回す */
+.arena {
+  max-height: 700px;
+}
+
+/* 手札: 押すとへこみ、持ち上げると影が伸びる（クラロワの手札の手触り） */
+.hand-card .face {
+  transition: transform 0.12s var(--ease), box-shadow 0.12s var(--ease);
+}
+
+.hand-card:active .face {
+  transform: translateY(3px) scale(0.95);
+}
+
+.hand-card.is-lifted .face {
+  transform: translateY(-6px) scale(1.04);
+}
+
+/* 一時停止ボタン（左上、時計の下） */
+.menu-btn {
+  position: absolute;
+  left: 12px;
+  top: calc(60px + env(safe-area-inset-top));
+  width: 40px;
+  height: 40px;
+  display: grid;
+  place-items: center;
+  border: 2px solid var(--gold-2);
+  border-radius: 50%;
+  background: linear-gradient(var(--navy-1), var(--navy-2));
+  box-shadow: 0 0 0 2px var(--navy-3), 0 3px 0 rgb(0 0 0 / 0.45);
+  cursor: pointer;
+  z-index: 3;
+  transition: transform 0.1s ease;
+}
+
+.menu-btn svg {
+  width: 20px;
+  height: 20px;
+  fill: var(--gold-1);
+}
+
+.menu-btn:active {
+  transform: scale(0.9);
+}

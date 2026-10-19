@@ -451,3 +451,91 @@ body {
 .dk .tabbar {
   position: relative;
 }
+
+/* ---- シート・設定・説明（共通のシートを、このゲームの紫と金に上書き） ---- */
+.overlay {
+  background: rgb(8 4 22 / 0.7);
+}
+
+.sheet {
+  border: 3px solid var(--gold-2);
+  background:
+    repeating-linear-gradient(135deg, rgb(255 255 255 / 0.03) 0 6px, transparent 6px 12px),
+    linear-gradient(#34296a, #1a1338);
+  box-shadow: 0 0 0 2px var(--navy-3), 0 14px 34px rgb(0 0 0 / 0.55), inset 0 2px 0 rgb(255 240 190 / 0.35);
+  color: #fff;
+}
+
+.sheet-title {
+  color: var(--gold-1);
+  letter-spacing: 0.08em;
+  -webkit-text-stroke: 4px rgb(18 8 30 / 0.9);
+  paint-order: stroke fill;
+}
+
+.sheet-subtitle,
+.help-list,
+.card-detail-text,
+.card-detail-note {
+  color: #e8e0ff;
+}
+
+.card-detail-stats dt {
+  color: #b9b0e0;
+}
+
+.card-detail-stats dd {
+  color: #fff;
+}
+
+.sheet-row {
+  background: rgb(255 255 255 / 0.08);
+  color: #fff;
+}
+
+.sheet-row:hover,
+.sheet-row:active {
+  background: rgb(255 255 255 / 0.14);
+}
+
+.switch[aria-checked='false'] {
+  background: #4a4170;
+}
+
+.switch[aria-checked='true'] {
+  background: #f0b323;
+}
+
+.sheet-btn {
+  height: 50px;
+  border: 3px solid #6b3f00;
+  border-radius: 14px;
+  background: linear-gradient(#fff08a 0%, #ffc928 45%, #f09a00 100%);
+  box-shadow: 0 4px 0 #a85d00, inset 0 2px 0 rgb(255 255 255 / 0.7);
+  color: #fff;
+  font-size: 17px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  -webkit-text-stroke: 4px #6b3f00;
+  paint-order: stroke fill;
+}
+
+.sheet-btn:hover {
+  background: linear-gradient(#fff39c 0%, #ffd23c 45%, #f5a300 100%);
+}
+
+.sheet-btn:active {
+  transform: translateY(3px);
+  box-shadow: 0 1px 0 #a85d00;
+}
+
+.sheet-btn.quiet {
+  border: 3px solid var(--gold-2);
+  background: linear-gradient(var(--navy-1), var(--navy-2));
+  box-shadow: 0 4px 0 rgb(0 0 0 / 0.45), inset 0 2px 0 rgb(255 255 255 / 0.2);
+  -webkit-text-stroke: 0;
+}
+
+.sheet-btn.quiet:hover {
+  background: linear-gradient(#4a3d88, #241a52);
+}
