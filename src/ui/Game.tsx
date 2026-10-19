@@ -42,11 +42,14 @@ import {
   playDeath,
   playHeal,
   playHit,
+  playBattleStart,
   playHorn,
+  playPickup,
   playLose,
   playReady,
   playReject,
   playSelect,
+  playSpellCast,
   playStun,
   playSummon,
   playUiTap,
@@ -210,14 +213,14 @@ export function Game({ level, deck, onExit }: { level: CpuLevel; deck: CardId[];
 
   // ---- BGM ----
   useEffect(() => {
-    startBgm();
+    startBgm('battle');
     return () => stopBgm();
   }, []);
   const overtime = game.time >= DOUBLE_COIN_FROM_MS;
   const [overBanner, setOverBanner] = useState(false);
   useEffect(() => {
     if (!overtime) return;
-    setBgmTension(1);
+    setBgmTension(true);
     playHorn();
     setOverBanner(true);
     const t = window.setTimeout(() => setOverBanner(false), 2000);
@@ -265,6 +268,7 @@ export function Game({ level, deck, onExit }: { level: CpuLevel; deck: CardId[];
   useEffect(() => {
     setIntro(true);
     introRef.current = true;
+    playBattleStart();
     const t = window.setTimeout(() => {
       introRef.current = false;
       setIntro(false);
@@ -352,7 +356,7 @@ export function Game({ level, deck, onExit }: { level: CpuLevel; deck: CardId[];
       }
       if (e.kind === 'windup') {
         const x = e.pending;
-        if (x.kind === 'spell') playSummon(CARDS[x.card].summon);
+        if (x.kind === 'spell') playSpellCast();
         else if (x.kind === 'attack') playSelect();
         if (e.p === 0) hapticUseCard();
       }
@@ -592,6 +596,7 @@ export function Game({ level, deck, onExit }: { level: CpuLevel; deck: CardId[];
   const onPressStart = (e: ReactPointerEvent, p: { kind: 'hand'; index: number } | { kind: 'unit'; uid: number }) => {
     if (gameRef.current.result || pressRef.current) return;
     primeAudio();
+    if (p.kind === 'hand') playPickup();
     try {
       (e.currentTarget as Element).setPointerCapture(e.pointerId);
     } catch {

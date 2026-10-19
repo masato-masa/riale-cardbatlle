@@ -1,146 +1,89 @@
-// BGM。音声ファイルを持たず、WebAudio だけで合成する短いループ（ヘ長調・4/4・8 小節、sound-plan.ts の BGM_BARS）。
-// 柔らかいパッド（三角波の和音）＋ 8 分の分散和音 ＋ ベース（1・3 拍）＋ 2・4 拍のウッドブロック ＋ 裏拍のシェイカー。
+// BGM。音声ファイルを持たず、WebAudio だけで合成する 8 小節のループ（曲の定義は sound-plan.ts の SONGS）。
 //
-// - プレイ画面でだけ流す（Game / PvpGame が startBgm / stopBgm を呼ぶ）。ホームでは流さない。
-// - 効果音より -9dB のバス（BGM_BUS_DB）に流す。
-// - 残り手番が少ないとテンポを上げ、ローパスを開き、刻みを倍にする（bgmMood）。
-// - 山場（買収・Lv2・決着）で一拍だけ下げる（duckBgm）。
+// - ホーム用（home）: ゆったりしたパッド・ベース・分散和音・ときどき鐘。ドラムなし。
+// - 対戦用（battle）: やわらかいキックとクラップの鼓動、弾むベース、16 分の分散和音、4 小節ごとの旋律。
+//   終盤（コイン 2 倍）はテンポを上げ、フィルタを開き、ハットを倍にして気持ちを高める（setBgmTension）。
+// - 曲はホームとデッキ画面で流れ続け、対戦に入ると切り替わる。効果音より約 14dB 下のバスに流す。
 // - 1 小節ずつ、鳴らす少し前にまとめて予約する（タイマーのぶれで拍がずれない）。
 
 import { getGraph, peekGraph } from './audio-graph';
-import {
-  ARP_PATTERN,
-  BGM_BEATS_PER_BAR,
-  BGM_BUS_DB,
-  BGM_SCORE_DB,
-  barAt,
-  beatSeconds,
-  bgmMood,
-  dbToGain,
-  duckEnvelope,
-  mergeDuck,
-  midiToHz,
-  type BgmMood,
-  type DuckKind,
-} from './sound-plan';
+import { bass, bell, clap, hat, kick, pad, pluck, type Ctx } from './instruments';
 import { isBgmEnabled, isSoundEnabled } from './settings';
+import { barAt, beatSeconds, dbToGain, BGM_BUS_DB, moodFor, SONG_DB, SONGS, type Mood, type SongId } from './sound-plan';
+
+/** 確認用の数（開発中だけ window.__cbBgm で見る）。 */
+const stats = { bars: 0, starts: 0, stops: 0 };
 
 // ---------------------------------------------------------------------------
 // 1 小節の譜面を予約する（OfflineAudioContext でも同じものを鳴らせるよう BaseAudioContext を取る）
 
-const noiseCache = new WeakMap<BaseAudioContext, AudioBuffer>();
+/** 対戦の旋律（4 小節ごと）。イ短調ペンタトニックの短いモチーフ。 */
+const MOTIF_A = [76, 72, 74, 69];
+const MOTIF_B = [79, 76, 74, 72];
 
-function noise(c: BaseAudioContext): AudioBuffer {
-  let buf = noiseCache.get(c);
-  if (!buf) {
-    buf = c.createBuffer(1, Math.floor(c.sampleRate * 0.25), c.sampleRate);
-    const d = buf.getChannelData(0);
-    let seed = 12345;
-    for (let i = 0; i < d.length; i++) {
-      seed = (seed * 1103515245 + 12345) & 0x7fffffff;
-      d[i] = (seed / 0x7fffffff) * 2 - 1;
-    }
-    noiseCache.set(c, buf);
-  }
-  return buf;
-}
-
-function note(
-  c: BaseAudioContext,
-  dest: AudioNode,
-  t: number,
-  o: { freq: number; dur: number; gain: number; type: OscillatorType; attack: number; freqEnd?: number },
-): void {
-  const osc = c.createOscillator();
-  osc.type = o.type;
-  osc.frequency.setValueAtTime(o.freq, t);
-  if (o.freqEnd) osc.frequency.exponentialRampToValueAtTime(o.freqEnd, t + o.dur);
-  const amp = c.createGain();
-  amp.gain.setValueAtTime(0.0001, t);
-  amp.gain.exponentialRampToValueAtTime(o.gain, t + o.attack);
-  amp.gain.exponentialRampToValueAtTime(0.0001, t + o.dur);
-  osc.connect(amp);
-  amp.connect(dest);
-  osc.start(t);
-  osc.stop(t + o.dur + 0.05);
-  stats.notes++;
-}
-
-function pad(c: BaseAudioContext, dest: AudioNode, t: number, freq: number, dur: number): void {
-  const osc = c.createOscillator();
-  osc.type = 'triangle';
-  osc.frequency.value = freq;
-  osc.detune.value = (freq % 7) - 3; // わずかにずらして厚みを出す
-  const amp = c.createGain();
-  amp.gain.setValueAtTime(0, t);
-  amp.gain.linearRampToValueAtTime(0.045, t + 0.3);
-  amp.gain.setValueAtTime(0.045, t + dur - 0.35);
-  amp.gain.linearRampToValueAtTime(0, t + dur + 0.05);
-  osc.connect(amp);
-  amp.connect(dest);
-  osc.start(t);
-  osc.stop(t + dur + 0.1);
-  stats.notes++;
-}
-
-function shaker(c: BaseAudioContext, dest: AudioNode, t: number, gain: number): void {
-  const src = c.createBufferSource();
-  src.buffer = noise(c);
-  const hp = c.createBiquadFilter();
-  hp.type = 'highpass';
-  hp.frequency.value = 6500;
-  const amp = c.createGain();
-  amp.gain.setValueAtTime(0.0001, t);
-  amp.gain.exponentialRampToValueAtTime(gain, t + 0.004);
-  amp.gain.exponentialRampToValueAtTime(0.0001, t + 0.05);
-  src.connect(hp);
-  hp.connect(amp);
-  amp.connect(dest);
-  src.start(t, Math.random() * 0.15, 0.07);
-  stats.notes++;
-}
+/** 分散和音の並び（和音の 3 音の番号）。 */
+const ARP_HOME = [0, 1, 2, 1, 2, 1, 2, 1];
+const ARP_BATTLE = [0, 2, 1, 2, 0, 2, 1, 2, 0, 2, 1, 2, 1, 2, 1, 0];
 
 /** index 小節目（ループ）を t0 から予約する。小節の長さ（秒）を返す。 */
-export function scheduleBar(c: BaseAudioContext, dest: AudioNode, index: number, t0: number, mood: BgmMood): number {
-  const bar = barAt(index);
+export function scheduleBar(c: Ctx, dest: AudioNode, song: SongId, index: number, t0: number, mood: Mood): number {
+  const def = SONGS[song];
+  const bar = barAt(def, index);
   const beat = beatSeconds(mood.bpm);
-  const len = beat * BGM_BEATS_PER_BAR;
-  // パッド: 小節いっぱい
-  for (const m of bar.chord) pad(c, dest, t0, midiToHz(m), len);
-  // ベース: 1・3 拍
-  for (const b of [0, 2]) {
-    note(c, dest, t0 + b * beat, { freq: midiToHz(bar.bass), dur: beat * 1.6, gain: 0.2, type: 'sine', attack: 0.012 });
+  const len = beat * def.beatsPerBar;
+  stats.bars++;
+
+  if (song === 'home') {
+    // パッド（小節をまたいで重ねて、つなぎ目を消す）
+    pad(c, dest, t0 - 0.05, { midis: bar.chord, dur: len + 0.4, gain: 0.1, attack: 0.5, release: 0.6, cutoff: 1500, type: 'triangle' });
+    // ベース: 小節の頭に 1 音（長め）
+    bass(c, dest, t0, { midi: bar.root, dur: beat * 3.4, gain: 0.12 });
+    // 分散和音（8 分）
+    ARP_HOME.forEach((k, i) => {
+      pluck(c, dest, t0 + (i * beat) / 2, { midi: bar.chord[k]! + 12, gain: i % 4 === 0 ? 0.085 : 0.055, dur: 0.5, bright: 0.4 });
+    });
+    // 鐘: 2 小節に 1 回、頭に高い音
+    if (index % 2 === 0) bell(c, dest, t0 + beat * 0.02, { midi: bar.chord[2]! + 24, gain: 0.04, dur: 1.6 });
+    return len;
   }
-  // 分散和音: 8 分（1 オクターブ上）。最後の小節の後半は解決の C へ
-  ARP_PATTERN.forEach((k, i) => {
-    if (k === null) return;
-    const resolve = bar.name === 'Csus4' && i >= 4;
-    const chord = resolve ? [60, 64, 67] : bar.chord;
-    note(c, dest, t0 + (i * beat) / 2, { freq: midiToHz(chord[k]! + 12), dur: 0.32, gain: 0.07, type: 'triangle', attack: 0.006 });
+
+  // 対戦
+  pad(c, dest, t0 - 0.04, { midis: bar.chord, dur: len + 0.3, gain: 0.09, attack: 0.3, release: 0.4, cutoff: 1500 });
+  // ベース: 8 分の弾み（休みを入れて息をさせる）
+  [0, 1, 3, 4, 6].forEach((i) => {
+    bass(c, dest, t0 + (i * beat) / 2, { midi: bar.root + (i === 3 ? 12 : 0), dur: beat * 0.42, gain: 0.12 });
   });
-  // ウッドブロック: 2・4 拍
-  for (const b of [1, 3]) {
-    note(c, dest, t0 + b * beat, { freq: 1100, freqEnd: 700, dur: 0.05, gain: 0.05, type: 'sine', attack: 0.002 });
-  }
-  // シェイカー: 裏拍（緊張時は 8 分すべて）
+  // キック: 1・3 拍と 4 拍の裏
+  [0, 2].forEach((b) => kick(c, dest, t0 + b * beat, 0.3));
+  kick(c, dest, t0 + beat * 3.5, 0.18);
+  // クラップ: 2・4 拍
+  [1, 3].forEach((b) => clap(c, dest, t0 + b * beat, 0.075));
+  // ハット: 裏拍（緊張時は 8 分すべて）
   for (let i = 0; i < 8; i++) {
     if (mood.hatDensity === 1 && i % 2 === 0) continue;
-    shaker(c, dest, t0 + (i * beat) / 2, i % 2 === 1 ? 0.05 : 0.03);
+    hat(c, dest, t0 + (i * beat) / 2, i % 2 === 1 ? 0.03 : 0.018);
   }
-  stats.bars++;
+  // 分散和音（16 分）
+  ARP_BATTLE.forEach((k, i) => {
+    pluck(c, dest, t0 + (i * beat) / 4, { midi: bar.chord[k]! + 12, gain: i % 4 === 0 ? 0.075 : 0.05, dur: 0.2, bright: 0.45 });
+  });
+  // 旋律: 偶数小節の頭から 4 音（4 小節ごとに A、その間に B）
+  if (index % 2 === 0 && index % 8 !== 6) {
+    const motif = index % 4 === 0 ? MOTIF_A : MOTIF_B;
+    motif.forEach((m, i) => pluck(c, dest, t0 + i * beat, { midi: m, gain: 0.095, dur: 0.6, bright: 0.65 }));
+    bell(c, dest, t0, { midi: motif[0]! + 12, gain: 0.035, dur: 1.2 });
+  }
   return len;
 }
-
-/** 確認用の数（開発中だけ window.__cbBgm で見る）。 */
-const stats = { bars: 0, notes: 0, ducks: 0, starts: 0, stops: 0 };
 
 // ---------------------------------------------------------------------------
 // 流す・止める
 
-const LOOKAHEAD_S = 0.4;
+const LOOKAHEAD_S = 0.45;
 const TICK_MS = 100;
 
 interface Session {
+  song: SongId;
   out: GainNode;
   timer: number;
   nextAt: number;
@@ -148,27 +91,32 @@ interface Session {
 }
 
 let session: Session | null = null;
-/** プレイ画面にいる（流したい）か。設定で切った・戻したときに使う。 */
-let wanted = false;
-let mood: BgmMood = bgmMood(99);
-let duck: { untilMs: number; depthDb: number } | null = null;
+/** 流したい曲（画面が求めている曲）。設定で切った・戻したときに使う。 */
+let wanted: SongId | null = null;
+let tense = false;
 
-function begin(): void {
-  if (session) return;
+function mood(song: SongId): Mood {
+  return moodFor(SONGS[song], tense);
+}
+
+function begin(song: SongId): void {
+  if (session?.song === song) return;
+  if (session) end(0.5);
   if (!isSoundEnabled() || !isBgmEnabled()) return;
   const g = getGraph();
   if (!g) return;
   const { ctx } = g;
   const out = ctx.createGain();
   out.gain.setValueAtTime(0.0001, ctx.currentTime);
-  out.gain.exponentialRampToValueAtTime(dbToGain(BGM_SCORE_DB), ctx.currentTime + 1.2);
+  // ふわっと立ち上げる（いきなり鳴らさない）
+  out.gain.exponentialRampToValueAtTime(dbToGain(SONG_DB[song]), ctx.currentTime + 1.4);
   out.connect(g.bgmFilter);
   g.bgmBus.gain.setValueAtTime(dbToGain(BGM_BUS_DB), ctx.currentTime);
-  g.bgmFilter.frequency.setValueAtTime(mood.cutoffHz, ctx.currentTime);
-  const s: Session = { out, timer: 0, nextAt: ctx.currentTime + 0.15, bar: 0 };
+  g.bgmFilter.frequency.setValueAtTime(mood(song).cutoffHz, ctx.currentTime);
+  const s: Session = { song, out, timer: 0, nextAt: ctx.currentTime + 0.12, bar: 0 };
   const tick = () => {
     while (s.nextAt < ctx.currentTime + LOOKAHEAD_S) {
-      s.nextAt += scheduleBar(ctx, s.out, s.bar, s.nextAt, mood);
+      s.nextAt += scheduleBar(ctx, s.out, s.song, s.bar, s.nextAt, mood(s.song));
       s.bar++;
     }
   };
@@ -192,20 +140,20 @@ function end(fadeS: number): void {
   stats.stops++;
 }
 
-/** プレイ画面に入った。BGM を流し始める（設定で切っていれば流さない）。 */
-export function startBgm(turnsLeft = 99): void {
-  wanted = true;
-  mood = bgmMood(turnsLeft);
+/** 曲を流し始める（設定で切っていれば流さない）。同じ曲が流れていれば何もしない。 */
+export function startBgm(song: SongId): void {
+  wanted = song;
+  tense = false;
   try {
-    begin();
+    begin(song);
   } catch {
     // 鳴らせなくても続行
   }
 }
 
-/** プレイ画面を出た・決着した。fadeS 秒で消す。 */
+/** 止める。fadeS 秒で消す。 */
 export function stopBgm(fadeS = 0.6): void {
-  wanted = false;
+  wanted = null;
   try {
     end(fadeS);
   } catch {
@@ -216,46 +164,21 @@ export function stopBgm(fadeS = 0.6): void {
 /** 設定の入切が変わった。流したい場面なら流し直す・止める。 */
 export function refreshBgm(): void {
   try {
-    if (wanted && isSoundEnabled() && isBgmEnabled()) begin();
+    if (wanted && isSoundEnabled() && isBgmEnabled()) begin(wanted);
     else end(0.3);
   } catch {
     // 何もしない
   }
 }
 
-/** 残り手番を伝える。少なくなると次の小節からテンポが上がり、フィルタが開く。 */
-export function setBgmTension(turnsLeft: number): void {
-  const next = bgmMood(turnsLeft);
-  if (next.tense === mood.tense) return;
-  mood = next;
+/** 終盤の緊張（コイン 2 倍など）。次の小節からテンポが上がり、フィルタが開く。 */
+export function setBgmTension(on: boolean): void {
+  if (tense === on) return;
+  tense = on;
   const g = peekGraph();
-  if (!g) return;
+  if (!g || !session) return;
   try {
-    g.bgmFilter.frequency.setTargetAtTime(mood.cutoffHz, g.ctx.currentTime, 0.6);
-  } catch {
-    // 何もしない
-  }
-}
-
-/** 山場で BGM を一拍だけ引く。流れていなければ何もしない。 */
-export function duckBgm(kind: DuckKind): void {
-  if (!session) return;
-  const g = peekGraph();
-  if (!g) return;
-  try {
-    const env = duckEnvelope(kind, mood.bpm);
-    const nowMs = performance.now();
-    duck = mergeDuck(duck, nowMs, env);
-    const p = g.bgmDuck.gain;
-    const now = g.ctx.currentTime;
-    const low = dbToGain(duck.depthDb);
-    const holdUntil = now + (duck.untilMs - nowMs) / 1000;
-    p.cancelScheduledValues(now);
-    p.setValueAtTime(p.value, now);
-    p.linearRampToValueAtTime(low, now + env.attackMs / 1000);
-    p.setValueAtTime(low, holdUntil);
-    p.linearRampToValueAtTime(1, holdUntil + env.releaseMs / 1000);
-    stats.ducks++;
+    g.bgmFilter.frequency.setTargetAtTime(mood(session.song).cutoffHz, g.ctx.currentTime, 0.8);
   } catch {
     // 何もしない
   }
@@ -266,23 +189,24 @@ export function isBgmPlaying(): boolean {
 }
 
 if (import.meta.env.DEV && typeof window !== 'undefined') {
-  (window as unknown as { __cbBgm?: unknown }).__cbBgm = { stats, mood: () => mood, playing: isBgmPlaying };
+  (window as unknown as { __cbBgm?: unknown }).__cbBgm = { stats, playing: isBgmPlaying };
 }
 
-/** 確認用: BGM を OfflineAudioContext で bars 小節ぶん書き出す（バスの音量・フィルタ込み、モノラル）。 */
-export async function renderBgm(bars: number, turnsLeft = 99, sampleRate = 32000): Promise<AudioBuffer> {
-  const m = bgmMood(turnsLeft);
-  const len = beatSeconds(m.bpm) * BGM_BEATS_PER_BAR * bars;
-  const off = new OfflineAudioContext(1, Math.ceil((len + 0.5) * sampleRate), sampleRate);
+/** 確認用: 曲を OfflineAudioContext で bars 小節ぶん書き出す（バスの音量・フィルタ込み、モノラル）。 */
+export async function renderSong(song: SongId, bars: number, isTense = false, sampleRate = 32000): Promise<AudioBuffer> {
+  const m = moodFor(SONGS[song], isTense);
+  const len = beatSeconds(m.bpm) * SONGS[song].beatsPerBar * bars;
+  const off = new OfflineAudioContext(1, Math.ceil((len + 1.5) * sampleRate), sampleRate);
   const filter = off.createBiquadFilter();
   filter.type = 'lowpass';
   filter.frequency.value = m.cutoffHz;
   filter.Q.value = 0.5;
   const bus = off.createGain();
-  bus.gain.value = dbToGain(BGM_BUS_DB + BGM_SCORE_DB);
+  bus.gain.value = dbToGain(BGM_BUS_DB + SONG_DB[song]);
   filter.connect(bus);
   bus.connect(off.destination);
-  let t = 0;
-  for (let i = 0; i < bars; i++) t += scheduleBar(off, filter, i, t, m);
+  let t = 0.05;
+  for (let i = 0; i < bars; i++) t += scheduleBar(off, filter, song, i, t, m);
   return off.startRendering();
 }
+
