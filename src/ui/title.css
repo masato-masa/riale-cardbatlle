@@ -651,3 +651,27 @@ body {
   font-weight: 600;
   color: #b9b0e0;
 }
+
+/* デッキ編成: 作戦室の絵を活かす（ホームより被せを薄く。上は暗くして題字を読ませる） */
+.dk::before {
+  background:
+    radial-gradient(110% 70% at 50% 45%, transparent 55%, rgb(12 6 32 / 0.5) 100%),
+    linear-gradient(180deg, rgb(18 10 40 / 0.62) 0%, rgb(18 10 40 / 0.18) 22%, rgb(18 10 40 / 0.1) 70%, rgb(18 10 40 / 0.55) 100%);
+}
+
+.dk .deck-box {
+  background:
+    repeating-linear-gradient(135deg, rgb(255 255 255 / 0.03) 0 6px, transparent 6px 12px),
+    linear-gradient(rgb(52 41 106 / 0.9), rgb(26 19 56 / 0.92));
+}
+
+.dk .collection-title {
+  display: inline-block;
+  justify-self: start;
+  padding: 2px 12px;
+  border: 2px solid var(--gold-2);
+  border-radius: 999px;
+  background: linear-gradient(var(--navy-1), var(--navy-2));
+  -webkit-text-stroke: 0;
+  font-size: 13px;
+}

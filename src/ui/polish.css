@@ -1450,3 +1450,41 @@
   pointer-events: none;
   filter: saturate(0.8);
 }
+
+/* デッキ編成: 一覧のカードを長押ししてスライドで入れ替える */
+.deck-card {
+  -webkit-touch-callout: none;
+  user-select: none;
+}
+
+.deck-card.is-lifted {
+  opacity: 0.3;
+}
+
+.deck-card.is-over {
+  z-index: 2;
+  scale: 1.1;
+  filter: drop-shadow(0 0 10px rgb(255 216 74 / 0.95));
+  transition: scale 0.1s var(--ease);
+}
+
+.deck-ghost {
+  position: fixed;
+  width: 78px;
+  aspect-ratio: 68 / 84;
+  translate: -50% -62%;
+  rotate: -4deg;
+  scale: 1.12;
+  pointer-events: none;
+  z-index: 50;
+  filter: drop-shadow(0 12px 14px rgb(0 0 0 / 0.5));
+}
+
+.deck-lift-hint {
+  margin: 0 0 6px;
+  text-align: center;
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  color: var(--gold-1);
+}

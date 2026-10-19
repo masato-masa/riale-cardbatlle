@@ -12,6 +12,7 @@ import roadblockUrl from '@/assets/art/spells/roadblock.webp';
 import festivalUrl from '@/assets/art/spells/festival.webp';
 import fieldUrl from '@/assets/art/arena.webp';
 import coinUrl from '@/assets/art/ui/coin.webp';
+import deckBgUrl from '@/assets/art/deck-bg.webp';
 import heroFoeUrl from '@/assets/art/ui/hero-foe.webp';
 import heroMeUrl from '@/assets/art/ui/hero-me.webp';
 import bankerUrl from '@/assets/art/cards/banker.webp';
@@ -22,6 +23,11 @@ import usurerUrl from '@/assets/art/cards/usurer.webp';
 import architectUrl from '@/assets/art/cards/architect.webp';
 import blockaderUrl from '@/assets/art/cards/blockader.webp';
 import bossUrl from '@/assets/art/cards/boss.webp';
+import veteranUrl from '@/assets/art/cards/veteran.webp';
+import executionerUrl from '@/assets/art/cards/executioner.webp';
+import strategistUrl from '@/assets/art/cards/strategist.webp';
+import colossusUrl from '@/assets/art/cards/colossus.webp';
+import archmageUrl from '@/assets/art/cards/archmage.webp';
 import craftsmanUrl from '@/assets/art/cards/craftsman.webp';
 import guardUrl from '@/assets/art/cards/guard.webp';
 import heraldUrl from '@/assets/art/cards/herald.webp';
@@ -33,6 +39,8 @@ import taxmanUrl from '@/assets/art/cards/taxman.webp';
 /** 盤面の地（ChatGPT で作成。赤い敵陣・青い自陣・金の帯。scripts/slice-arena.mjs）。 */
 export const FIELD_URL: string = fieldUrl;
 export const COIN_URL: string = coinUrl;
+/** デッキ編成画面の背景（軍の作戦室。ChatGPT で作成。scripts/slice-arena.mjs の deck-bg と同じ要領）。 */
+export const DECK_BG_URL: string = deckBgUrl;
 /** プレイヤーの肖像（ChatGPT で作成。scripts/slice-portraits.mjs で切り出し）。 */
 export const HERO_ME_URL: string = heroMeUrl;
 export const HERO_FOE_URL: string = heroFoeUrl;
@@ -49,12 +57,12 @@ export const CARD_ART: Record<CardId, string> = {
   inspector: inspectorUrl,
   architect: architectUrl,
   boss: bossUrl,
-  // コスト 6 以上の新ユニットは、専用の絵ができるまで仮の絵
-  veteran: bossUrl,
-  executioner: craftsmanUrl,
-  strategist: bankerUrl,
-  colossus: blockaderUrl,
-  archmage: doubleUrl,
+  // コスト 6 以上の切り札ユニット
+  veteran: veteranUrl,
+  executioner: executionerUrl,
+  strategist: strategistUrl,
+  colossus: colossusUrl,
+  archmage: archmageUrl,
   banker: bankerUrl,
   double: doubleUrl,
   informer: informerUrl,
