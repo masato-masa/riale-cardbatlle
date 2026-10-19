@@ -116,6 +116,28 @@ function centerOf(el: Element | null): { x: number; y: number } | null {
 const unitEl = (uid: number) => document.querySelector(`[data-uid="${uid}"]`);
 const heroEl = (p: 0 | 1) => document.querySelector(`[data-player="${p}"]`);
 
+/**
+ * 線がまたぐカードの上だけ薄くするマスク。始点と終点が載っているカードは薄くしない。
+ * 線を引く要素に mask={`url(#${id})`} を付けて使う。
+ */
+function CrossMask({ id, x0, y0, x1, y1 }: { id: string; x0: number; y0: number; x1: number; y1: number }) {
+  const holds = (r: DOMRect, x: number, y: number) => x >= r.left && x <= r.right && y >= r.top && y <= r.bottom;
+  const rects: DOMRect[] = [];
+  for (const el of document.querySelectorAll('[data-uid], [data-player]')) {
+    const r = el.getBoundingClientRect();
+    if (holds(r, x0, y0) || holds(r, x1, y1)) continue;
+    rects.push(r);
+  }
+  return (
+    <mask id={id} maskUnits="userSpaceOnUse" x={0} y={0} width="100%" height="100%">
+      <rect x={0} y={0} width="100%" height="100%" fill="#fff" />
+      {rects.map((r, i) => (
+        <rect key={i} x={r.left} y={r.top} width={r.width} height={r.height} rx={8} fill="#3a3a3a" />
+      ))}
+    </mask>
+  );
+}
+
 export function Game({ level, deck, onExit }: { level: CpuLevel; deck: CardId[]; onExit: () => void }) {
   const decks: [CardId[], CardId[]] = [deck, RIVAL_DECK];
   const [seed, setSeed] = useState(() => (Date.now() & 0x7fffffff) >>> 0);
@@ -779,7 +801,9 @@ export function Game({ level, deck, onExit }: { level: CpuLevel; deck: CardId[];
       ) : null}
       {unitDrag ? (
         <svg className="aim" aria-hidden="true">
+          <CrossMask id="xm-drag" x0={unitDrag.sx} y0={unitDrag.sy} x1={unitDrag.x} y1={unitDrag.y} />
           <line
+            mask="url(#xm-drag)"
             x1={unitDrag.sx}
             y1={unitDrag.sy}
             x2={unitDrag.x}
@@ -933,12 +957,14 @@ function PendingMarks({ game, fieldMe, fieldFoe }: { game: GameState; fieldMe: H
       <svg className="aim" aria-hidden="true">
         {reserves.map((m) => (
           <g key={`r${m.key}`} className="reserve">
-            <line x1={m.x0} y1={m.y0} x2={m.x1} y2={m.y1} className="reserve-line" />
+            <CrossMask id={`xm-r${m.key}`} x0={m.x0} y0={m.y0} x1={m.x1} y1={m.y1} />
+            <line mask={`url(#xm-r${m.key})`} x1={m.x0} y1={m.y0} x2={m.x1} y2={m.y1} className="reserve-line" />
           </g>
         ))}
         {lines.map((m) => (
           <g key={m.key} className={`pending${m.mine ? ' is-mine' : ''}`}>
-            <line x1={m.x0} y1={m.y0} x2={m.x0 + (m.x1 - m.x0) * Math.min(1, m.t * 1.6)} y2={m.y0 + (m.y1 - m.y0) * Math.min(1, m.t * 1.6)} className="pending-line" />
+            <CrossMask id={`xm-p${m.key}`} x0={m.x0} y0={m.y0} x1={m.x1} y1={m.y1} />
+            <line mask={`url(#xm-p${m.key})`} x1={m.x0} y1={m.y0} x2={m.x0 + (m.x1 - m.x0) * Math.min(1, m.t * 1.6)} y2={m.y0 + (m.y1 - m.y0) * Math.min(1, m.t * 1.6)} className="pending-line" />
             <circle cx={m.x1} cy={m.y1} r={30 - m.t * 16} className="pending-ring" />
             <circle cx={m.x1} cy={m.y1} r={4} className="pending-dot" />
           </g>
