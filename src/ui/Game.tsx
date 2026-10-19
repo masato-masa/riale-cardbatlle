@@ -30,7 +30,7 @@ import {
 import { makeRng } from '@/game/rng';
 import { COIN_MAX, DOUBLE_COIN_FROM_MS, FIELD_SLOTS, MATCH_MS, WINDUP_MS } from '@/game/rules';
 
-import { COIN_URL, FIELD_URL } from './art';
+import { COIN_URL, FIELD_URL, HERO_FOE_URL, HERO_ME_URL } from './art';
 import { setBgmTension, startBgm, stopBgm } from './bgm';
 import { CardFace, type CardState } from './CardFace';
 import { CardDetail, HeroBadge } from './GameParts';
@@ -831,7 +831,7 @@ export function Game({ level, deck, onExit }: { level: CpuLevel; deck: CardId[];
               {overtime ? <b className="clock-double">×2</b> : null}
             </span>
             <div className={foeCls.join(' ')} data-player={1} data-drop={foeKey}>
-              <HeroBadge hp={foe.hp} label="あいて" walled={isWalled(foe)} />
+              <HeroBadge hp={foe.hp} label="あいて" walled={isWalled(foe)} portrait={HERO_FOE_URL} />
             </div>
             <span className="hero-coins">
               <img src={COIN_URL} alt="" />
@@ -846,7 +846,7 @@ export function Game({ level, deck, onExit }: { level: CpuLevel; deck: CardId[];
             {fieldRow(0)}
           </div>
           <div className="hero hero-me" data-player={0}>
-            <HeroBadge hp={me.hp} label="あなた" walled={isWalled(me)} />
+            <HeroBadge hp={me.hp} label="あなた" walled={isWalled(me)} portrait={HERO_ME_URL} />
           </div>
         </div>
 

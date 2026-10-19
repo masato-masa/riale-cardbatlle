@@ -11,6 +11,8 @@ import mineUrl from '@/assets/art/buildings/mine.webp';
 import roadUrl from '@/assets/art/buildings/road.webp';
 import fieldUrl from '@/assets/art/field.webp';
 import coinUrl from '@/assets/art/ui/coin.webp';
+import heroFoeUrl from '@/assets/art/ui/hero-foe.webp';
+import heroMeUrl from '@/assets/art/ui/hero-me.webp';
 import bankerUrl from '@/assets/art/cards/banker.webp';
 import clerkUrl from '@/assets/art/cards/clerk.webp';
 import doubleUrl from '@/assets/art/cards/double.webp';
@@ -31,6 +33,9 @@ import taxmanUrl from '@/assets/art/cards/taxman.webp';
 /** 盤面の地（city-builders の絵）。 */
 export const FIELD_URL: string = fieldUrl;
 export const COIN_URL: string = coinUrl;
+/** プレイヤーの肖像（ChatGPT で作成。scripts/slice-portraits.mjs で切り出し）。 */
+export const HERO_ME_URL: string = heroMeUrl;
+export const HERO_FOE_URL: string = heroFoeUrl;
 
 /** カードの絵（city-builders の人物）。枠いっぱいに cover で敷く。 */
 export const CARD_ART: Record<CardId, string> = {

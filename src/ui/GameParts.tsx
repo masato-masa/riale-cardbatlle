@@ -3,10 +3,13 @@ import { PLAYER_ATK, PLAYER_HP } from '@/game/rules';
 
 import { CardFace } from './CardFace';
 
-export function HeroBadge({ hp, label, walled }: { hp: number; label: string; walled: boolean }) {
+export function HeroBadge({ hp, label, walled, portrait }: { hp: number; label: string; walled: boolean; portrait: string }) {
   const ratio = hp / PLAYER_HP;
   return (
     <span className={`hero-badge${ratio <= 0.3 ? ' is-low' : ''}`}>
+      <span className="hero-portrait" aria-hidden="true">
+        <img src={portrait} alt="" draggable={false} />
+      </span>
       <span className="hero-label">{label}</span>
       <span className="hero-atk" aria-label={`攻撃力 ${PLAYER_ATK}（攻撃されたら反撃する）`}>
         {PLAYER_ATK}
