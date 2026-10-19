@@ -1381,3 +1381,18 @@
   line-height: 1.6;
   color: var(--gold-1);
 }
+
+/* 入れ替え先を選んでいる間: 揺らさず、金色の光がゆっくり脈打つ */
+.deck-box.is-swapping .deck-card {
+  animation: choose-glow 1.6s ease-in-out infinite;
+}
+
+@keyframes choose-glow {
+  0%,
+  100% {
+    filter: drop-shadow(0 0 0 rgb(255 216 74 / 0));
+  }
+  50% {
+    filter: drop-shadow(0 0 7px rgb(255 216 74 / 0.85));
+  }
+}

@@ -30,6 +30,8 @@ export function DeckScreen({ deck, onChange, onBack }: { deck: CardId[]; onChang
   const [open, setOpen] = useState<{ card: CardId; inDeck: boolean } | null>(null);
   /** 入れようとしているカード。決まっている間は、デッキのカードをタップすると入れ替わる。 */
   const [swapIn, setSwapIn] = useState<CardId | null>(null);
+  /** いま入れ替わって入ったカード（ポンと弾ませる。少しだけ覚える）。 */
+  const [justIn, setJustIn] = useState<CardId | null>(null);
   const rest = sorted(COLLECTION.filter((id) => !deck.includes(id)));
 
   const replace = (out: CardId) => {
@@ -37,6 +39,8 @@ export function DeckScreen({ deck, onChange, onBack }: { deck: CardId[]; onChang
     const next = deck.map((id) => (id === out ? swapIn : id));
     saveDeck(next);
     onChange(next);
+    setJustIn(swapIn);
+    window.setTimeout(() => setJustIn(null), 700);
     setSwapIn(null);
     playSelect();
   };
@@ -83,8 +87,15 @@ export function DeckScreen({ deck, onChange, onBack }: { deck: CardId[]; onChang
                 key={id}
                 layout
                 className="deck-card"
-                animate={swapIn ? { rotate: [0, -2.5, 2.5, 0] } : { rotate: 0 }}
-                transition={swapIn ? { duration: 0.4, repeat: Infinity, delay: (i % 5) * 0.05 } : { duration: 0.15 }}
+                // 入れ替えを始めた瞬間に 1 回だけ小さく揺れる（ずっとは揺らさない）。選んでいる間は CSS の光で示す
+                initial={justIn === id ? { scale: 1.3, opacity: 0.35 } : false}
+                animate={
+                  justIn === id
+                    ? { scale: 1, opacity: 1, rotate: 0, transition: { type: 'spring', stiffness: 520, damping: 16 } }
+                    : swapIn
+                      ? { rotate: [0, -1.1, 1.1, -0.5, 0], transition: { duration: 0.42, delay: (i % 5) * 0.025 } }
+                      : { rotate: 0, transition: { duration: 0.15 } }
+                }
                 onClick={() => {
                   if (swapIn) return replace(id);
                   playUiTap();
