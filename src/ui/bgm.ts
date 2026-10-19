@@ -9,6 +9,24 @@
 import { getGraph, peekGraph } from './audio-graph';
 import { bass, bell, clap, hat, kick, pad, pluck, type Ctx } from './instruments';
 import { isBgmEnabled, isSoundEnabled } from './settings';
+
+// Suno で作った曲（src/assets/bgm/home.mp3・battle.mp3）があれば、それをループで流す。無い曲は下の合成の曲で流す。
+const trackUrls = import.meta.glob('../assets/bgm/*.mp3', { eager: true, query: '?url', import: 'default' }) as Record<string, string>;
+const trackUrl = (song: SongId): string | undefined => Object.entries(trackUrls).find(([p]) => p.endsWith(`/${song}.mp3`))?.[1];
+const trackBuffers = new Map<SongId, Promise<AudioBuffer | null>>();
+function loadTrack(ctx: BaseAudioContext, song: SongId): Promise<AudioBuffer | null> {
+  const url = trackUrl(song);
+  if (!url) return Promise.resolve(null);
+  let p = trackBuffers.get(song);
+  if (!p) {
+    p = fetch(url)
+      .then((r) => r.arrayBuffer())
+      .then((d) => ctx.decodeAudioData(d))
+      .catch(() => null);
+    trackBuffers.set(song, p);
+  }
+  return p;
+}
 import { barAt, beatSeconds, dbToGain, BGM_BUS_DB, moodFor, SONG_DB, SONGS, type Mood, type SongId } from './sound-plan';
 
 /** 確認用の数（開発中だけ window.__cbBgm で見る）。 */
@@ -88,6 +106,8 @@ interface Session {
   timer: number;
   nextAt: number;
   bar: number;
+  /** 録音の曲を流しているときの再生ノード（合成の曲では null）。 */
+  src: AudioBufferSourceNode | null;
 }
 
 let session: Session | null = null;
@@ -113,7 +133,31 @@ function begin(song: SongId): void {
   out.connect(g.bgmFilter);
   g.bgmBus.gain.setValueAtTime(dbToGain(BGM_BUS_DB), ctx.currentTime);
   g.bgmFilter.frequency.setValueAtTime(mood(song).cutoffHz, ctx.currentTime);
-  const s: Session = { song, out, timer: 0, nextAt: ctx.currentTime + 0.12, bar: 0 };
+  const s: Session = { song, out, timer: 0, nextAt: ctx.currentTime + 0.12, bar: 0, src: null };
+  session = s;
+  stats.starts++;
+  if (trackUrl(song)) {
+    // 録音の曲: 読み込めたらループで流す（読み込めなければ合成の曲に切り替える）
+    void loadTrack(ctx, song).then((buf) => {
+      if (session !== s) return; // もう別の曲・停止
+      if (buf) {
+        const src = ctx.createBufferSource();
+        src.buffer = buf;
+        src.loop = true;
+        src.playbackRate.value = tense ? 1.05 : 1;
+        src.connect(out);
+        src.start();
+        s.src = src;
+      } else {
+        startSynth(ctx, s);
+      }
+    });
+    return;
+  }
+  startSynth(ctx, s);
+}
+
+function startSynth(ctx: AudioContext, s: Session): void {
   const tick = () => {
     while (s.nextAt < ctx.currentTime + LOOKAHEAD_S) {
       s.nextAt += scheduleBar(ctx, s.out, s.song, s.bar, s.nextAt, mood(s.song));
@@ -122,8 +166,6 @@ function begin(song: SongId): void {
   };
   tick();
   s.timer = window.setInterval(tick, TICK_MS);
-  session = s;
-  stats.starts++;
 }
 
 function end(fadeS: number): void {
@@ -136,7 +178,14 @@ function end(fadeS: number): void {
   s.out.gain.cancelScheduledValues(now);
   s.out.gain.setValueAtTime(Math.max(s.out.gain.value, 0.0001), now);
   s.out.gain.exponentialRampToValueAtTime(0.0001, now + Math.max(0.02, fadeS));
-  window.setTimeout(() => s.out.disconnect(), (fadeS + 3) * 1000);
+  window.setTimeout(() => {
+    try {
+      s.src?.stop();
+    } catch {
+      // すでに止まっている
+    }
+    s.out.disconnect();
+  }, (fadeS + 3) * 1000);
   stats.stops++;
 }
 
@@ -179,6 +228,7 @@ export function setBgmTension(on: boolean): void {
   if (!g || !session) return;
   try {
     g.bgmFilter.frequency.setTargetAtTime(mood(session.song).cutoffHz, g.ctx.currentTime, 0.8);
+    if (session.src) session.src.playbackRate.setTargetAtTime(on ? 1.05 : 1, g.ctx.currentTime, 1.5);
   } catch {
     // 何もしない
   }
