@@ -34,6 +34,7 @@ export function CardDetail({ card, hp }: { card: CardId; hp?: number }) {
   const def = CARDS[card];
   return (
     <div className="card-detail">
+      {def.epithet ? <p className="card-epithet">{def.epithet}</p> : null}
       <div className="card-detail-face">
         <CardFace card={card} hp={hp} />
       </div>

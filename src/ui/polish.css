@@ -1351,3 +1351,21 @@
   pointer-events: none;
   background: radial-gradient(circle at 50% 40%, #fff, rgb(255 236 180 / 0.9));
 }
+
+/* 説明シートの二つ名（名前の下） */
+.card-epithet {
+  grid-column: 1 / -1;
+  margin: -6px 0 2px;
+  text-align: center;
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  color: var(--gold-1);
+}
+
+/* 名前は人名（カタカナ 4〜5 文字）。小さいカードでも切れないようにやや小さく */
+.face-name {
+  font-size: max(8px, 12.5cqw);
+  letter-spacing: 0;
+  padding-inline: 1px;
+}
