@@ -65,6 +65,7 @@ export function CardDetail({ card, hp }: { card: CardId; hp?: number }) {
       ))}
       {abilityLines(card).length === 0 ? <p className="card-detail-text">能力なし</p> : null}
       {usageNote(card) ? <p className="card-detail-note">{usageNote(card)}</p> : null}
+      {def.flavor ? <p className="card-flavor">「{def.flavor}」</p> : null}
     </div>
   );
 }

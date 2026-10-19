@@ -95,6 +95,8 @@ export interface CardDef {
   name: string;
   /** 二つ名（説明で名前の下に出す）。 */
   epithet?: string;
+  /** 一言（セリフ・ひとこと）。 */
+  flavor?: string;
   /** 召喚コスト（左上） */
   summon: number;
   /** 攻撃力（左下）。建築物・呪文は 0。 */
@@ -137,12 +139,42 @@ const EPITHET: Partial<Record<CardId, string>> = {
   festival: '全軍の雄叫び',
 };
 
+/** 一言（説明のシートの下に出す。ゲームの数値には関係しない）。 */
+const FLAVOR: Partial<Record<CardId, string>> = {
+  herald: '戦場に一番乗りするのは、いつも俺だ。',
+  miner: '穴を掘れば道ができる。道ができれば仲間が来る。',
+  usurer: '倒れるときは、敵の大将も道連れだ！',
+  spy: '気づいたときには、もう背後にいる。',
+  craftsman: '城も盾も、斧で割れば同じことだ。',
+  guard: 'ここは通さない。まだ新兵だけどな。',
+  banker: '飢えた軍は戦えません。補給はお任せを。',
+  informer: '縄一本あれば、足止めには十分さ。',
+  taxman: '狙った的は外さない。息を止めて、撃つ。',
+  double: '光の盾よ、仲間を一度だけ守れ！',
+  inspector: '矢は風より遠く、反撃より速く。',
+  blockader: '鉄の壁は、そう簡単には崩れない。',
+  architect: '大丈夫、傷はわたしが癒やします。',
+  boss: '全軍、俺に続け！ 立ちはだかる者は薙ぎ払う！',
+  apprentice: '俺だって戦える！ 戦わせてくれ！',
+  wall: '何百年も敵を阻んできた、石の壁。',
+  exchange: '物資さえあれば、兵はいくらでも動く。',
+  tradingHouse: '軍旗が翻る限り、兵の士気は落ちない。',
+  factory: 'ここから新たな兵が駆け出していく。',
+  cathedral: '鐘の音とともに、全軍が走り出す。',
+  fortress: '弩砲が唸れば、弱った敵から倒れていく。',
+  quarry: '燃える巨岩よ、敵の頭上に落ちろ！',
+  quake: '大地ごと砕け。敵に逃げ場はない。',
+  roadblock: 'この杭の森を、越えられるものか。',
+  festival: '鬨の声を上げよ！ 全軍、疲れを忘れろ！',
+};
+
 /** cdSec はクールタイム（秒）。 */
 const unit = (id: CardId, name: string, summon: number, atk: number, hp: number, cdSec: number, ab: Abilities = {}): CardDef => ({
   id,
   type: 'unit',
   name,
   epithet: EPITHET[id],
+  flavor: FLAVOR[id],
   summon,
   atk,
   hp,
@@ -154,6 +186,7 @@ const building = (id: CardId, name: string, summon: number, hp: number, ab: Abil
   type: 'building',
   name,
   epithet: EPITHET[id],
+  flavor: FLAVOR[id],
   summon,
   atk: 0,
   hp,
@@ -165,6 +198,7 @@ const spell = (id: CardId, name: string, summon: number, effect: SpellEffect): C
   type: 'spell',
   name,
   epithet: EPITHET[id],
+  flavor: FLAVOR[id],
   summon,
   atk: 0,
   hp: 0,

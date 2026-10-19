@@ -1369,3 +1369,15 @@
   letter-spacing: 0;
   padding-inline: 1px;
 }
+
+.card-flavor {
+  grid-column: 1 / -1;
+  margin: 4px 0 0;
+  padding-top: 8px;
+  border-top: 1px solid rgb(246 197 72 / 0.35);
+  text-align: center;
+  font-size: 13px;
+  font-style: italic;
+  line-height: 1.6;
+  color: var(--gold-1);
+}

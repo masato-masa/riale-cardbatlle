@@ -29,7 +29,7 @@ body {
     linear-gradient(180deg, rgb(40 26 100 / 0.3) 0%, rgb(54 34 120 / 0.12) 34%, rgb(22 14 56 / 0.78) 74%, #120d2c 100%);
 }
 
-.ts > * {
+.ts > :not(.overlay) {
   position: relative;
 }
 
