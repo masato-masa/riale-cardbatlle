@@ -3,11 +3,11 @@
 共通の進め方は `C:\claude\CLAUDE.md`。ここにはこのアプリ固有のことだけ書く。
 ゲームの仕様は `docs/spec.md`。
 
-- 絵は `src/assets/art`（ChatGPT 製。`scripts/slice-*.mjs` で切り出し）。**音は録音ファイルを持たず、すべて WebAudio で合成**
-  （`src/ui/instruments.ts` 部品 → `sfx-voices.ts` 効果音 / `bgm.ts` 曲 → `sound.ts` 入口、配線と共通の残響は `audio-graph.ts`、
-  音量・曲の譜面は `sound-plan.ts`）。音階はハ長調／イ短調のペンタトニックにそろえる。
-- 音を変えたら DEV で `window.__audioLab.reportVoices()` / `reportSong()` を走らせて数値で検査する（ピーク -2.5dB 以下、
-  高音 6kHz 以上 3% 未満、UI は実効 -30dB 前後、命中・勝敗は -20〜-28dB）。音ごとの補正は `sfx-voices.ts` の `VOICE_TRIM_DB`。
+- 絵は `src/assets/art`（ChatGPT 製。`scripts/slice-*.mjs` で切り出し）。
+- **音は録音のみ。コードで合成した音は使わない**（ユーザー指定）。効果音=ElevenLabs（`audio-src/<名前>-<番号>.wav` →
+  `node scripts/build-sfx.mjs` → `src/assets/sfx/`、音量は役割ごとの目標に自動でそろえる）、BGM=Suno（`audio-src/bgm-home.mp3`
+  `bgm-battle.mp3` → `node scripts/build-bgm.mjs`）。入口は `src/ui/sound.ts`・`samples.ts`・`bgm.ts`、配線と残響は `audio-graph.ts`。
+  候補の聴き比べ・選択は `?sounds`（ホームの「テスト用」）。BGM は `<audio>` で先読みして始まりを速くしてある。
 - **対戦中は画面全体が盤面**で、共通のヘッダー（戻る・タイトル・設定・?）を置かない。全アプリ共通の決まりの例外（ユーザー指定）。
   **ホームも共通 UI の対象外**（ユーザー指定: 共通 UI はパズルゲーム向けで、このゲームは違う）。クラロワ等を参考に作り直してよい。
 - ゲーム性（`src/game/`）はオリジナルのまま。**画面 UI と操作性はクラロワ／ドラクエライバルズを真似る**。

@@ -1,9 +1,12 @@
 // 効果音の録音（ElevenLabs で生成した候補。scripts/build-sfx.mjs で軽くして src/assets/sfx/<名前>-<番号>.wav へ）。
 // 音ごとに複数の候補があり、サウンドテスト（?sounds）で選べる。選んだ番号は localStorage に保存する:
-//   0 = 合成音（sfx-voices.ts）、1〜 = その番号の録音、未選択 = 録音の候補をランダムに（同じ音が続いても単調にならない）。
-// 録音が無い音・読み込めていない音は、合成音で鳴らす。
+//   1〜 = その番号の録音、未選択 = 録音の候補をランダムに（同じ音が続いても単調にならない）。
+// コードで合成した音は使わない。録音が無い音・まだ読み込めていない音は、鳴らさない。
 
-import type { VoiceName } from './sfx-voices';
+/** 効果音の名前。録音のファイル名（src/assets/sfx/<名前>-<番号>.wav）と同じ。 */
+export type VoiceName =
+  | 'tap' | 'select' | 'summonSmall' | 'summonBig' | 'hitUnit' | 'hitBlocker' | 'hitPlayer' | 'death'
+  | 'ready' | 'heal' | 'barrier' | 'horn' | 'win' | 'lose' | 'battleStart' | 'spellCast';
 
 const urls = import.meta.glob('../assets/sfx/*.wav', { eager: true, query: '?url', import: 'default' }) as Record<string, string>;
 const buffers = new Map<VoiceName, Map<number, AudioBuffer>>();
@@ -74,12 +77,11 @@ export function setPick(name: VoiceName, n: number | null): void {
 
 let last = new Map<VoiceName, number>();
 
-/** いま鳴らす録音。合成音で鳴らすなら null。 */
+/** いま鳴らす録音。無ければ null。 */
 export function chooseBuffer(name: VoiceName, forceVariant?: number): AudioBuffer | null {
   const map = buffers.get(name);
   if (!map || map.size === 0) return null;
   const pick = forceVariant ?? getPick(name);
-  if (pick === 0) return null;
   if (pick !== null && map.has(pick)) return map.get(pick)!;
   // 未選択: 候補をランダムに（直前と同じものは避ける）
   const keys = [...map.keys()];

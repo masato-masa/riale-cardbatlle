@@ -1,6 +1,7 @@
-// 効果音。音源ファイルは持たず、WebAudio で合成する（sfx-voices.ts の定義、instruments.ts の部品）。
-// 読み込みゼロ・容量ゼロ・遅延ゼロ。すべての音は同じ調（ハ長調／イ短調のペンタトニック）で、
-// 共通の残響（audio-graph.ts）をくぐるので、重なっても濁らず、ひとつの空間で鳴って聞こえる。
+// 効果音。ElevenLabs で作った録音（src/assets/sfx/<名前>-<番号>.wav、samples.ts）を WebAudio で鳴らす。
+// コードで合成した音は使わない。録音が無い音・まだ読み込めていない音は、鳴らさない。
+// 鳴らすたびにわずかに音程と音量をゆらし、同じ音が続いても単調にならないようにする。
+// 共通の残響（audio-graph.ts）をくぐるので、ひとつの空間で鳴って聞こえる。
 //
 // AudioContext はページ読み込み時ではなく、最初のユーザー操作で作る。作れなかった場合・
 // 設定で切ってある場合は、何もせず黙って続行する（例外を投げない）。
@@ -8,15 +9,23 @@
 
 import { getGraph, whenGraphCreated } from './audio-graph';
 import { stopBgm } from './bgm';
+import { chooseBuffer, loadSamples, type VoiceName } from './samples';
 import { isSoundEnabled } from './settings';
 import { dbToGain, shouldPlay } from './sound-plan';
-import { chooseBuffer, loadSamples, sampleTrimDb } from './samples';
-import { VOICES, VOICE_TRIM_DB, type VoiceName } from './sfx-voices';
 
 whenGraphCreated((g) => loadSamples(g.ctx));
 
+/** 専用の録音が無い音は、近い録音を小さめに借りる（名前, 借りる音, 音量 dB）。 */
+const BORROW: Record<string, [VoiceName, number]> = {
+  pickup: ['select', -4],
+  stun: ['barrier', -2],
+  reject: ['tap', -3],
+};
+
+type PlayName = VoiceName | 'pickup' | 'stun' | 'reject';
+
 /** 呼び出し全体を try/catch で包む。鳴らせなくても例外は外に出さない。 */
-function play(name: VoiceName, force = false, variant?: number): void {
+function play(name: PlayName, force = false, variant?: number): void {
   if (!isSoundEnabled()) return;
   const now = performance.now();
   if (!shouldPlay(now, lastPlayedAt, force)) return;
@@ -24,24 +33,17 @@ function play(name: VoiceName, force = false, variant?: number): void {
   try {
     const g = getGraph();
     if (!g) return;
-    // 録音（ElevenLabs の候補）があればそれを、無ければ合成音を鳴らす
-    const buf = chooseBuffer(name, variant);
-    if (buf) {
-      const src = g.ctx.createBufferSource();
-      src.buffer = buf;
-      src.playbackRate.value = 1 + (Math.random() * 2 - 1) * 0.03; // 鳴らすたびにわずかに音程をゆらす
-      const amp = g.ctx.createGain();
-      amp.gain.value = dbToGain(sampleTrimDb(name)) * (0.92 + Math.random() * 0.16);
-      src.connect(amp);
-      amp.connect(g.sfxBus);
-      src.start(g.ctx.currentTime + 0.005);
-      return;
-    }
-    // 音ごとの補正（VOICE_TRIM_DB）を掛けてから効果音バスへ
-    const trim = g.ctx.createGain();
-    trim.gain.value = dbToGain(VOICE_TRIM_DB[name]);
-    trim.connect(g.sfxBus);
-    VOICES[name](g.ctx, trim, g.ctx.currentTime + 0.005);
+    const [voice, trimDb] = BORROW[name] ?? [name as VoiceName, 0];
+    const buf = chooseBuffer(voice, variant);
+    if (!buf) return;
+    const src = g.ctx.createBufferSource();
+    src.buffer = buf;
+    src.playbackRate.value = 1 + (Math.random() * 2 - 1) * 0.03;
+    const amp = g.ctx.createGain();
+    amp.gain.value = dbToGain(trimDb) * (0.92 + Math.random() * 0.16);
+    src.connect(amp);
+    amp.connect(g.sfxBus);
+    src.start(g.ctx.currentTime + 0.005);
   } catch {
     // 鳴らせなくても続行
   }

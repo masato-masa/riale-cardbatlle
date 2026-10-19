@@ -79,7 +79,7 @@ function build(ctx: AudioContext): AudioGraph {
   sfxBus.gain.value = dbToGain(SFX_BUS_DB);
   const bgmFilter = ctx.createBiquadFilter();
   bgmFilter.type = 'lowpass';
-  bgmFilter.frequency.value = 3200;
+  bgmFilter.frequency.value = 20000; // 録音の曲をこもらせない（全開）
   bgmFilter.Q.value = 0.5;
   const bgmBus = ctx.createGain();
   bgmBus.gain.value = dbToGain(BGM_BUS_DB);

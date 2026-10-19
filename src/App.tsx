@@ -15,9 +15,6 @@ import './ui/styles.css';
 import './ui/polish.css';
 import './ui/title.css';
 
-// 開発中だけ、音の検査（audio lab）を読み込む
-if (import.meta.env.DEV) void import('./ui/audio-lab');
-
 type Screen = { kind: 'home' } | { kind: 'deck' } | { kind: 'game'; level: CpuLevel };
 
 export function App() {

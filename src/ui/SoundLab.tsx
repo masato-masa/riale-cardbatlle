@@ -1,8 +1,7 @@
 import { useEffect, useState } from 'react';
 
 import { setBgmTension, startBgm, stopBgm } from './bgm';
-import { getPick, knownVariants, setPick } from './samples';
-import type { VoiceName } from './sfx-voices';
+import { getPick, knownVariants, setPick, type VoiceName } from './samples';
 import { playVoice, primeAudio } from './sound';
 
 /** サウンドテスト（聞き比べ）。URL に ?sounds を付けるか、ホームの「テスト用」から開く。
@@ -14,8 +13,6 @@ const GROUPS: { title: string; items: { name: VoiceName; label: string; note: st
     items: [
       { name: 'tap', label: 'ボタン', note: '' },
       { name: 'select', label: '選ぶ', note: '' },
-      { name: 'pickup', label: '手札を持ち上げる', note: '合成のみ' },
-      { name: 'reject', label: '打てない札', note: '合成のみ' },
     ],
   },
   {
@@ -34,7 +31,6 @@ const GROUPS: { title: string; items: { name: VoiceName; label: string; note: st
       { name: 'hitPlayer', label: '命中（プレイヤー）', note: 'いちばん重い' },
       { name: 'death', label: '倒れる', note: '' },
       { name: 'barrier', label: '結界が弾く', note: '' },
-      { name: 'stun', label: '足止め', note: '合成のみ' },
     ],
   },
   {
@@ -78,14 +74,9 @@ function Item({ name, label, note }: { name: VoiceName; label: string; note: str
             {n}
           </button>
         ))}
-        <button className={`lab-cand${pick === 0 ? ' is-on' : ''}`} onClick={() => choose(0)}>
-          合成
+        <button className={`lab-cand lab-auto${pick === null ? ' is-on' : ''}`} onClick={() => choose(null)}>
+          おまかせ
         </button>
-        {vs.length > 0 ? (
-          <button className={`lab-cand lab-auto${pick === null ? ' is-on' : ''}`} onClick={() => choose(null)}>
-            おまかせ
-          </button>
-        ) : null}
       </div>
     </div>
   );
@@ -111,7 +102,7 @@ export function SoundLab() {
       </a>
       <h1 className="lab-title">サウンドテスト</h1>
       <p className="lab-sub">
-        数字は録音の候補、「合成」はコードで作った音です。押すと鳴り、そのまま採用されます（この端末に保存）。「おまかせ」は録音の候補をランダムに鳴らします。
+        数字は録音の候補です。押すと鳴り、そのまま採用されます（この端末に保存）。「おまかせ」は候補をランダムに鳴らします（既定）。
       </p>
 
       <section className="lab-group">
