@@ -13,6 +13,8 @@ import { isBgmEnabled, isSoundEnabled } from './settings';
 // Suno で作った曲（src/assets/bgm/home.mp3・battle.mp3）があれば、それをループで流す。無い曲は下の合成の曲で流す。
 const trackUrls = import.meta.glob('../assets/bgm/*.mp3', { eager: true, query: '?url', import: 'default' }) as Record<string, string>;
 const trackUrl = (song: SongId): string | undefined => Object.entries(trackUrls).find(([p]) => p.endsWith(`/${song}.mp3`))?.[1];
+/** 録音の曲の音量補正（dB）。 */
+const TRACK_DB = -12;
 const trackBuffers = new Map<SongId, Promise<AudioBuffer | null>>();
 function loadTrack(ctx: BaseAudioContext, song: SongId): Promise<AudioBuffer | null> {
   const url = trackUrl(song);
@@ -129,7 +131,8 @@ function begin(song: SongId): void {
   const out = ctx.createGain();
   out.gain.setValueAtTime(0.0001, ctx.currentTime);
   // ふわっと立ち上げる（いきなり鳴らさない）
-  out.gain.exponentialRampToValueAtTime(dbToGain(SONG_DB[song]), ctx.currentTime + 1.4);
+  // 録音の曲は音が大きく仕上がっているので、効果音の下になるよう下げる（実測: そのままだと実効 −22dB で効果音より大きい）
+  out.gain.exponentialRampToValueAtTime(dbToGain(SONG_DB[song] + (trackUrl(song) ? TRACK_DB : 0)), ctx.currentTime + 1.4);
   out.connect(g.bgmFilter);
   g.bgmBus.gain.setValueAtTime(dbToGain(BGM_BUS_DB), ctx.currentTime);
   g.bgmFilter.frequency.setValueAtTime(mood(song).cutoffHz, ctx.currentTime);
