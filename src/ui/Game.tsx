@@ -87,7 +87,9 @@ interface Burst {
   id: number;
   x: number;
   y: number;
-  tone: 'hit' | 'face' | 'puff' | 'summon' | 'wave';
+  tone: 'hit' | 'face' | 'puff' | 'summon' | 'wave' | 'blast' | 'ice';
+  /** 素材の向き（度）。斬撃が毎回同じ向きにならないようにする。 */
+  r: number;
 }
 
 /** 弾の種類。arrow=狙撃の矢（金）、rock=落石（上から落ちる）、magic=呪文の光。 */
@@ -262,7 +264,7 @@ export function Game({ level, deck, onExit }: { level: CpuLevel; deck: CardId[];
     const c = centerOf(el);
     if (!c) return;
     const id = fxId.current++;
-    setBursts((bs) => [...bs, { id, x: c.x, y: c.y, tone }]);
+    setBursts((bs) => [...bs, { id, x: c.x, y: c.y, tone, r: Math.round(-35 + Math.random() * 70) }]);
     window.setTimeout(() => setBursts((bs) => bs.filter((b) => b.id !== id)), 800);
   }, []);
 
@@ -359,6 +361,10 @@ export function Game({ level, deck, onExit }: { level: CpuLevel; deck: CardId[];
           if (eff.kind === 'blast' || eff.kind === 'freeze') {
             const tone = eff.kind === 'blast' ? 'quake' : 'block';
             window.setTimeout(() => addZone(row, tone), tone === 'quake' ? 120 : 0);
+            // 素材は枠ごとに少しずつずらして出す（爆発 / 氷）
+            row?.querySelectorAll('.slot').forEach((slot, i) =>
+              window.setTimeout(() => addBurst(slot, tone === 'quake' ? 'blast' : 'ice'), (tone === 'quake' ? 140 : 40) + i * 90),
+            );
             if (eff.kind === 'blast') window.setTimeout(() => shake(8), 220);
           }
         }
@@ -401,8 +407,8 @@ export function Game({ level, deck, onExit }: { level: CpuLevel; deck: CardId[];
               flash(el);
               if (attackEv?.kind === 'attack') recoil(el, unitEl(attackEv.uid));
               if (batch.some((x) => x.kind === 'spell')) {
-                // 落石: 砂煙と地面の揺れ
-                addBurst(el, 'puff');
+                // 落石: 爆発と地面の揺れ
+                addBurst(el, 'blast');
                 shake(5);
               }
             }
@@ -988,7 +994,6 @@ export function Game({ level, deck, onExit }: { level: CpuLevel; deck: CardId[];
             ) : (
               <>
                 <span className="barricade" />
-                <span className="frost" />
               </>
             )}
           </div>
@@ -997,7 +1002,7 @@ export function Game({ level, deck, onExit }: { level: CpuLevel; deck: CardId[];
 
       <div className="bursts" aria-hidden="true">
         {bursts.map((b) => (
-          <span key={b.id} className={`burst burst-${b.tone}`} style={{ left: b.x, top: b.y }} />
+          <span key={b.id} className={`burst burst-${b.tone}`} style={{ left: b.x, top: b.y, ['--r' as string]: `${b.r}deg` }} />
         ))}
       </div>
 
