@@ -778,13 +778,6 @@ body {
   box-shadow: var(--shadow-lg);
 }
 
-.shot {
-  fill: #ffd84a;
-  stroke: #fff;
-  stroke-width: 3;
-  filter: drop-shadow(0 0 6px #ffb020);
-}
-
 .popup-heal {
   color: #6be39a;
 }

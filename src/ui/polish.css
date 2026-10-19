@@ -671,3 +671,249 @@
     rotate: 720deg;
   }
 }
+
+/* =====================================================================
+   戦闘の演出: 弾・落石・地鳴り・通行止め・衝撃波・溜めのオーラ
+   ===================================================================== */
+
+/* 弾: 光る頭と、細く伸びる尾（進む向きに回して使う） */
+.shots {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 24;
+  overflow: hidden;
+}
+
+.comet {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 0;
+  height: 0;
+  --c1: #ffe27a;
+  --c2: rgb(255 170 40 / 0.85);
+}
+
+.comet::before {
+  content: '';
+  position: absolute;
+  left: -12px;
+  top: -12px;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: radial-gradient(circle, #fff 0 30%, var(--c1) 56%, transparent 74%);
+  box-shadow: 0 0 14px 6px var(--c2);
+}
+
+.comet::after {
+  content: '';
+  position: absolute;
+  right: 0;
+  top: -7px;
+  width: 110px;
+  height: 14px;
+  background: linear-gradient(270deg, var(--c1), transparent);
+  clip-path: polygon(0 50%, 100% 0, 100% 100%);
+  opacity: 0.9;
+}
+
+.comet-magic {
+  --c1: #c9a8ff;
+  --c2: rgb(150 100 255 / 0.85);
+}
+
+/* 落石: 真上から岩が回りながら落ちる */
+.comet-rock::before {
+  left: -20px;
+  top: -20px;
+  width: 40px;
+  height: 40px;
+  border-radius: 38% 62% 45% 55% / 55% 40% 60% 45%;
+  background: radial-gradient(circle at 35% 30%, #e2d7c1, #8b7d68 55%, #4d4336);
+  box-shadow: 0 12px 14px rgb(0 0 0 / 0.35);
+  animation: rock-spin 0.4s linear infinite;
+}
+
+.comet-rock::after {
+  right: auto;
+  left: -7px;
+  top: -120px;
+  width: 14px;
+  height: 110px;
+  background: linear-gradient(0deg, rgb(214 198 168 / 0.75), transparent);
+  clip-path: polygon(50% 0, 0 100%, 100% 100%);
+}
+
+@keyframes rock-spin {
+  to {
+    rotate: 360deg;
+  }
+}
+
+/* 場ごとにかかる呪文 */
+.zones {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 22;
+}
+
+.zone {
+  position: absolute;
+  border-radius: 14px;
+  overflow: hidden;
+}
+
+@keyframes zone-fade {
+  0% {
+    opacity: 0;
+  }
+  14% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+/* 地鳴り: 地面にひびが走り、破片が舞い上がる */
+.zone-quake {
+  background: radial-gradient(ellipse at 50% 100%, rgb(255 170 70 / 0.55), transparent 72%);
+  animation: zone-fade 1.2s ease-out forwards;
+}
+
+.zone-quake svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.zone-quake path {
+  fill: none;
+  stroke: #2a1a10;
+  stroke-width: 3;
+  stroke-linecap: round;
+  stroke-linejoin: miter;
+  vector-effect: non-scaling-stroke;
+  stroke-dasharray: 400;
+  stroke-dashoffset: 400;
+  animation: crack 0.4s 0.04s ease-out forwards;
+}
+
+@keyframes crack {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+.debris {
+  position: absolute;
+  bottom: 14%;
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+  background: linear-gradient(135deg, #a8977f, #5e5040);
+  --dx: 10px;
+  animation: debris 0.9s ease-out forwards;
+}
+
+.debris:nth-child(odd) {
+  --dx: -14px;
+}
+
+@keyframes debris {
+  0% {
+    translate: 0 0;
+    opacity: 1;
+  }
+  100% {
+    translate: var(--dx) -90px;
+    rotate: 260deg;
+    opacity: 0;
+  }
+}
+
+/* 通行止め: 工事用のバリケードが落ちて、場が凍りつく */
+.zone-block {
+  animation: zone-fade 1.2s ease-out forwards;
+}
+
+.barricade {
+  position: absolute;
+  left: 4%;
+  right: 4%;
+  top: 38%;
+  height: 24%;
+  border: 3px solid #2a2440;
+  border-radius: 6px;
+  background: repeating-linear-gradient(135deg, #f6c548 0 14px, #2a2440 14px 28px);
+  box-shadow: 0 6px 0 rgb(0 0 0 / 0.4), 0 0 16px rgb(255 200 60 / 0.65);
+  animation: barricade 1.2s cubic-bezier(0.3, 0.8, 0.4, 1) forwards;
+}
+
+@keyframes barricade {
+  0% {
+    translate: 0 -320%;
+  }
+  28% {
+    translate: 0 0;
+  }
+  34% {
+    translate: 0 -12%;
+  }
+  40%,
+  100% {
+    translate: 0 0;
+  }
+}
+
+.frost {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at 50% 50%, rgb(170 226 255 / 0.5), rgb(120 180 255 / 0.18) 60%, transparent 80%);
+}
+
+/* 衝撃波: 当たった瞬間に広がる白い輪 */
+.burst-wave {
+  width: 70px;
+  height: 70px;
+  border: 5px solid rgb(255 255 255 / 0.9);
+  background: none;
+  box-shadow: 0 0 12px rgb(255 220 140 / 0.9), inset 0 0 10px rgb(255 220 140 / 0.7);
+  animation: burst-ring 0.38s ease-out forwards;
+}
+
+.burst-wave::before {
+  display: none;
+}
+
+/* 溜め: 攻撃元のまわりに輪が脈打つ（自分=金、相手=赤） */
+.unit.is-winding::after {
+  content: '';
+  position: absolute;
+  inset: -6px;
+  border-radius: 16px;
+  border: 3px solid #ffd84a;
+  box-shadow: 0 0 18px 4px rgb(255 216 74 / 0.8), inset 0 0 12px rgb(255 216 74 / 0.55);
+  pointer-events: none;
+  animation: charge 0.4s ease-in-out infinite alternate;
+}
+
+.unit.is-winding.is-foe::after {
+  border-color: #ff6a6a;
+  box-shadow: 0 0 18px 4px rgb(255 90 90 / 0.8), inset 0 0 12px rgb(255 90 90 / 0.55);
+}
+
+@keyframes charge {
+  from {
+    opacity: 0.45;
+    scale: 0.96;
+  }
+  to {
+    opacity: 1;
+    scale: 1.06;
+  }
+}

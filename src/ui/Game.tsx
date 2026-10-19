@@ -87,15 +87,27 @@ interface Burst {
   id: number;
   x: number;
   y: number;
-  tone: 'hit' | 'face' | 'puff' | 'summon';
+  tone: 'hit' | 'face' | 'puff' | 'summon' | 'wave';
 }
 
+/** 弾の種類。arrow=狙撃の矢（金）、rock=落石（上から落ちる）、magic=呪文の光。 */
 interface Shot {
   id: number;
   x0: number;
   y0: number;
   x1: number;
   y1: number;
+  tone: 'arrow' | 'rock' | 'magic';
+}
+
+/** 場ごとにかかる呪文の効果。quake=地鳴り、block=通行止め。 */
+interface Zone {
+  id: number;
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  tone: 'quake' | 'block';
 }
 
 const SUMMON_REASON = {
@@ -260,14 +272,35 @@ export function Game({ level, deck, onExit }: { level: CpuLevel; deck: CardId[];
     if (el) animate(el, { x: [0, -power, power, -power * 0.6, power * 0.6, 0], y: [0, power * 0.5, -power * 0.5, 0, 0, 0] }, { duration: 0.38 });
   }, []);
 
-  const shoot = useCallback((from: Element | null, to: Element | null) => {
-    const a = centerOf(from);
+  const shoot = useCallback((from: Element | null, to: Element | null, tone: Shot['tone'] = 'arrow') => {
     const b = centerOf(to);
+    // 落石は対象の真上から落ちてくる
+    const a = tone === 'rock' && b ? { x: b.x, y: b.y - 320 } : centerOf(from);
     if (!a || !b) return;
     const id = fxId.current++;
-    setShots((ss) => [...ss, { id, x0: a.x, y0: a.y, x1: b.x, y1: b.y }]);
+    setShots((ss) => [...ss, { id, x0: a.x, y0: a.y, x1: b.x, y1: b.y, tone }]);
     window.setTimeout(() => setShots((ss) => ss.filter((s) => s.id !== id)), SHOT_AT_MS + 200);
   }, []);
+
+  const [zones, setZones] = useState<Zone[]>([]);
+  const addZone = useCallback((row: Element | null, tone: Zone['tone']) => {
+    if (!row) return;
+    const r = row.getBoundingClientRect();
+    const id = fxId.current++;
+    setZones((zs) => [...zs, { id, x: r.left - 6, y: r.top - 6, w: r.width + 12, h: r.height + 12, tone }]);
+    window.setTimeout(() => setZones((zs) => zs.filter((z) => z.id !== id)), 1300);
+  }, []);
+
+  /** 当たった側を、攻撃元と反対へ押し込んで戻す。 */
+  const recoil = (target: Element | null, from: Element | null, px = 9) => {
+    const a = centerOf(from);
+    const b = centerOf(target);
+    if (!target || !a || !b) return;
+    const d = Math.hypot(b.x - a.x, b.y - a.y) || 1;
+    const dx = ((b.x - a.x) / d) * px;
+    const dy = ((b.y - a.y) / d) * px;
+    animate(target, { x: [0, dx, 0], y: [0, dy, 0] }, { duration: 0.28, ease: 'easeOut' });
+  };
 
   const flash = (el: Element | null) => {
     if (el) animate(el, { filter: ['brightness(2.4) saturate(0.4)', 'brightness(1) saturate(1)'] }, { duration: 0.55 });
@@ -318,11 +351,16 @@ export function Game({ level, deck, onExit }: { level: CpuLevel; deck: CardId[];
       if (e.kind === 'spell') {
         const eff = CARDS[e.card].ab.spell!;
         // 全体・遅延は相手の場ごと、再動は自分の場ごと光らせる。単体は使った側から弾を飛ばす。
-        if (eff.kind === 'bolt' && e.target !== null) shoot(heroEl(e.p), unitEl(e.target));
+        if (eff.kind === 'bolt' && e.target !== null) shoot(heroEl(e.p), unitEl(e.target), 'rock');
         else {
           const foeSide = eff.kind === 'blast' || eff.kind === 'freeze';
           const row = (e.p === 0) === foeSide ? foeFieldRef.current : fieldRef.current;
           if (row) animate(row, { filter: ['brightness(1)', 'brightness(1.9)', 'brightness(1)'] }, { duration: 0.8 });
+          if (eff.kind === 'blast' || eff.kind === 'freeze') {
+            const tone = eff.kind === 'blast' ? 'quake' : 'block';
+            window.setTimeout(() => addZone(row, tone), tone === 'quake' ? 120 : 0);
+            if (eff.kind === 'blast') window.setTimeout(() => shake(8), 220);
+          }
         }
       }
       if (e.kind === 'pulse' && firstHitUid !== undefined) shoot(unitEl(e.uid), unitEl(firstHitUid));
@@ -359,7 +397,14 @@ export function Game({ level, deck, onExit }: { level: CpuLevel; deck: CardId[];
             } else {
               addPopup(el, `-${e.amount}`, e.guard === 'armor' ? 'guard' : 'dmg');
               addBurst(el, 'hit');
+              addBurst(el, 'wave');
               flash(el);
+              if (attackEv?.kind === 'attack') recoil(el, unitEl(attackEv.uid));
+              if (batch.some((x) => x.kind === 'spell')) {
+                // 落石: 砂煙と地面の揺れ
+                addBurst(el, 'puff');
+                shake(5);
+              }
             }
             const card = el?.getAttribute('data-card') as CardId | null;
             if (hitKind !== 'player') hitKind = card && isBlocker(card) ? 'blocker' : 'unit';
@@ -394,7 +439,23 @@ export function Game({ level, deck, onExit }: { level: CpuLevel; deck: CardId[];
     if (!atkEl || !a || !b) return;
     const dx = (b.x - a.x) * 0.55;
     const dy = (b.y - a.y) * 0.55;
-    animate(atkEl, { x: [0, dx, 0], y: [0, dy, 0], scale: [1, 1.16, 1] }, { duration: 0.6, times: [0, 0.38, 1], ease: 'easeOut' });
+    const lean = dx >= 0 ? 1 : -1;
+    // 構え（少し引く）→ 突進（当たる瞬間は HIT_AT_MS）→ 当たって止まる → 勢いよく戻る
+    const wrap = atkEl.parentElement;
+    if (wrap) {
+      wrap.style.zIndex = '6';
+      window.setTimeout(() => (wrap.style.zIndex = ''), 700);
+    }
+    animate(
+      atkEl,
+      {
+        x: [0, -dx * 0.14, dx, dx * 0.9, 0],
+        y: [0, -dy * 0.14, dy, dy * 0.9, 0],
+        scale: [1, 0.93, 1.2, 1.12, 1],
+        rotate: [0, -3 * lean, 5 * lean, 2 * lean, 0],
+      },
+      { duration: 0.62, times: [0, 0.16, 0.37, 0.5, 1], ease: ['easeOut', 'easeIn', 'easeOut', 'easeInOut'] },
+    );
   }
 
   // 自分のユニットのクールタイムが明けた瞬間: 音・振動・カードが弾んで光る
@@ -703,11 +764,13 @@ export function Game({ level, deck, onExit }: { level: CpuLevel; deck: CardId[];
         initial={{ scale: 0.4, opacity: 0, y: side === 0 ? 30 : -30 }}
         animate={{ scale: 1, opacity: 1, y: 0, transition: { type: 'spring', stiffness: 260, damping: 24 } }}
         exit={{
-          scale: 0.7,
-          opacity: 0,
-          filter: 'grayscale(1)',
+          scale: [1, 1.1, 0.5],
+          rotate: [0, side === 0 ? -4 : 4, side === 0 ? 14 : -14],
+          y: [0, -8, side === 0 ? 26 : -26],
+          opacity: [1, 1, 0],
+          filter: 'grayscale(1) brightness(1.5)',
           pointerEvents: 'none',
-          transition: { delay: SHOT_AT_MS / 1000 + 0.1, duration: 0.5 },
+          transition: { delay: SHOT_AT_MS / 1000 + 0.1, duration: 0.6, times: [0, 0.25, 1] },
         }}
       >
         <div
@@ -886,18 +949,51 @@ export function Game({ level, deck, onExit }: { level: CpuLevel; deck: CardId[];
       {/* 溜め中の行動: 攻撃元から対象へ矢印、対象に縮んでいく照準。範囲の呪文は場ごと光らせる */}
       <PendingMarks game={game} fieldMe={fieldRef.current} fieldFoe={foeFieldRef.current} />
 
-      {/* 狙撃・呪文・砲撃の弾 */}
-      <svg className="aim" aria-hidden="true">
-        {shots.map((s) => (
-          <motion.circle
-            key={s.id}
-            r={7}
-            className="shot"
-            initial={{ cx: s.x0, cy: s.y0, opacity: 1 }}
-            animate={{ cx: s.x1, cy: s.y1, opacity: [1, 1, 0], transition: { duration: SHOT_AT_MS / 1000, ease: 'easeIn' } }}
-          />
+      {/* 狙撃・呪文・砲撃の弾（尾を引く彗星。落石は上から落ちる） */}
+      <div className="shots" aria-hidden="true">
+        {shots.map((s) => {
+          const angle = s.tone === 'rock' ? 0 : (Math.atan2(s.y1 - s.y0, s.x1 - s.x0) * 180) / Math.PI;
+          return (
+            <motion.div
+              key={s.id}
+              className={`comet comet-${s.tone}`}
+              style={{ rotate: angle }}
+              initial={{ x: s.x0, y: s.y0, opacity: 0, scale: s.tone === 'rock' ? 1.6 : 1 }}
+              animate={{
+                x: s.x1,
+                y: s.y1,
+                opacity: [0, 1, 1, 0],
+                scale: 1,
+                transition: { duration: SHOT_AT_MS / 1000, ease: s.tone === 'rock' ? 'easeIn' : [0.3, 0, 0.9, 0.6], times: [0, 0.1, 0.92, 1] },
+              }}
+            />
+          );
+        })}
+      </div>
+
+      {/* 場ごとにかかる呪文の効果（地鳴り・通行止め） */}
+      <div className="zones" aria-hidden="true">
+        {zones.map((z) => (
+          <div key={z.id} className={`zone zone-${z.tone}`} style={{ left: z.x, top: z.y, width: z.w, height: z.h }}>
+            {z.tone === 'quake' ? (
+              <>
+                <svg viewBox="0 0 100 40" preserveAspectRatio="none">
+                  <path d="M0 22 L14 16 L22 24 L38 12 L47 22 L63 10 L72 21 L86 14 L100 20" />
+                  <path d="M30 40 L38 28 L33 20 M70 40 L63 27 L68 18" />
+                </svg>
+                {[8, 24, 41, 58, 74, 90].map((l, i) => (
+                  <i key={l} className="debris" style={{ left: `${l}%`, animationDelay: `${i * 0.04}s` }} />
+                ))}
+              </>
+            ) : (
+              <>
+                <span className="barricade" />
+                <span className="frost" />
+              </>
+            )}
+          </div>
         ))}
-      </svg>
+      </div>
 
       <div className="bursts" aria-hidden="true">
         {bursts.map((b) => (
