@@ -30,9 +30,8 @@
   pointer-events: none;
   z-index: 0;
   background:
-    radial-gradient(120% 75% at 50% 46%, transparent 52%, rgb(12 6 32 / 0.6) 100%),
-    linear-gradient(180deg, rgb(170 36 58 / 0.26) 0%, rgb(170 36 58 / 0) 40%, rgb(48 104 214 / 0) 56%, rgb(48 104 214 / 0.26) 100%),
-    rgb(34 22 66 / 0.2);
+    radial-gradient(120% 75% at 50% 46%, transparent 58%, rgb(12 6 32 / 0.5) 100%),
+    rgb(34 22 66 / 0.08);
 }
 
 .battle {
@@ -1245,6 +1244,7 @@
 
 /* 盤面は縦に伸びて、余った高さは仕切りの周り（川にあたる幅）に回す */
 .arena {
+  position: relative;
   max-height: 700px;
 }
 
@@ -1264,8 +1264,8 @@
 /* 一時停止ボタン（左上、時計の下） */
 .menu-btn {
   position: absolute;
-  left: 12px;
-  top: calc(60px + env(safe-area-inset-top));
+  left: 2px;
+  bottom: 10px;
   width: 40px;
   height: 40px;
   display: grid;

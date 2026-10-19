@@ -9,7 +9,7 @@ import fortressUrl from '@/assets/art/buildings/fortress.webp';
 import quarryUrl from '@/assets/art/buildings/quarry.webp';
 import mineUrl from '@/assets/art/buildings/mine.webp';
 import roadUrl from '@/assets/art/buildings/road.webp';
-import fieldUrl from '@/assets/art/field.webp';
+import fieldUrl from '@/assets/art/arena.webp';
 import coinUrl from '@/assets/art/ui/coin.webp';
 import heroFoeUrl from '@/assets/art/ui/hero-foe.webp';
 import heroMeUrl from '@/assets/art/ui/hero-me.webp';
@@ -30,7 +30,7 @@ import minerUrl from '@/assets/art/cards/miner.webp';
 import spyUrl from '@/assets/art/cards/spy.webp';
 import taxmanUrl from '@/assets/art/cards/taxman.webp';
 
-/** 盤面の地（city-builders の絵）。 */
+/** 盤面の地（ChatGPT で作成。赤い敵陣・青い自陣・金の帯。scripts/slice-arena.mjs）。 */
 export const FIELD_URL: string = fieldUrl;
 export const COIN_URL: string = coinUrl;
 /** プレイヤーの肖像（ChatGPT で作成。scripts/slice-portraits.mjs で切り出し）。 */

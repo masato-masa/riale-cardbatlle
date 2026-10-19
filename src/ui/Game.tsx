@@ -55,9 +55,9 @@ import {
 } from './sound';
 
 /** 床の絵（field.webp）の寸法と、金の帯の縦の位置（0〜1）。絵を差し替えたら測り直す。 */
-const FLOOR_W = 711;
-const FLOOR_H = 1067;
-const FLOOR_BAND = 0.45;
+const FLOOR_W = 800;
+const FLOOR_H = 1200;
+const FLOOR_BAND = 0.443;
 
 const DRAG_THRESHOLD_PX = 7;
 const LONG_PRESS_MS = 420;
@@ -864,21 +864,20 @@ export function Game({ level, deck, onExit }: { level: CpuLevel; deck: CardId[];
           <div className="hero hero-me" data-player={0}>
             <HeroBadge hp={me.hp} label="あなた" walled={isWalled(me)} portrait={HERO_ME_URL} />
           </div>
+          <button
+            className="menu-btn"
+            aria-label="メニュー"
+            onClick={() => {
+              playUiTap();
+              setMenu('menu');
+            }}
+          >
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <rect x="6" y="5" width="4.2" height="14" rx="1.4" />
+              <rect x="13.8" y="5" width="4.2" height="14" rx="1.4" />
+            </svg>
+          </button>
         </div>
-
-        <button
-          className="menu-btn"
-          aria-label="メニュー"
-          onClick={() => {
-            playUiTap();
-            setMenu('menu');
-          }}
-        >
-          <svg viewBox="0 0 24 24" aria-hidden="true">
-            <rect x="6" y="5" width="4.2" height="14" rx="1.4" />
-            <rect x="13.8" y="5" width="4.2" height="14" rx="1.4" />
-          </svg>
-        </button>
 
         <div className="tray" ref={trayRef}>
           <div className={`coin-gauge${coinInt >= COIN_MAX ? ' is-full' : ''}`} aria-label={`コイン ${coinInt}`}>
