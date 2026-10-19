@@ -696,7 +696,26 @@ export function Game({ level, deck, onExit }: { level: CpuLevel; deck: CardId[];
     pressRef.current = null;
     const d = dragRef.current;
     setDrag(null);
-    if (!d) return;
+    if (!d) {
+      // ドラッグにならなかった = タップ: カードの情報を見る
+      if (press) {
+        const cur = gameRef.current;
+        if (press.kind === 'hand') {
+          const card = cur.players[0].hand[press.index];
+          if (card) {
+            playUiTap();
+            setDetail({ card });
+          }
+        } else {
+          const u = findUnit(cur.players[0], press.uid)?.unit;
+          if (u) {
+            playUiTap();
+            setDetail({ card: u.card, hp: u.hp });
+          }
+        }
+      }
+      return;
+    }
     const s = gameRef.current;
     if (d.kind === 'hand') {
       const card = s.players[0].hand[d.index];
@@ -865,7 +884,17 @@ export function Game({ level, deck, onExit }: { level: CpuLevel; deck: CardId[];
           data-card={u.card}
           data-drop={side === 1 ? key : undefined}
           data-pickable={pickable ? u.uid : undefined}
-          onClick={pickable ? () => confirmPick(u.uid) : undefined}
+          onClick={
+            pickable
+              ? () => confirmPick(u.uid)
+              : side === 1 && !pick
+                ? () => {
+                    // 相手のカードをタップ: 情報を見る
+                    playUiTap();
+                    setDetail({ card: u.card, hp: u.hp });
+                  }
+                : undefined
+          }
           onPointerDown={side === 0 ? (e) => onPressStart(e, { kind: 'unit', uid: u.uid }) : undefined}
           onPointerMove={side === 0 ? onPressMove : undefined}
           onPointerUp={side === 0 ? onPressEnd : undefined}
