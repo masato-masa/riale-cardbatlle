@@ -83,14 +83,19 @@ describe('クールタイム（カードごと）', () => {
     expect(CARDS.herald.cd).not.toBe(CARDS.boss.cd);
   });
 
-  it('召喚後もそのカードの cd 分待つ。速攻だけ待たない', () => {
+  it('召喚後はクールタイムの半分だけ待つ（2 回目からはそのカードのクールタイム）。速攻は待たない', () => {
     for (const card of ['spy', 'guard', 'boss'] as CardId[]) {
       let s = withHand([card, 'herald', 'herald', 'herald']);
       s = step(s, { type: 'summon', p: 0, handIndex: 0, slot: 0 });
       const u = s.players[0].field[0]!;
-      expect(u.readyAt).toBe(s.time + CARDS[card].cd);
-      expect(attackBlock(tick(s, CARDS[card].cd - 1), 0, u.uid, FACE)).toBe('cooldown');
-      expect(attackBlock(tick(s, CARDS[card].cd), 0, u.uid, FACE)).toBeNull();
+      const half = Math.round(CARDS[card].cd / 2);
+      expect(u.readyAt).toBe(s.time + half);
+      expect(attackBlock(tick(s, half - 1), 0, u.uid, FACE)).toBe('cooldown');
+      expect(attackBlock(tick(s, half), 0, u.uid, FACE)).toBeNull();
+      // 攻撃したあとは、そのカードのクールタイム全体
+      const at = tick(s, half);
+      const n = step(at, { type: 'attack', p: 0, uid: u.uid, target: FACE });
+      expect(findUnit(n.players[0], u.uid)!.unit.readyAt).toBe(at.time + CARDS[card].cd);
     }
     const h = step(withHand(['herald', 'herald', 'herald', 'herald']), { type: 'summon', p: 0, handIndex: 0, slot: 0 });
     expect(h.players[0].field[0]!.readyAt).toBe(h.time);
@@ -132,7 +137,7 @@ describe('クールタイム（カードごと）', () => {
   it('祈りがあれば、召喚後の待ちも短くなる', () => {
     let [s] = place(withHand(['craftsman', 'herald', 'herald', 'herald']), 0, 0, 'cathedral');
     s = step(s, { type: 'summon', p: 0, handIndex: 0, slot: 1 });
-    expect(s.players[0].field[1]!.readyAt - s.time).toBe(Math.round(CARDS.craftsman.cd * 0.7));
+    expect(s.players[0].field[1]!.readyAt - s.time).toBe(Math.round(Math.round(CARDS.craftsman.cd * 0.7) / 2));
   });
 });
 

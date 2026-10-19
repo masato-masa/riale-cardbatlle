@@ -136,7 +136,7 @@ describe('召喚', () => {
     expect(pl.coins).toBe(COIN_MAX - CARDS.miner.summon);
     expect(pl.hand).toEqual([next, 'herald', 'guard', 'spy']);
     expect(pl.queue).toEqual([...rest, 'miner']);
-    expect(pl.field[2]).toMatchObject({ card: 'miner', hp: CARDS.miner.hp, readyAt: n.time + CARDS.miner.cd });
+    expect(pl.field[2]).toMatchObject({ card: 'miner', hp: CARDS.miner.hp, readyAt: n.time + Math.round(CARDS.miner.cd / 2) });
     expect(n.players[1]).toEqual(s.players[1]);
   });
   it('範囲外の枠には出せない', () => {
@@ -176,7 +176,8 @@ describe('攻撃', () => {
     const uid = s.players[0].field[0]!.uid;
     const early = step(s, { type: 'attack', p: 0, uid, target: { kind: 'player' } });
     expect(early).toBe(s);
-    s = tick(s, CARDS.guard.cd - 1);
+    const half = Math.round(CARDS.guard.cd / 2); // 召喚直後のクールタイムは半分
+    s = tick(s, half - 1);
     expect(step(s, { type: 'attack', p: 0, uid, target: { kind: 'player' } })).toBe(s);
     s = tick(s, 1);
     const landed = step(s, { type: 'attack', p: 0, uid, target: { kind: 'player' } });
@@ -350,7 +351,7 @@ describe('能力: 攻撃まわり', () => {
     expect(h.readyAt).toBe(s.time);
     expect(hit(s, 0, h.uid, FACE).players[1].hp).toBe(PLAYER_HP - CARDS.herald.atk);
     s = step(s, { type: 'summon', p: 0, handIndex: 1, slot: 1 });
-    expect(s.players[0].field[1]!.readyAt).toBe(s.time + CARDS.spy.cd);
+    expect(s.players[0].field[1]!.readyAt).toBe(s.time + Math.round(CARDS.spy.cd / 2));
   });
 
   it('奇襲: プレイヤーへのダメージだけ +1（カード相手には乗らない）。能力は残してあるが、今はこの能力を持つカードは無い', () => {

@@ -341,7 +341,8 @@ function place(d: Draft, p: PlayerIndex, card: CardId, slot: number, token: bool
     uid: d.nextUid++,
     card,
     hp: CARDS[card].hp,
-    readyAt: ab.haste ? d.time : d.time + cooldownOf(d.players[p], card),
+    // 登場したときのクールタイムは半分（2 回目の攻撃からそのユニットのクールタイム）。速攻はなし
+    readyAt: ab.haste ? d.time : d.time + Math.round(cooldownOf(d.players[p], card) / 2),
     barrier: !!ab.barrier,
     stealth: !!ab.stealth,
     pulseAt: ab.pulse ? d.time + ab.pulse.everyMs : null,

@@ -238,8 +238,8 @@ export const CARDS: Record<CardId, CardDef> = {
   informer: unit('informer', 'シオ', 2, 2, 2, 12, { onSummon: { kind: 'stun', ms: 6000 } }),
   taxman: unit('taxman', 'リオ', 4, 3, 3, 14, { onSummon: { kind: 'strike', amount: 2 } }),
   double: unit('double', 'ジーク', 3, 3, 2, 14, { barrier: true }),
-  inspector: unit('inspector', 'アリア', 4, 4, 3, 16, { ranged: true }),
-  blockader: unit('blockader', 'ガストン', 4, 2, 4, 16, { blocker: true, armor: 1 }),
+  inspector: unit('inspector', 'アリア', 4, 3, 3, 16, { ranged: true }),
+  blockader: unit('blockader', 'ガストン', 4, 2, 3, 16, { blocker: true, armor: 1 }),
   architect: unit('architect', 'セラ', 5, 4, 5, 16, { onSummon: { kind: 'heal', amount: 3 } }),
   boss: unit('boss', 'ヴァルガ', 5, 3, 6, 20, { splash: 1 }),
   // コスト 6 以上（基準: 能力なしならスタッツ合計 ≒ コスト×2+1、能力ぶんだけ減らす）

@@ -55,10 +55,11 @@ describe('基準のスタッツ（能力なしはスタッツ合計がコスト�
     const stat = (id: CardId) => `${CARDS[id].summon}/${CARDS[id].atk}/${CARDS[id].hp}`;
     expect(stat('herald')).toBe('1/1/1'); // 速攻
     expect(stat('guard')).toBe('2/1/3'); // ブロッカー
-    expect(stat('blockader')).toBe('4/2/4');
+    expect(stat('blockader')).toBe('4/2/3');
     expect(stat('craftsman')).toBe('3/3/3');
     expect(stat('double')).toBe('3/3/2');
     expect(stat('taxman')).toBe('4/3/3');
+    expect(stat('inspector')).toBe('4/3/3');
     expect(stat('architect')).toBe('5/4/5');
   });
 

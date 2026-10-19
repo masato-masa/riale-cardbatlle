@@ -11,9 +11,11 @@ export function HeroBadge({ hp, label, walled, portrait }: { hp: number; label: 
         <img src={portrait} alt="" draggable={false} />
       </span>
       <span className="hero-label">{label}</span>
-      <span className="hero-atk" aria-label={`攻撃力 ${PLAYER_ATK}（攻撃されたら反撃する）`}>
-        {PLAYER_ATK}
-      </span>
+      {PLAYER_ATK > 0 ? (
+        <span className="hero-atk" aria-label={`攻撃力 ${PLAYER_ATK}（攻撃されたら反撃する）`}>
+          {PLAYER_ATK}
+        </span>
+      ) : null}
       <span className="hero-hp">
         <HeartMark />
         <b>{hp}</b>
@@ -77,7 +79,7 @@ export function HelpBody() {
       <li>手札を自分の場へドラッグすると召喚。自分のカードの上に重ねると上書きします。左上の数字が召喚コストです。</li>
       <li>場のカードを相手のカードか相手のプレイヤーへドラッグすると攻撃。右上の数字がクールタイム（秒）で、明けるとまた攻撃できます。</li>
       <li>クールタイム中に相手を選ぶと予約になり、明けた瞬間に攻撃します。攻撃は少し溜めてから当たります。</li>
-      <li>カード同士はお互いにダメージを受けます。左下が攻撃力、右下が HP。プレイヤーにも攻撃力があり、攻撃してきたカードに反撃します。</li>
+      <li>カード同士はお互いにダメージを受けます。左下が攻撃力、右下が HP。（プレイヤーは今は反撃しません）</li>
       <li>盾のマークはブロッカー。相手にブロッカーがいる間は、ブロッカーしか狙えません。</li>
       <li>{WALL_TEXT}。</li>
       <li>カードの上端の 2 文字は能力。「狙撃」「足止」は相手のカードの上へドラッグして召喚します。</li>
