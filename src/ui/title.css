@@ -315,7 +315,7 @@ body {
 
 /* ---- タブ ---- */
 .tabbar {
-  width: 100%;
+  width: min(100%, 480px);
   position: sticky;
   bottom: 0;
   z-index: 5;
@@ -538,4 +538,31 @@ body {
 
 .sheet-btn.quiet:hover {
   background: linear-gradient(#4a3d88, #241a52);
+}
+
+/* 背の低い画面（小さい端末）: 「バトル！」が必ず見えるよう、デッキ一覧を隠して扇を縮める */
+@media (max-height: 760px) {
+  .ts-fan {
+    height: 150px;
+    scale: 0.82;
+    margin-block: -14px;
+  }
+
+  .ts-sub {
+    display: none;
+  }
+
+  .ts-deck-grid {
+    gap: 4px;
+  }
+}
+
+@media (max-height: 740px) {
+  .ts-deck {
+    display: none;
+  }
+
+  .ts-battle {
+    height: 66px;
+  }
 }
