@@ -10,6 +10,7 @@ import { Home } from './ui/Home';
 import './ui/shared/tokens.css';
 import './ui/shared/chrome.css';
 import './ui/styles.css';
+import './ui/polish.css';
 
 type Screen = { kind: 'home' } | { kind: 'deck' } | { kind: 'game'; level: CpuLevel };
 

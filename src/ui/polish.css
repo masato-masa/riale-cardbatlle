@@ -1,0 +1,673 @@
+/* =====================================================================
+   見た目の仕上げ（クラロワ・ドラクエライバルズを参考）。styles.css のあとに読み込んで上書きする。
+   - 暗い紫のトレイ + 金の縁 / 金縁のカード / 自陣=青・敵陣=赤の色分け / 金の仕切り
+   - 数字は太い縁取り、HP は棒でも見せる
+   ===================================================================== */
+
+:root {
+  --navy-1: #3a2d6b;
+  --navy-2: #1c1540;
+  --navy-3: #120d2c;
+  --gold-1: #fff0b8;
+  --gold-2: #f6c548;
+  --gold-3: #b9780f;
+  --gold-4: #5a3a06;
+  --blue-1: #4a86e8;
+  --blue-2: #1b3a7d;
+  --red-1: #e2585f;
+  --red-2: #7a1f2c;
+}
+
+/* ---- 盤面の色: 床を少し沈め、敵陣は赤・自陣は青に、四隅を暗く ---- */
+.app-battle {
+  position: relative;
+}
+
+.app-battle::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  background:
+    radial-gradient(120% 75% at 50% 46%, transparent 52%, rgb(12 6 32 / 0.6) 100%),
+    linear-gradient(180deg, rgb(170 36 58 / 0.26) 0%, rgb(170 36 58 / 0) 40%, rgb(48 104 214 / 0) 56%, rgb(48 104 214 / 0.26) 100%),
+    rgb(34 22 66 / 0.2);
+}
+
+.battle {
+  z-index: 1;
+}
+
+/* 空き枠: 沈んだ石の台座に金（敵は赤・自分は青）の縁 */
+.slot {
+  border-radius: 11px;
+  background: linear-gradient(rgb(22 14 44 / 0.42), rgb(22 14 44 / 0.2));
+  box-shadow:
+    inset 0 3px 8px rgb(0 0 0 / 0.5),
+    inset 0 0 0 2px rgb(255 214 120 / 0.6),
+    0 1px 0 rgb(255 255 255 / 0.28);
+}
+
+.field-foe .slot {
+  background: linear-gradient(rgb(70 12 28 / 0.46), rgb(70 12 28 / 0.22));
+  box-shadow:
+    inset 0 3px 8px rgb(0 0 0 / 0.5),
+    inset 0 0 0 2px rgb(255 128 128 / 0.65),
+    0 1px 0 rgb(255 255 255 / 0.22);
+}
+
+.field-me .slot {
+  background: linear-gradient(rgb(16 36 92 / 0.46), rgb(16 36 92 / 0.22));
+  box-shadow:
+    inset 0 3px 8px rgb(0 0 0 / 0.5),
+    inset 0 0 0 2px rgb(140 192 255 / 0.7),
+    0 1px 0 rgb(255 255 255 / 0.25);
+}
+
+.field-me .slot.is-drop {
+  background: rgb(255 216 74 / 0.45);
+  box-shadow: inset 0 0 0 3px #ffd84a, 0 0 16px rgb(255 216 74 / 0.9);
+}
+
+.field-me .slot.is-drop.is-replace {
+  background: rgb(229 72 77 / 0.4);
+  box-shadow: inset 0 0 0 3px var(--danger), 0 0 16px rgb(229 72 77 / 0.9);
+}
+
+/* 仕切り: 金の光る線と、真ん中の菱形 */
+.midline {
+  position: relative;
+  height: 4px;
+  background: linear-gradient(90deg, transparent, #ffd978 18%, #fff6cf 50%, #ffd978 82%, transparent);
+  box-shadow: 0 0 12px rgb(255 200 90 / 0.75), 0 1px 0 rgb(0 0 0 / 0.35);
+}
+
+.midline::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 16px;
+  height: 16px;
+  translate: -50% -50%;
+  rotate: 45deg;
+  border: 2px solid var(--gold-4);
+  border-radius: 3px;
+  background: linear-gradient(135deg, var(--gold-1), var(--gold-2) 55%, var(--gold-3));
+  box-shadow: 0 0 8px rgb(255 200 90 / 0.9);
+}
+
+/* ---- プレイヤー札・時計: 暗い紫の板に金の縁。敵は赤・自分は青 ---- */
+.hero-badge {
+  position: relative;
+  gap: 8px;
+  padding: 5px 16px 13px;
+  border: 2px solid var(--gold-2);
+  background: linear-gradient(var(--navy-1), var(--navy-2));
+  box-shadow:
+    0 0 0 2px var(--navy-3),
+    0 4px 0 rgb(0 0 0 / 0.45),
+    inset 0 1px 0 rgb(255 255 255 / 0.3);
+}
+
+.hero-foe .hero-badge {
+  background: linear-gradient(var(--red-1), var(--red-2) 85%);
+  border-color: #ffd0c0;
+}
+
+.hero-me .hero-badge {
+  background: linear-gradient(var(--blue-1), var(--blue-2) 85%);
+  border-color: #cfe4ff;
+}
+
+.hero-label {
+  color: var(--gold-1);
+  text-shadow: 0 1px 0 rgb(0 0 0 / 0.6);
+}
+
+.hero-hp {
+  color: #fff;
+  font-size: 24px;
+  -webkit-text-stroke: 3px rgb(18 8 30 / 0.9);
+  paint-order: stroke fill;
+}
+
+.hero-badge.is-low .hero-hp b {
+  color: #ff8f94;
+}
+
+.hero-badge.is-low {
+  animation: hero-low 0.9s ease-in-out infinite;
+}
+
+@keyframes hero-low {
+  50% {
+    box-shadow: 0 0 0 2px var(--navy-3), 0 4px 0 rgb(0 0 0 / 0.45), 0 0 16px 4px rgb(255 80 90 / 0.8);
+  }
+}
+
+/* HP の棒（ライバルズの緑の帯） */
+.hero-bar {
+  position: absolute;
+  left: 16px;
+  right: 16px;
+  bottom: 4px;
+  height: 6px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgb(0 0 0 / 0.6);
+  box-shadow: inset 0 0 0 1px rgb(0 0 0 / 0.4);
+}
+
+.hero-bar i {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(#a8f5b8, #2fb04f 60%, #1d8a3a);
+  transition: width 0.4s var(--ease);
+}
+
+.hero-badge.is-low .hero-bar i {
+  background: linear-gradient(#ffb0b0, #e5484d 60%, #b02a30);
+}
+
+.clock {
+  border: 2px solid var(--gold-2);
+  background: linear-gradient(var(--navy-1), var(--navy-2));
+  color: #fff;
+  box-shadow: 0 0 0 2px var(--navy-3), 0 3px 0 rgb(0 0 0 / 0.4);
+  -webkit-text-stroke: 2px rgb(18 8 30 / 0.85);
+  paint-order: stroke fill;
+}
+
+.clock.is-urgent {
+  color: #ff9ea2;
+  animation: clock-urgent 1s ease-in-out infinite;
+}
+
+@keyframes clock-urgent {
+  50% {
+    scale: 1.08;
+  }
+}
+
+.arena-top .hero-coins {
+  border: 2px solid var(--gold-2);
+  background: linear-gradient(var(--navy-1), var(--navy-2));
+  box-shadow: 0 0 0 2px var(--navy-3);
+}
+
+/* ---- 手札のトレイ: 暗い紫の板に金の縁（クラロワ） ---- */
+.tray {
+  position: relative;
+  padding: 12px 10px calc(10px + env(safe-area-inset-bottom));
+  background:
+    repeating-linear-gradient(135deg, rgb(255 255 255 / 0.035) 0 6px, transparent 6px 12px),
+    linear-gradient(#34296a, #1a1338 55%, #120d2c);
+  border-top: 3px solid var(--gold-2);
+  box-shadow: 0 -8px 20px rgb(0 0 0 / 0.5), inset 0 2px 0 rgb(255 240 190 / 0.45);
+}
+
+/* コインのゲージ: 光沢のある金の帯。10 でそろうと光る */
+.coin-cells {
+  position: relative;
+  height: 20px;
+  padding: 3px;
+  background: var(--navy-3);
+  border: 2px solid var(--gold-3);
+  box-shadow: inset 0 2px 4px rgb(0 0 0 / 0.6);
+}
+
+.coin-cell {
+  background: rgb(255 255 255 / 0.1);
+}
+
+.coin-fill {
+  background: linear-gradient(#fff3b8 0%, #f9c933 40%, #d79a06 100%);
+}
+
+.coin-cells::after {
+  content: '';
+  position: absolute;
+  left: 6px;
+  right: 6px;
+  top: 4px;
+  height: 4px;
+  border-radius: 999px;
+  background: rgb(255 255 255 / 0.3);
+  pointer-events: none;
+}
+
+.coin-count {
+  width: 46px;
+  height: 46px;
+  filter: drop-shadow(0 2px 0 rgb(0 0 0 / 0.5));
+}
+
+.coin-count b {
+  font-size: 22px;
+  -webkit-text-stroke: 3px rgb(40 22 0 / 0.9);
+  paint-order: stroke fill;
+  text-shadow: none;
+}
+
+.coin-gauge.is-full .coin-fill {
+  animation: coin-full 0.9s ease-in-out infinite;
+}
+
+.coin-gauge.is-full .coin-count {
+  animation: coin-pop 0.9s ease-in-out infinite;
+}
+
+@keyframes coin-full {
+  50% {
+    filter: brightness(1.45);
+  }
+}
+
+@keyframes coin-pop {
+  50% {
+    scale: 1.12;
+  }
+}
+
+.next-label {
+  color: var(--gold-1);
+  letter-spacing: 0.06em;
+  -webkit-text-stroke: 2px rgb(18 8 30 / 0.9);
+  paint-order: stroke fill;
+}
+
+.next-slot {
+  opacity: 1;
+  filter: brightness(0.82) saturate(0.85);
+}
+
+/* ---- カードの面: 金の縁・光沢・縁取りの太い数字 ---- */
+.face {
+  border: 3px solid transparent;
+  border-radius: 10px;
+  background: linear-gradient(155deg, var(--gold-1), var(--gold-2) 45%, var(--gold-3)) border-box;
+  box-shadow: 0 0 0 1.5px var(--gold-4), 0 4px 0 rgb(0 0 0 / 0.5), 0 7px 10px rgb(0 0 0 / 0.32);
+}
+
+.face-body {
+  border-radius: 7px;
+  background: #2a2440;
+  box-shadow: inset 0 0 0 1px rgb(0 0 0 / 0.5);
+}
+
+.face-body::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(125deg, rgb(255 255 255 / 0.32) 0%, rgb(255 255 255 / 0.06) 34%, transparent 36%),
+    radial-gradient(100% 80% at 50% 40%, transparent 55%, rgb(0 0 0 / 0.32) 100%);
+}
+
+.face.is-blocker {
+  background: linear-gradient(155deg, #d6ebff, #5ea3f5 45%, #1b4f8f) border-box;
+}
+
+.face.is-building {
+  background: linear-gradient(155deg, #efe4d2, #b5a58c 45%, #6a5d4b) border-box;
+  box-shadow: 0 0 0 1.5px #3b3328, 0 4px 0 rgb(0 0 0 / 0.5), 0 7px 10px rgb(0 0 0 / 0.32);
+}
+
+.face.is-spell {
+  background: linear-gradient(155deg, #efe0ff, #a77bf0 45%, #4a2a94) border-box;
+  box-shadow: 0 0 0 1.5px #2a1658, 0 4px 0 rgb(0 0 0 / 0.5), 0 0 12px rgb(167 123 240 / 0.55);
+}
+
+.face.is-token {
+  background: linear-gradient(155deg, #e6d3a6, #a88848 45%, #5e4a22) border-box;
+}
+
+.face-name {
+  padding: 14% 2px 3%;
+  background: linear-gradient(transparent, rgb(12 8 30 / 0.94) 42%);
+  text-shadow: 0 1px 2px #000, 0 0 4px rgb(0 0 0 / 0.8);
+  letter-spacing: 0.02em;
+}
+
+.face.is-spell .face-name {
+  background: linear-gradient(transparent, rgb(50 24 110 / 0.95) 42%);
+}
+
+.face.is-building .face-name {
+  background: linear-gradient(transparent, rgb(46 38 28 / 0.95) 42%);
+}
+
+.pip {
+  border: 2px solid var(--gold-4);
+  -webkit-text-stroke: 2.5px rgb(30 14 4 / 0.9);
+  paint-order: stroke fill;
+  text-shadow: none;
+  box-shadow: 0 2px 0 rgb(0 0 0 / 0.45);
+}
+
+.pip-summon {
+  background: radial-gradient(circle at 35% 28%, #fff1b0, var(--gold-2) 52%, var(--gold-3));
+  color: #fff;
+}
+
+.pip-atk {
+  background: radial-gradient(circle at 35% 28%, #ff9a9d, var(--atk) 55%, #a3232a);
+}
+
+.pip-hp {
+  background: radial-gradient(circle at 35% 28%, #86f0a0, var(--hp) 55%, #1a7a35);
+}
+
+.pip-hp.is-hurt {
+  background: radial-gradient(circle at 35% 28%, #fff, #ffe3e3 70%);
+  color: var(--danger);
+  -webkit-text-stroke: 0;
+}
+
+.pip-cd {
+  background: radial-gradient(circle at 35% 28%, #c4d8ee, #5f7f9f 58%, #34506e);
+}
+
+/* 手札: 使えるカードは金色に脈打つ。足りないぶんは上から暗く、縁に金の線 */
+.hand-card.is-affordable .face {
+  box-shadow: 0 0 0 1.5px var(--gold-4), 0 4px 0 rgb(0 0 0 / 0.5), 0 0 14px 3px rgb(255 216 74 / 0.7);
+  animation: afford 1.5s ease-in-out infinite;
+}
+
+@keyframes afford {
+  50% {
+    box-shadow: 0 0 0 1.5px var(--gold-4), 0 4px 0 rgb(0 0 0 / 0.5), 0 0 22px 7px rgb(255 216 74 / 0.95);
+  }
+}
+
+.hand-card:not(.is-affordable) .face-body {
+  filter: saturate(0.75);
+}
+
+.hand-wait {
+  border-radius: 8px 8px 0 0;
+  background: rgb(14 8 36 / 0.58);
+  border-bottom: 2px solid rgb(255 216 74 / 0.85);
+}
+
+/* 場のカード: 攻撃できる間は縁が光って脈打つ */
+.unit {
+  border-radius: 11px;
+}
+
+.unit.is-ready {
+  box-shadow: 0 0 0 2px #fff3b0, 0 0 14px 3px rgb(255 216 74 / 0.85);
+  animation: ready-pulse 1.2s ease-in-out infinite;
+}
+
+@keyframes ready-pulse {
+  50% {
+    box-shadow: 0 0 0 2px #fff3b0, 0 0 22px 7px rgb(255 216 74 / 1);
+  }
+}
+
+/* ---- 演出: 着弾の火花・着地の輪・倒れた煙 ---- */
+.bursts {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 25;
+}
+
+.burst {
+  position: absolute;
+  width: 96px;
+  height: 96px;
+  translate: -50% -50%;
+  border-radius: 50%;
+  animation: burst-hit 0.45s ease-out forwards;
+}
+
+.burst::before {
+  content: '';
+  position: absolute;
+  inset: -22%;
+  border-radius: 50%;
+  background: repeating-conic-gradient(rgb(255 244 190 / 0.95) 0 5deg, transparent 5deg 30deg);
+  mask: radial-gradient(circle, transparent 28%, #000 32%, transparent 70%);
+  -webkit-mask: radial-gradient(circle, transparent 28%, #000 32%, transparent 70%);
+}
+
+.burst-hit {
+  background: radial-gradient(circle, #fff 0 16%, rgb(255 226 120 / 0.9) 30%, rgb(255 140 50 / 0) 68%);
+}
+
+.burst-face {
+  width: 130px;
+  height: 130px;
+  background: radial-gradient(circle, #fff 0 14%, rgb(255 120 120 / 0.95) 32%, rgb(255 60 60 / 0) 70%);
+  animation-duration: 0.55s;
+}
+
+@keyframes burst-hit {
+  0% {
+    opacity: 1;
+    scale: 0.25;
+    rotate: 0deg;
+  }
+  60% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    scale: 1.35;
+    rotate: 24deg;
+  }
+}
+
+.burst-summon {
+  width: 80px;
+  height: 80px;
+  border: 4px solid rgb(255 245 200 / 0.95);
+  background: radial-gradient(circle, rgb(255 255 255 / 0.5), transparent 70%);
+  box-shadow: 0 0 16px rgb(255 216 74 / 0.9);
+  animation: burst-ring 0.5s ease-out forwards;
+}
+
+.burst-summon::before,
+.burst-puff::before {
+  display: none;
+}
+
+@keyframes burst-ring {
+  0% {
+    opacity: 1;
+    scale: 0.3;
+  }
+  100% {
+    opacity: 0;
+    scale: 1.9;
+  }
+}
+
+.burst-puff {
+  width: 90px;
+  height: 90px;
+  background:
+    radial-gradient(circle at 30% 40%, rgb(235 232 245 / 0.95) 0 22%, transparent 24%),
+    radial-gradient(circle at 70% 35%, rgb(220 216 235 / 0.9) 0 20%, transparent 22%),
+    radial-gradient(circle at 50% 70%, rgb(240 238 250 / 0.95) 0 24%, transparent 26%);
+  animation: burst-puff 0.7s ease-out forwards;
+}
+
+@keyframes burst-puff {
+  0% {
+    opacity: 1;
+    scale: 0.4;
+  }
+  100% {
+    opacity: 0;
+    scale: 1.8;
+    translate: -50% -90%;
+  }
+}
+
+/* ダメージの数字: 太い縁取りと跳ね */
+.popup {
+  font-size: 30px;
+  -webkit-text-stroke: 5px #7a0d12;
+  paint-order: stroke fill;
+  text-shadow: 0 3px 0 rgb(0 0 0 / 0.55);
+}
+
+.popup-face {
+  font-size: 42px;
+  color: #fff3b0;
+  -webkit-text-stroke: 6px #8a1018;
+}
+
+.popup-heal {
+  -webkit-text-stroke: 5px #0f5a2c;
+}
+
+.popup-guard {
+  -webkit-text-stroke: 4px #1a4a7a;
+}
+
+.popup-stun {
+  -webkit-text-stroke: 4px #2a2f38;
+}
+
+/* 開始のバナー */
+.intro {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  pointer-events: none;
+  z-index: 35;
+}
+
+.intro-band {
+  width: 100%;
+  padding: 16px 0;
+  display: grid;
+  place-items: center;
+  background: linear-gradient(90deg, transparent, rgb(26 16 60 / 0.92) 14%, rgb(26 16 60 / 0.92) 86%, transparent);
+  border-block: 3px solid var(--gold-2);
+  box-shadow: 0 0 24px rgb(0 0 0 / 0.5);
+}
+
+.intro-text {
+  font-size: 38px;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  background: linear-gradient(#fff6cf, var(--gold-2) 55%, #e08a10);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  filter: drop-shadow(0 3px 0 #4a2a00) drop-shadow(0 0 10px rgb(255 190 60 / 0.8));
+}
+
+/* ヒント */
+.hint {
+  border: 2px solid var(--gold-2);
+  background: linear-gradient(var(--navy-1), var(--navy-2));
+  box-shadow: 0 0 0 2px var(--navy-3), 0 4px 10px rgb(0 0 0 / 0.4);
+}
+
+.hint-info {
+  color: #fff;
+  background: linear-gradient(var(--navy-1), var(--navy-2));
+}
+
+/* ---- 決着: 金縁の大きな札。勝ちは紙吹雪と光の輪 ---- */
+.result {
+  background: radial-gradient(circle at 50% 45%, rgb(26 16 60 / 0.55), rgb(8 4 22 / 0.8));
+  overflow: hidden;
+}
+
+.result.is-win::before {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 44%;
+  width: 150vmax;
+  height: 150vmax;
+  translate: -50% -50%;
+  background: repeating-conic-gradient(rgb(255 224 120 / 0.22) 0 8deg, transparent 8deg 24deg);
+  mask: radial-gradient(circle, #000 0, transparent 55%);
+  -webkit-mask: radial-gradient(circle, #000 0, transparent 55%);
+  animation: rays 14s linear infinite;
+  pointer-events: none;
+}
+
+@keyframes rays {
+  to {
+    rotate: 360deg;
+  }
+}
+
+.result-card {
+  position: relative;
+  border: 3px solid var(--gold-2);
+  background: linear-gradient(#3a2d6b, #1a1338);
+  box-shadow: 0 0 0 3px var(--navy-3), 0 12px 30px rgb(0 0 0 / 0.55), inset 0 2px 0 rgb(255 240 190 / 0.4);
+  color: #fff;
+}
+
+.result-title {
+  font-size: 48px;
+  letter-spacing: 0.06em;
+  background: linear-gradient(#fff, #cfd6e6 60%, #8d97ad);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  filter: drop-shadow(0 3px 0 #111);
+}
+
+.result-title.is-win {
+  background: linear-gradient(#fff6cf, var(--gold-2) 55%, #e08a10);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  filter: drop-shadow(0 3px 0 #4a2a00) drop-shadow(0 0 12px rgb(255 190 60 / 0.9));
+}
+
+.result-title.is-lose {
+  background: linear-gradient(#c9d2e6, #7b87a3 60%, #4b556d);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.result-sub {
+  color: #d8d2f0;
+}
+
+.confetti {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.confetti i {
+  position: absolute;
+  top: -16px;
+  width: 9px;
+  height: 14px;
+  border-radius: 2px;
+  background: var(--c);
+  animation: confetti-fall linear infinite;
+}
+
+@keyframes confetti-fall {
+  0% {
+    translate: 0 0;
+    rotate: 0deg;
+  }
+  100% {
+    translate: 26px 110vh;
+    rotate: 720deg;
+  }
+}

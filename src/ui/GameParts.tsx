@@ -20,6 +20,9 @@ export function HeroBadge({ hp, label, walled }: { hp: number; label: string; wa
           壁
         </span>
       ) : null}
+      <span className="hero-bar" aria-hidden="true">
+        <i style={{ width: `${Math.max(0, Math.min(1, ratio)) * 100}%` }} />
+      </span>
     </span>
   );
 }

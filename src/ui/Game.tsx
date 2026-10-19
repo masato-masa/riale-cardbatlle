@@ -1,5 +1,5 @@
 import { animate, AnimatePresence, motion } from 'motion/react';
-import { useCallback, useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react';
 
 import { cpuStep, createBrain, type CpuLevel } from '@/ai/cpu';
 import {
@@ -53,6 +53,11 @@ import {
   primeAudio,
 } from './sound';
 
+/** 床の絵（field.webp）の寸法と、金の帯の縦の位置（0〜1）。絵を差し替えたら測り直す。 */
+const FLOOR_W = 711;
+const FLOOR_H = 1067;
+const FLOOR_BAND = 0.45;
+
 const DRAG_THRESHOLD_PX = 7;
 const LONG_PRESS_MS = 420;
 /** 攻撃の突進で、当たる瞬間までの時間（ms）。数字とダメージ音をここに合わせる。 */
@@ -75,6 +80,14 @@ interface Popup {
   y: number;
   text: string;
   tone: 'dmg' | 'face' | 'heal' | 'guard' | 'stun';
+}
+
+/** 着弾の火花・倒れた煙。位置に置いて、CSS のアニメーションが終わったら消す。 */
+interface Burst {
+  id: number;
+  x: number;
+  y: number;
+  tone: 'hit' | 'face' | 'puff' | 'summon';
 }
 
 interface Shot {
@@ -205,6 +218,48 @@ export function Game({ level, deck, onExit }: { level: CpuLevel; deck: CardId[];
     window.setTimeout(() => setPopups((ps) => ps.filter((p) => p.id !== id)), 1400);
   }, []);
 
+  // 床の絵の金の帯（縦 45%）を、盤面の仕切りの位置に合わせる。絵は寸法が違う画面でも帯がずれないよう拡大して動かす。
+  const [floorBg, setFloorBg] = useState<{ size: string; pos: string } | null>(null);
+  useLayoutEffect(() => {
+    const fit = () => {
+      const mid = document.querySelector('.midline')?.getBoundingClientRect();
+      if (!mid) return;
+      const vw = window.innerWidth;
+      const vh = window.innerHeight;
+      const y = mid.top + mid.height / 2;
+      const k = Math.max(1, ((1 - y / vh) / (1 - FLOOR_BAND)) * 1.01);
+      const s = Math.max(vw / FLOOR_W, (vh / FLOOR_H) * k);
+      const h = FLOOR_H * s;
+      const y0 = Math.min(0, Math.max(vh - h, y - FLOOR_BAND * h));
+      setFloorBg({ size: `${FLOOR_W * s}px ${h}px`, pos: `center ${y0}px` });
+    };
+    fit();
+    window.addEventListener('resize', fit);
+    return () => window.removeEventListener('resize', fit);
+  }, []);
+
+  const [intro, setIntro] = useState(true);
+  useEffect(() => {
+    setIntro(true);
+    const t = window.setTimeout(() => setIntro(false), 1500);
+    return () => window.clearTimeout(t);
+  }, [seed]);
+
+  const [bursts, setBursts] = useState<Burst[]>([]);
+  const addBurst = useCallback((el: Element | null, tone: Burst['tone']) => {
+    const c = centerOf(el);
+    if (!c) return;
+    const id = fxId.current++;
+    setBursts((bs) => [...bs, { id, x: c.x, y: c.y, tone }]);
+    window.setTimeout(() => setBursts((bs) => bs.filter((b) => b.id !== id)), 800);
+  }, []);
+
+  /** 本体が受けたとき盤面を揺らす（レイアウトは揺れの後で元に戻る）。 */
+  const shake = useCallback((power: number) => {
+    const el = document.querySelector('.arena');
+    if (el) animate(el, { x: [0, -power, power, -power * 0.6, power * 0.6, 0], y: [0, power * 0.5, -power * 0.5, 0, 0, 0] }, { duration: 0.38 });
+  }, []);
+
   const shoot = useCallback((from: Element | null, to: Element | null) => {
     const a = centerOf(from);
     const b = centerOf(to);
@@ -240,6 +295,8 @@ export function Game({ level, deck, onExit }: { level: CpuLevel; deck: CardId[];
 
     for (const e of batch) {
       if (e.kind === 'summon') {
+        // 着地の輪。枠は描画のあとで出来るので、1 フレーム待って位置を読む
+        window.setTimeout(() => addBurst(unitEl(e.uid), 'summon'), 60);
         if (!e.token) playSummon(CARDS[e.card].summon);
         if (e.p === 0 && !e.token) hapticUseCard();
       }
@@ -289,6 +346,8 @@ export function Game({ level, deck, onExit }: { level: CpuLevel; deck: CardId[];
           if (e.target.kind === 'player') {
             const el = heroEl(e.p);
             addPopup(el, `-${e.amount}`, 'face');
+            addBurst(el, 'face');
+            shake(Math.min(9, 3 + e.amount));
             if (el) animate(el, { x: [0, -9, 9, -6, 6, -3, 0] }, { duration: 0.5 });
             if (e.p === 0) hapticImpact([28]);
             hitKind = 'player';
@@ -299,12 +358,14 @@ export function Game({ level, deck, onExit }: { level: CpuLevel; deck: CardId[];
               playBarrier();
             } else {
               addPopup(el, `-${e.amount}`, e.guard === 'armor' ? 'guard' : 'dmg');
+              addBurst(el, 'hit');
               flash(el);
             }
             const card = el?.getAttribute('data-card') as CardId | null;
             if (hitKind !== 'player') hitKind = card && isBlocker(card) ? 'blocker' : 'unit';
           }
         }
+        if (e.kind === 'death') addBurst(unitEl(e.uid), 'puff');
         if (e.kind === 'heal') {
           addPopup(heroEl(e.p), `+${e.amount}`, 'heal');
           playHeal();
@@ -695,7 +756,10 @@ export function Game({ level, deck, onExit }: { level: CpuLevel; deck: CardId[];
   const castReady = dragSpell && handDragCard && !requiresTarget(handDragCard) && handDrag?.onBoard;
 
   return (
-    <div className="app-battle" style={{ backgroundImage: `url(${FIELD_URL})` }}>
+    <div
+      className="app-battle"
+      style={{ backgroundImage: `url(${FIELD_URL})`, backgroundSize: floorBg?.size, backgroundPosition: floorBg?.pos }}
+    >
       <main className={`battle${castReady ? ' is-casting' : ''}`}>
         <div className="arena">
           <div className="arena-top">
@@ -724,7 +788,7 @@ export function Game({ level, deck, onExit }: { level: CpuLevel; deck: CardId[];
         </div>
 
         <div className="tray" ref={trayRef}>
-          <div className="coin-gauge" aria-label={`コイン ${coinInt}`}>
+          <div className={`coin-gauge${coinInt >= COIN_MAX ? ' is-full' : ''}`} aria-label={`コイン ${coinInt}`}>
             <span className="coin-count">
               <img src={COIN_URL} alt="" />
               <b>{coinInt}</b>
@@ -835,6 +899,39 @@ export function Game({ level, deck, onExit }: { level: CpuLevel; deck: CardId[];
         ))}
       </svg>
 
+      <div className="bursts" aria-hidden="true">
+        {bursts.map((b) => (
+          <span key={b.id} className={`burst burst-${b.tone}`} style={{ left: b.x, top: b.y }} />
+        ))}
+      </div>
+
+      <AnimatePresence>
+        {intro ? (
+          <motion.div
+            key="intro"
+            className="intro"
+            aria-hidden="true"
+            initial={{ opacity: 1 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0, pointerEvents: 'none', transition: { duration: 0.3 } }}
+          >
+            <motion.div
+              className="intro-band"
+              initial={{ scaleY: 0 }}
+              animate={{ scaleY: 1, transition: { type: 'spring', stiffness: 420, damping: 30 } }}
+            >
+              <motion.span
+                className="intro-text"
+                initial={{ x: 140, opacity: 0, scale: 1.3 }}
+                animate={{ x: 0, opacity: 1, scale: 1, transition: { delay: 0.12, type: 'spring', stiffness: 360, damping: 22 } }}
+              >
+                バトル開始！
+              </motion.span>
+            </motion.div>
+          </motion.div>
+        ) : null}
+      </AnimatePresence>
+
       <div className="popups" aria-hidden="true">
         <AnimatePresence>
           {popups.map((p) => (
@@ -843,7 +940,7 @@ export function Game({ level, deck, onExit }: { level: CpuLevel; deck: CardId[];
               className={`popup popup-${p.tone}`}
               style={{ left: p.x, top: p.y }}
               initial={{ opacity: 0, y: 0, scale: 0.6 }}
-              animate={{ opacity: [0, 1, 1, 0], y: -44, scale: 1, transition: { duration: 1.3, times: [0, 0.12, 0.75, 1] } }}
+              animate={{ opacity: [0, 1, 1, 0], y: -44, scale: [0.4, 1.5, 1, 1], transition: { duration: 1.3, times: [0, 0.12, 0.75, 1] } }}
               exit={{ opacity: 0 }}
             >
               {p.text}
@@ -856,11 +953,26 @@ export function Game({ level, deck, onExit }: { level: CpuLevel; deck: CardId[];
         {game.result ? (
           <motion.div
             key="result"
-            className="result"
+            className={`result${game.result.winner === 0 ? ' is-win' : ''}`}
             initial={{ opacity: 0 }}
             animate={{ opacity: 1, transition: { delay: 0.5 } }}
             exit={{ opacity: 0, pointerEvents: 'none' }}
           >
+            {game.result.winner === 0 ? (
+              <div className="confetti" aria-hidden="true">
+                {Array.from({ length: 26 }, (_, i) => (
+                  <i
+                    key={i}
+                    style={{
+                      left: `${(i * 37) % 100}%`,
+                      animationDelay: `${((i * 53) % 18) / 10}s`,
+                      animationDuration: `${2.4 + ((i * 29) % 12) / 10}s`,
+                      ['--c' as string]: ['#ffd84a', '#ff6b6b', '#6bc4ff', '#7be495', '#d9a8ff'][i % 5],
+                    }}
+                  />
+                ))}
+              </div>
+            ) : null}
             <motion.div
               className="result-card"
               initial={{ scale: 0.7, y: 20 }}
