@@ -272,6 +272,8 @@ export function Game({ level, deck, onExit }: { level: CpuLevel; deck: CardId[];
     return () => window.clearTimeout(t);
   }, [seed]);
 
+  /** 決着の閃光（画面全体が一瞬白くなる）。 */
+  const [flashOn, setFlash] = useState(false);
   const [bursts, setBursts] = useState<Burst[]>([]);
   const addBurst = useCallback((el: Element | null, tone: Burst['tone']) => {
     const c = centerOf(el);
@@ -387,6 +389,14 @@ export function Game({ level, deck, onExit }: { level: CpuLevel; deck: CardId[];
       if (e.kind === 'end') {
         const r = gameRef.current.result;
         addResult(r?.winner ?? null);
+        // 決着の見せ場: 倒れた側のプレイヤー札で連続の爆発・画面の閃光・大きな揺れ
+        if (r && r.reason === 'hp' && r.winner !== null) {
+          const loser = heroEl(r.winner === 0 ? 1 : 0);
+          [0, 120, 260].forEach((d, i) => window.setTimeout(() => addBurst(loser, i === 1 ? 'blast' : 'face'), d));
+          shake(12);
+          setFlash(true);
+          window.setTimeout(() => setFlash(false), 450);
+        }
         if (r?.winner === 0) {
           playWin();
           hapticWin();
@@ -1026,6 +1036,20 @@ export function Game({ level, deck, onExit }: { level: CpuLevel; deck: CardId[];
           </div>
         ))}
       </div>
+
+      <AnimatePresence>
+        {flashOn ? (
+          <motion.div
+            key="flash"
+            className="screen-flash"
+            aria-hidden="true"
+            initial={{ opacity: 0.85 }}
+            animate={{ opacity: 0 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.45, ease: 'easeOut' }}
+          />
+        ) : null}
+      </AnimatePresence>
 
       <div className="bursts" aria-hidden="true">
         {bursts.map((b) => (

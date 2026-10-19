@@ -1342,3 +1342,12 @@
   color: transparent;
   filter: drop-shadow(0 3px 0 #3a1a60) drop-shadow(0 0 10px rgb(255 190 60 / 0.8));
 }
+
+/* 決着の閃光 */
+.screen-flash {
+  position: fixed;
+  inset: 0;
+  z-index: 36;
+  pointer-events: none;
+  background: radial-gradient(circle at 50% 40%, #fff, rgb(255 236 180 / 0.9));
+}
