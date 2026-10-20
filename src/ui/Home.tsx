@@ -49,7 +49,7 @@ export function Home({ deck, onStart, onDeck }: { deck: CardId[]; onStart: (leve
           <span className="ts-name">
             <b>あなた</b>
             <small>
-              {record.win} 勝 {record.lose} 敗
+              {record.win} 勝 {record.lose} 敗{record.streak >= 2 ? ` ・ ${record.streak} 連勝中` : ''}
             </small>
           </span>
         </div>

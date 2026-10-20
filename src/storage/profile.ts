@@ -9,9 +9,12 @@ export interface Record {
   win: number;
   lose: number;
   draw: number;
+  /** いまの連勝（負けで 0、引き分けは変えない）と、これまでの最高連勝。 */
+  streak: number;
+  best: number;
 }
 
-const EMPTY: Record = { win: 0, lose: 0, draw: 0 };
+const EMPTY: Record = { win: 0, lose: 0, draw: 0, streak: 0, best: 0 };
 
 export function loadRecord(): Record {
   try {
@@ -19,7 +22,7 @@ export function loadRecord(): Record {
     if (raw) {
       const r = JSON.parse(raw) as Partial<Record>;
       const n = (v: unknown) => (typeof v === 'number' && Number.isFinite(v) && v >= 0 ? Math.floor(v) : 0);
-      return { win: n(r.win), lose: n(r.lose), draw: n(r.draw) };
+      return { win: n(r.win), lose: n(r.lose), draw: n(r.draw), streak: n(r.streak), best: n(r.best) };
     }
   } catch {
     // 読めなければ 0 勝 0 敗
@@ -30,9 +33,14 @@ export function loadRecord(): Record {
 /** 決着を記録する。winner は 0=自分 / 1=相手 / null=引き分け。 */
 export function addResult(winner: 0 | 1 | null): void {
   const r = loadRecord();
-  if (winner === 0) r.win += 1;
-  else if (winner === 1) r.lose += 1;
-  else r.draw += 1;
+  if (winner === 0) {
+    r.win += 1;
+    r.streak += 1;
+    r.best = Math.max(r.best, r.streak);
+  } else if (winner === 1) {
+    r.lose += 1;
+    r.streak = 0;
+  } else r.draw += 1;
   try {
     localStorage.setItem(RECORD_KEY, JSON.stringify(r));
   } catch {

@@ -37,3 +37,18 @@ describe('カードの解放', () => {
     expect(pickReward(loadUnlocked(), () => 0.5)).toBeNull();
   });
 });
+
+import { addResult, loadRecord } from '../src/storage/profile';
+
+describe('戦績の連勝', () => {
+  it('勝ちで連勝が伸び、負けで 0 に戻り、最高は残る', () => {
+    addResult(0);
+    addResult(0);
+    addResult(0);
+    expect(loadRecord().streak).toBe(3);
+    addResult(1);
+    const r = loadRecord();
+    expect(r.streak).toBe(0);
+    expect(r.best).toBe(3);
+  });
+});
