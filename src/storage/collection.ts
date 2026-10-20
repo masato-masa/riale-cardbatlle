@@ -15,12 +15,29 @@ const ALL: CardId[] = (Object.keys(CARDS) as CardId[]).filter((id) => !CARDS[id]
 /** 最初から持っているカード。 */
 export const START_CARDS: CardId[] = [...STARTER_DECK, 'architect', 'recruit', 'footman', 'lancer', 'captain', 'medic'];
 
-function unlockAllByUrl(): boolean {
+const ALL_KEY = 'riale-cardbatlle:unlockall';
+
+/** テスト用: 全カード解放（設定で入れる。URL の ?unlockall でも入る）。 */
+export function isUnlockAll(): boolean {
   try {
-    return new URLSearchParams(location.search).has('unlockall');
+    if (new URLSearchParams(location.search).has('unlockall')) return true;
+    return localStorage.getItem(ALL_KEY) === '1';
   } catch {
     return false;
   }
+}
+
+export function setUnlockAll(on: boolean): void {
+  try {
+    if (on) localStorage.setItem(ALL_KEY, '1');
+    else localStorage.removeItem(ALL_KEY);
+  } catch {
+    // 保存できなくても、この場では効く
+  }
+}
+
+function unlockAllByUrl(): boolean {
+  return isUnlockAll();
 }
 
 export function loadUnlocked(): Set<CardId> {

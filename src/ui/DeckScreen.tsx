@@ -1,5 +1,5 @@
 import { AnimatePresence, motion } from 'motion/react';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 
 import { CARDS, TYPE_NAME, type CardId, type CardType } from '@/game/cards';
 import { loadUnlocked } from '@/storage/collection';
@@ -9,7 +9,7 @@ import { CardFace } from './CardFace';
 import { DECK_BG_URL } from './art';
 import { CardDetail } from './GameParts';
 import { Sheet } from './Sheets';
-import { playPickup, playReject, playSelect, playUiTap } from './sound';
+import { playSelect, playUiTap } from './sound';
 import { TabBar } from './TabBar';
 
 const TYPE_ORDER: CardType[] = ['unit', 'building', 'spell'];
@@ -31,17 +31,13 @@ function byCost(ids: CardId[]): CardId[] {
   );
 }
 
-/** 長押しで持ち上がるまでの時間（ms）と、それまでに動いたら「スクロール」とみなす距離（px）。 */
-const HOLD_MS = 260;
-const MOVE_PX = 9;
-
-/** デッキ編成（クラロワ方式）。上がデッキ 10 枚、下が持っているカードの一覧。
- *  一覧のカードを長押し → そのままスライドして、デッキの入れ替えたいカードの上で離す（デッキ同士・一覧同士の移動は無い）。
- *  タップなら説明と「デッキに入れる」→ 入れ替えるデッキのカードをタップ。
+/** デッキ編成（クラロワ方式）。上がデッキ 10 枚（横 4 列）、下が持っているカードの一覧（横 4 列）。
+ *  カードをタップ → 説明と「デッキに入れる」→ 入れ替えるデッキのカードをタップ（長押しの操作は無い）。
  *  デッキはいつも 10 枚のまま（入れ替えだけ）。変えたらその場で保存する。 */
 export function DeckScreen({ deck, onChange, onBack }: { deck: CardId[]; onChange: (deck: CardId[]) => void; onBack: () => void }) {
   const [open, setOpen] = useState<{ card: CardId; inDeck: boolean; locked?: boolean } | null>(null);
   const unlocked = useMemo(() => loadUnlocked(), []);
+  const mainRef = useRef<HTMLElement>(null);
   /** 未獲得の一覧は最初は閉じておく（60 枚以上あって長いため）。 */
   const [showLocked, setShowLocked] = useState(false);
   /** 入れようとしているカード。決まっている間は、デッキのカードをタップすると入れ替わる。 */
@@ -70,75 +66,6 @@ export function DeckScreen({ deck, onChange, onBack }: { deck: CardId[]; onChang
     playSelect();
   };
 
-  // ---- 長押しスライド ----
-  /** 持ち上げているカード（x, y は指の位置、over は下にあるデッキのカード）。 */
-  const [lift, setLift] = useState<{ card: CardId; x: number; y: number; over: CardId | null } | null>(null);
-  const liftRef = useRef(lift);
-  liftRef.current = lift;
-  /** スライドで離したあとに出る click（説明を開く）を無視するための印。 */
-  const justDragged = useRef(false);
-  const deckRef = useRef(deck);
-  deckRef.current = deck;
-  const replaceRef = useRef(replace);
-  replaceRef.current = replace;
-
-  const overDeckCard = (x: number, y: number): CardId | null => {
-    const el = document.elementFromPoint(x, y)?.closest<HTMLElement>('[data-deck-card]');
-    return (el?.dataset.deckCard as CardId | undefined) ?? null;
-  };
-
-  /** 一覧のカードを押した。長押しで持ち上がり、動かすとスクロールとみなして何もしない。 */
-  const onHoldStart = (e: React.PointerEvent, card: CardId) => {
-    const x0 = e.clientX;
-    const y0 = e.clientY;
-    let timer = 0;
-    let active = false;
-    const onMove = (ev: PointerEvent) => {
-      if (!active) {
-        if (Math.hypot(ev.clientX - x0, ev.clientY - y0) > MOVE_PX) {
-          // スクロール・なぞり: 離したあとに出る click（説明を開く）は無視する
-          justDragged.current = true;
-          window.setTimeout(() => (justDragged.current = false), 350);
-          end(false);
-        }
-        return;
-      }
-      setLift({ card, x: ev.clientX, y: ev.clientY, over: overDeckCard(ev.clientX, ev.clientY) });
-    };
-    const onTouchMove = (ev: TouchEvent) => {
-      // 持ち上げたあとは、指を動かしてもページが動かないようにする
-      if (active) ev.preventDefault();
-    };
-    const onUp = () => end(true);
-    const end = (commit: boolean) => {
-      window.clearTimeout(timer);
-      window.removeEventListener('pointermove', onMove);
-      window.removeEventListener('pointerup', onUp);
-      window.removeEventListener('pointercancel', onCancel);
-      window.removeEventListener('touchmove', onTouchMove);
-      if (!active) return;
-      const l = liftRef.current;
-      setLift(null);
-      justDragged.current = true;
-      window.setTimeout(() => (justDragged.current = false), 350);
-      if (commit && l?.over) replaceRef.current(l.over, card);
-      else playReject();
-    };
-    const onCancel = () => end(false);
-    timer = window.setTimeout(() => {
-      active = true;
-      playPickup();
-      setLift({ card, x: x0, y: y0, over: null });
-    }, HOLD_MS);
-    window.addEventListener('pointermove', onMove);
-    window.addEventListener('pointerup', onUp);
-    window.addEventListener('pointercancel', onCancel);
-    window.addEventListener('touchmove', onTouchMove, { passive: false });
-  };
-
-  // 画面を離れるときに残らないように
-  useEffect(() => () => setLift(null), []);
-
   return (
     <div className="ts dk" style={{ backgroundImage: `url(${DECK_BG_URL})` }}>
       <header className="dk-top">
@@ -148,9 +75,8 @@ export function DeckScreen({ deck, onChange, onBack }: { deck: CardId[]; onChang
         </span>
       </header>
 
-      <main className="deck-main">
-        <section className={`deck-box${swapIn || lift ? ' is-swapping' : ''}`}>
-          {lift ? <p className="deck-lift-hint">入れ替えるカードの上で離す</p> : null}
+      <main className="deck-main" ref={mainRef}>
+        <section className={`deck-box${swapIn ? ' is-swapping' : ''}`}>
           <AnimatePresence>
             {swapIn ? (
               <motion.div
@@ -181,15 +107,14 @@ export function DeckScreen({ deck, onChange, onBack }: { deck: CardId[]; onChang
               <motion.button
                 key={id}
                 layout
-                data-deck-card={id}
-                className={`deck-card${lift?.over === id ? ' is-over' : ''}`}
+                className="deck-card"
                 // 入れ替えを始めた瞬間に 1 回だけ小さく揺れる（ずっとは揺らさない）。選んでいる間は CSS の光で示す
                 initial={justIn === id ? { scale: 1.3, opacity: 0.35 } : false}
                 animate={
                   justIn === id
                     ? { scale: 1, opacity: 1, rotate: 0, transition: { type: 'spring', stiffness: 520, damping: 16 } }
                     : swapIn
-                      ? { rotate: [0, -1.1, 1.1, -0.5, 0], transition: { duration: 0.42, delay: (i % 5) * 0.025 } }
+                      ? { rotate: [0, -1.1, 1.1, -0.5, 0], transition: { duration: 0.42, delay: (i % 4) * 0.025 } }
                       : { rotate: 0, transition: { duration: 0.15 } }
                 }
                 onClick={() => {
@@ -233,11 +158,8 @@ export function DeckScreen({ deck, onChange, onBack }: { deck: CardId[]; onChang
                   <motion.button
                     key={id}
                     layout
-                    className={`deck-card${swapIn === id ? ' is-picked' : ''}${lift?.card === id ? ' is-lifted' : ''}`}
-                    onPointerDown={(e) => onHoldStart(e, id)}
-                    onContextMenu={(e) => e.preventDefault()}
+                    className={`deck-card${swapIn === id ? ' is-picked' : ''}`}
                     onClick={() => {
-                      if (justDragged.current) return;
                       playUiTap();
                       setSwapIn(null);
                       setOpen({ card: id, inDeck: false });
@@ -288,12 +210,6 @@ export function DeckScreen({ deck, onChange, onBack }: { deck: CardId[]; onChang
         ) : null}
       </main>
 
-      {lift ? (
-        <div className="deck-ghost" style={{ left: lift.x, top: lift.y }} aria-hidden="true">
-          <CardFace card={lift.card} />
-        </div>
-      ) : null}
-
       <TabBar active="deck" onDeck={() => undefined} onBattle={onBack} />
 
       <AnimatePresence>
@@ -313,6 +229,8 @@ export function DeckScreen({ deck, onChange, onBack }: { deck: CardId[]; onChang
                     playSelect();
                     setSwapIn(open.card);
                     setOpen(null);
+                    // 入れ替え先のデッキが見えるよう、いちばん上へ戻す
+                    mainRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
                   }}
                 >
                   デッキに入れる

@@ -2315,3 +2315,97 @@
 .callout-sacrifice {
   margin-top: 40px;
 }
+
+/* ---- デッキ編成（クラロワ参考）: 横 4 列・カードを大きく・台座が隣や見出しと重ならない ---- */
+.dk .deck-main {
+  padding: 4px 18px 26px;
+  gap: 18px;
+}
+
+.dk .deck-box {
+  padding: 22px 18px 20px;
+}
+
+.dk .deck-grid,
+.dk .collection-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 26px 18px;
+}
+
+/* 台座の張り出しを小さくして、隣のカード・見出し・枠と重ならないようにする */
+.dk .pip-summon {
+  top: -9cqw;
+  left: -9cqw;
+  width: 38cqw;
+  height: 38cqw;
+}
+
+.dk .pip-cd {
+  top: -7cqw;
+  right: -7cqw;
+  width: 30cqw;
+  height: 30cqw;
+}
+
+.dk .pip-atk {
+  bottom: -9cqw;
+  left: -9cqw;
+  width: 34cqw;
+  height: 34cqw;
+}
+
+.dk .pip-hp {
+  bottom: -9cqw;
+  right: -9cqw;
+  width: 34cqw;
+  height: 34cqw;
+}
+
+/* 絞り込みチップ・見出しは、カードの台座より上の層で、前後に余白 */
+.dk .band-chips {
+  margin: 2px 0 6px;
+  position: relative;
+  z-index: 3;
+}
+
+.dk .collection {
+  display: grid;
+  gap: 22px;
+}
+
+.dk .collection-title {
+  position: relative;
+  z-index: 3;
+  margin-bottom: 4px;
+}
+
+.dk .deck-swap {
+  display: grid;
+  grid-template-columns: 56px 1fr auto;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.dk .deck-swap-card {
+  position: relative;
+  width: 56px;
+  aspect-ratio: 68 / 84;
+  container-type: inline-size;
+}
+
+.dk .deck-swap-cancel {
+  padding: 6px 12px;
+  border: 2px solid var(--gold-2);
+  border-radius: 999px;
+  background: linear-gradient(var(--navy-1), var(--navy-2));
+  color: #fff;
+  font-weight: 800;
+}
+
+.dk .band-chips {
+  margin: 4px 0 14px;
+  flex-wrap: wrap;
+}
