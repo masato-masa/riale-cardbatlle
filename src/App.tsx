@@ -8,6 +8,7 @@ import { startBgm } from './ui/bgm';
 import { DeckScreen } from './ui/DeckScreen';
 import { Game } from './ui/Game';
 import { Home } from './ui/Home';
+import { RewardChest } from './ui/RewardChest';
 import { SoundLab } from './ui/SoundLab';
 import './ui/shared/tokens.css';
 import './ui/shared/chrome.css';
@@ -20,6 +21,13 @@ type Screen = { kind: 'home' } | { kind: 'deck' } | { kind: 'game'; level: CpuLe
 export function App() {
   // ?sounds: サウンドテスト（聞き比べ）
   if (new URLSearchParams(location.search).has('sounds')) return <SoundLab />;
+  // ?chest: 宝箱の開封演出の確認
+  if (new URLSearchParams(location.search).has('chest'))
+    return (
+      <div style={{ minHeight: '100dvh', display: 'grid', placeItems: 'center', background: '#1b1440' }}>
+        <RewardChest cards={['reaper']} />
+      </div>
+    );
   const [screen, setScreen] = useState<Screen>({ kind: 'home' });
   const [deck, setDeck] = useState<CardId[]>(loadDeck);
   const inGame = screen.kind === 'game';

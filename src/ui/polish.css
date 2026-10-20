@@ -2051,3 +2051,59 @@
   color: #cdbfa0;
   font-size: 12px;
 }
+
+/* ---- 宝箱の開封 ---- */
+.chest {
+  position: relative;
+  display: grid;
+  justify-items: center;
+  min-height: 150px;
+}
+
+.chest-img {
+  width: 120px;
+  filter: drop-shadow(0 6px 8px rgb(0 0 0 / 0.5));
+}
+
+.chest-glow {
+  position: absolute;
+  top: 10px;
+  width: 200px;
+  height: 140px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgb(255 236 140 / 0.9), rgb(255 200 60 / 0.35) 45%, transparent 70%);
+  mix-blend-mode: screen;
+  pointer-events: none;
+  animation: chest-glow 1.2s ease-out forwards;
+}
+
+@keyframes chest-glow {
+  0% {
+    opacity: 1;
+    scale: 0.4;
+  }
+  100% {
+    opacity: 0;
+    scale: 1.6;
+  }
+}
+
+.chest-card {
+  position: absolute;
+  top: -6px;
+  display: grid;
+  justify-items: center;
+  gap: 4px;
+  padding: 8px 14px 10px;
+  border: 2px solid #ffd84a;
+  border-radius: 14px;
+  background: radial-gradient(circle at 50% 30%, rgb(255 216 74 / 0.4), rgb(20 12 50 / 0.96));
+  box-shadow: 0 0 22px rgb(255 216 74 / 0.7);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.chest-card b {
+  color: #ffe28a;
+}

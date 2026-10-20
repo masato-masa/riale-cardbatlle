@@ -40,6 +40,7 @@ import { COIN_MAX, DOUBLE_COIN_FROM_MS, FIELD_SLOTS, MATCH_MS, WINDUP_MS } from 
 import { COIN_URL, FIELD_URL, HERO_FOE_URL, HERO_ME_URL } from './art';
 import { setBgmTension, startBgm, stopBgm } from './bgm';
 import { CardFace, type CardState } from './CardFace';
+import { RewardChest } from './RewardChest';
 import { CardDetail, HelpBody, HeroBadge } from './GameParts';
 import { hapticImpact, hapticLose, hapticReady, hapticReject, hapticUseCard, hapticWin } from './haptics';
 import { Sheet } from './Sheets';
@@ -1408,20 +1409,7 @@ export function Game({ level, deck, onExit }: { level: CpuLevel; deck: CardId[];
                             <i key={i} className={i < reward.points || reward.cards.length > 0 ? 'is-on' : ''} />
                           ))}
                         </div>
-                        {reward.cards.map((c, i) => (
-                          <motion.div
-                            key={c}
-                            className="reward-card"
-                            initial={{ scale: 0, rotate: -12 }}
-                            animate={{ scale: 1, rotate: 0, transition: { delay: 1.5 + i * 0.3, type: 'spring', stiffness: 300, damping: 14 } }}
-                          >
-                            <b>宝箱が開いた！ 新しいカード</b>
-                            <div className="reward-face">
-                              <CardFace card={c} />
-                            </div>
-                            <span>{CARDS[c].name}</span>
-                          </motion.div>
-                        ))}
+                        {reward.cards.length > 0 ? <RewardChest cards={reward.cards} /> : null}
                       </div>
                     ) : null}
                   </>
