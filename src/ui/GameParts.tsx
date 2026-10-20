@@ -67,7 +67,7 @@ export function CardDetail({ card, hp }: { card: CardId; hp?: number }) {
       ))}
       {abilityLines(card).length === 0 ? <p className="card-detail-text">能力なし</p> : null}
       {usageNote(card) ? <p className="card-detail-note">{usageNote(card)}</p> : null}
-      {STATUS_NOTES.filter((n, i) => abilityLines(card).join('').includes(['毒', '封印', '攻撃不能'][i]!)).map((n) => (
+      {STATUS_NOTES.filter((n) => abilityLines(card).join('').includes(n.slice(0, n.indexOf(':')))).map((n) => (
         <p key={n} className="card-detail-note">
           {n}
         </p>
