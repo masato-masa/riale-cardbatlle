@@ -1911,3 +1911,65 @@
 .pip-cd > i {
   -webkit-text-stroke-color: #12304f;
 }
+
+/* ---- 初回の案内（チュートリアル） ---- */
+.tutorial {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 45;
+}
+
+.tut-card {
+  position: absolute;
+  left: 50%;
+  top: 41%;
+  translate: -50% 0;
+  width: min(340px, 90vw);
+  padding: 12px 16px 14px;
+  border: 3px solid var(--gold-2, #f2c14e);
+  border-radius: 16px;
+  background: linear-gradient(#3a2f78, #1f1747);
+  color: #fff;
+  text-align: center;
+  box-shadow: 0 6px 0 rgb(0 0 0 / 0.45), 0 0 24px rgb(255 216 74 / 0.35);
+  pointer-events: auto;
+}
+
+.tut-card b {
+  display: block;
+  margin-bottom: 4px;
+  font-size: 17px;
+  color: #ffe28a;
+}
+
+.tut-card p {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.tut-ok {
+  margin-top: 10px;
+  min-width: 120px;
+  height: 42px;
+  border: 3px solid #6b3f00;
+  border-radius: 12px;
+  background: linear-gradient(#fff08a, #ffc928 45%, #f09a00);
+  box-shadow: 0 3px 0 #a85d00;
+  color: #fff;
+  font-size: 16px;
+  font-weight: 800;
+  -webkit-text-stroke: 3px #6b3f00;
+  paint-order: stroke fill;
+}
+
+.tut-finger {
+  position: absolute;
+  width: 34px;
+  height: 34px;
+  translate: -50% -50%;
+  border-radius: 50%;
+  background: radial-gradient(circle, #fff 0 35%, rgb(255 255 255 / 0.45) 38% 62%, transparent 65%);
+  box-shadow: 0 0 0 3px rgb(255 216 74 / 0.9), 0 0 18px 6px rgb(255 255 255 / 0.7);
+}

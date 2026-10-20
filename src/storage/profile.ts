@@ -59,3 +59,22 @@ export function saveLevel(level: CpuLevel): void {
     // 保存できなくても遊べる
   }
 }
+
+const TUTORIAL_KEY = 'riale-cardbatlle:tutorial';
+
+/** 初回の遊びかた案内を終えたか。 */
+export function isTutorialDone(): boolean {
+  try {
+    return localStorage.getItem(TUTORIAL_KEY) === '1';
+  } catch {
+    return true;
+  }
+}
+
+export function setTutorialDone(): void {
+  try {
+    localStorage.setItem(TUTORIAL_KEY, '1');
+  } catch {
+    // 保存できなくても遊べる
+  }
+}

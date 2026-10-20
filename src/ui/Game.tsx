@@ -33,7 +33,7 @@ import {
   type Unit,
 } from '@/game/engine';
 import { makeRng } from '@/game/rng';
-import { addResult } from '@/storage/profile';
+import { addResult, isTutorialDone, setTutorialDone } from '@/storage/profile';
 import { COIN_MAX, DOUBLE_COIN_FROM_MS, FIELD_SLOTS, MATCH_MS, WINDUP_MS } from '@/game/rules';
 
 import { COIN_URL, FIELD_URL, HERO_FOE_URL, HERO_ME_URL } from './art';
@@ -42,6 +42,7 @@ import { CardFace, type CardState } from './CardFace';
 import { CardDetail, HelpBody, HeroBadge } from './GameParts';
 import { hapticImpact, hapticLose, hapticReady, hapticReject, hapticUseCard, hapticWin } from './haptics';
 import { Sheet } from './Sheets';
+import { Tutorial, type TutorialStep } from './Tutorial';
 import {
   playBarrier,
   playDeath,
@@ -189,10 +190,34 @@ export function Game({ level, deck, onExit }: { level: CpuLevel; deck: CardId[];
   const [menu, setMenu] = useState<'menu' | 'help' | null>(null);
   /** 登場時に敵を選ぶカードを置いたあと、効かせる敵をタップして選ぶ待ち。選ぶまで時間は止まる。 */
   const [pick, setPick] = useState<{ index: number; slot: number; card: CardId } | null>(null);
+  /** 初回の案内（済んでいれば null）。最初の説明の間は時間を止める。 */
+  const [tut, setTut] = useState<TutorialStep | null>(() => (isTutorialDone() ? null : 0));
   const pausedRef = useRef(false);
-  pausedRef.current = detail !== null || menu !== null || pick !== null;
+  pausedRef.current = detail !== null || menu !== null || pick !== null || tut === 0;
   /** 開始の演出（VS）のあいだは時間を進めない。 */
   const introRef = useRef(true);
+  /** 初回は、案内のあいだ相手を「よわい」にする。 */
+  const levelRef = useRef<CpuLevel>(isTutorialDone() ? level : 'easy');
+
+  // ---- 初回の案内の進行 ----
+  const placed = game.players[0].field.some((u) => !!u);
+  useEffect(() => {
+    if (tut === 1 && placed) setTut(2);
+  }, [tut, placed]);
+  useEffect(() => {
+    if (tut !== 3) return;
+    const t = window.setTimeout(() => {
+      setTut(null);
+      setTutorialDone();
+    }, 5000);
+    return () => window.clearTimeout(t);
+  }, [tut]);
+  useEffect(() => {
+    if (game.result && tut !== null) {
+      setTut(null);
+      setTutorialDone();
+    }
+  }, [game.result, tut]);
 
   const commit = useCallback((s: GameState) => {
     gameRef.current = s;
@@ -209,7 +234,7 @@ export function Game({ level, deck, onExit }: { level: CpuLevel; deck: CardId[];
       const cur = gameRef.current;
       if (!pausedRef.current && !introRef.current && !cur.result) {
         let s = step(cur, { type: 'tick', dt });
-        const r = cpuStep(s, 1, brainRef.current, level, randRef.current);
+        const r = cpuStep(s, 1, brainRef.current, levelRef.current, randRef.current);
         brainRef.current = r.brain;
         for (const a of r.actions) s = step(s, a);
         commit(s);
@@ -814,10 +839,12 @@ export function Game({ level, deck, onExit }: { level: CpuLevel; deck: CardId[];
     // クールタイム中（溜め中も）は予約にする。明けた瞬間に攻撃が始まる
     if (block === 'cooldown') {
       commit(step(s, { type: 'reserve', p: 0, uid: d.uid, target }));
+      setTut((t) => (t === 2 ? 3 : t));
       return;
     }
     if (block) return reject(ATTACK_REASON[block]);
     commit(step(s, { type: 'attack', p: 0, uid: d.uid, target }));
+    setTut((t) => (t === 2 ? 3 : t));
   };
 
   /** 敵カードをタップして選んだ: 置いて、効果を溜める。 */
@@ -1146,6 +1173,7 @@ export function Game({ level, deck, onExit }: { level: CpuLevel; deck: CardId[];
       ) : null}
 
       {/* 溜め中の行動: 攻撃元から対象へ矢印、対象に縮んでいく照準。範囲の呪文は場ごと光らせる */}
+      {tut !== null && !intro && !game.result && menu === null ? <Tutorial step={tut} onNext={() => setTut(1)} /> : null}
       <PendingMarks game={game} fieldMe={fieldRef.current} fieldFoe={foeFieldRef.current} />
 
       {/* 狙撃・呪文・砲撃の弾（尾を引く彗星。落石は上から落ちる） */}
