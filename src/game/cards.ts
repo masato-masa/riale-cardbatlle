@@ -572,7 +572,7 @@ export const STARTER_DECK: CardId[] = [
   'craftsman',
   'double',
   'taxman',
-  'architect',
+  'knight',
   'fortress',
   'quarry',
   'veteran',
