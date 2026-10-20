@@ -86,3 +86,12 @@ export function setTutorialDone(): void {
     // 保存できなくても遊べる
   }
 }
+
+/** 初回の案内をもう一度出す。 */
+export function resetTutorial(): void {
+  try {
+    localStorage.removeItem(TUTORIAL_KEY);
+  } catch {
+    // 消せなくても遊べる
+  }
+}

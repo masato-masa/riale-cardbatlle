@@ -2279,3 +2279,9 @@
 .collection-grid[hidden] {
   display: none;
 }
+
+.kit-again {
+  height: 36px;
+  padding: 0 12px;
+  font-size: 13px;
+}

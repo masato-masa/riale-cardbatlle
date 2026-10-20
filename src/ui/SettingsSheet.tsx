@@ -9,6 +9,7 @@ import {
   setHapticsEnabled,
   setSoundEnabled,
 } from './settings';
+import { resetTutorial } from '@/storage/profile';
 import { Sheet } from './Sheets';
 import { getKit, setKit } from './samples';
 import { playVoice, playUiTap } from './sound';
@@ -27,6 +28,7 @@ export function SettingsSheet({ onClose }: { onClose: () => void }) {
   const [bgm, setBgm] = useState(isBgmEnabled());
   const [haptics, setHaptics] = useState(isHapticsEnabled());
   const [kit, setKitState] = useState(getKit());
+  const [tutAgain, setTutAgain] = useState(false);
   return (
     <Sheet title="設定" onClose={onClose}>
       <div className="sheet-list">
@@ -77,6 +79,20 @@ export function SettingsSheet({ onClose }: { onClose: () => void }) {
               </button>
             ))}
           </span>
+        </div>
+        <div className="sheet-row static">
+          <span>遊びかたの案内</span>
+          <button
+            className="sheet-btn quiet kit-again"
+            disabled={tutAgain}
+            onClick={() => {
+              resetTutorial();
+              setTutAgain(true);
+              playUiTap();
+            }}
+          >
+            {tutAgain ? '次の対戦で出ます' : 'もう一度見る'}
+          </button>
         </div>
       </div>
       <button className="sheet-btn" onClick={onClose}>
