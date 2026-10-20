@@ -44,7 +44,13 @@ export function DeckScreen({ deck, onChange, onBack }: { deck: CardId[]; onChang
   const [swapIn, setSwapIn] = useState<CardId | null>(null);
   /** いま入れ替わって入ったカード（ポンと弾ませる。少しだけ覚える）。 */
   const [justIn, setJustIn] = useState<CardId | null>(null);
-  const rest = sorted(COLLECTION.filter((id) => !deck.includes(id)));
+  /** 一覧のコストの絞り込み（0 = すべて）。 */
+  const [band, setBand] = useState(0);
+  const inBand = (id: CardId) => {
+    const c = CARDS[id].summon;
+    return band === 0 || (band === 1 && c <= 2) || (band === 2 && c >= 3 && c <= 4) || (band === 3 && c >= 5 && c <= 6) || (band === 4 && c >= 7);
+  };
+  const rest = sorted(COLLECTION.filter((id) => !deck.includes(id) && inBand(id)));
   const deckView = byCost(deck);
 
   /** 一覧のカード incoming を、デッキのカード out と入れ替える。 */
@@ -192,6 +198,24 @@ export function DeckScreen({ deck, onChange, onBack }: { deck: CardId[]; onChang
             ))}
           </div>
         </section>
+
+        <div className="band-chips" role="tablist" aria-label="コストで絞る">
+          {['すべて', '1〜2', '3〜4', '5〜6', '7〜'].map((label, i) => (
+            <button
+              key={label}
+              role="tab"
+              aria-selected={band === i}
+              className={`band-chip${band === i ? ' is-on' : ''}`}
+              onClick={() => {
+                playUiTap();
+                setBand(i);
+              }}
+            >
+              {i > 0 ? <span className="band-coin" aria-hidden="true" /> : null}
+              {label}
+            </button>
+          ))}
+        </div>
 
         {TYPE_ORDER.map((type) => {
           const list = rest.filter((id) => CARDS[id].type === type);

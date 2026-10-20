@@ -1721,3 +1721,55 @@
     transform: rotateY(1080deg);
   }
 }
+
+/* デッキ編成: コストの絞り込み */
+.band-chips {
+  flex: none;
+  min-height: 38px;
+  display: flex;
+  gap: 6px;
+  margin: 4px 0 10px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.band-chip {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  border: 2px solid #5b4a2a;
+  background: #251d3f;
+  color: #e9d8a6;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.band-chip.is-on {
+  background: linear-gradient(#ffe28a, #f2b52a);
+  border-color: #fff3b0;
+  color: #3a2a08;
+}
+
+.band-coin {
+  width: 13px;
+  height: 13px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 28%, #fff6c4, #ffd84a 50%, #d9941a);
+  border: 1.5px solid #8a560a;
+}
+
+.band-chips {
+  min-height: 0;
+  overflow: visible;
+  justify-content: center;
+}
+
+.band-chip {
+  height: 32px;
+  min-height: 0;
+  padding: 0 10px;
+  font-size: 12px;
+}
