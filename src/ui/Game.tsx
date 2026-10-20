@@ -452,6 +452,7 @@ export function Game({ level, deck, onExit }: { level: CpuLevel; deck: CardId[];
           const blocker = e.by !== undefined ? unitEl(e.by) : null;
           const where = blocker ?? (x.p === 0 ? foeFieldRef.current : fieldRef.current);
           addCallout(where, '割り込み！', 'block');
+          hapticImpact([20, 40, 20]);
           addBurst(blocker ?? at, 'clash');
           addBurst(at, 'snap');
           addPopup(at, '中断', 'stun');
@@ -496,6 +497,7 @@ export function Game({ level, deck, onExit }: { level: CpuLevel; deck: CardId[];
       if (e.kind === 'sacrifice') {
         const slot = slotEl(e.p, e.slot);
         addCallout(slot, '生贄！', 'sacrifice');
+        if (e.p === 0) hapticImpact([30]);
         addBurst(slot, 'sacrifice');
         playUiTap();
       }
