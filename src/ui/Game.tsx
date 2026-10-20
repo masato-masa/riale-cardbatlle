@@ -588,7 +588,7 @@ export function Game({ level, deck, onExit }: { level: CpuLevel; deck: CardId[];
               const atkEl = attackEv?.kind === 'attack' ? unitEl(attackEv.uid) : null;
               const atkCard = atkEl?.getAttribute('data-card') as CardId | null;
               const atkAb = atkCard ? CARDS[atkCard].ab : null;
-              addBurst(el, atkAb?.doubleStrike ? 'cross' : atkAb?.freeAim ? 'pierce' : 'hit');
+              addBurst(el, (atkAb?.doubleStrike || atkAb?.clanDouble) ? 'cross' : atkAb?.freeAim ? 'pierce' : 'hit');
               addBurst(el, 'wave');
               if (atkAb?.lifesteal) addBurst(atkEl, 'drain');
               flash(el);

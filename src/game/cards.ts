@@ -96,6 +96,11 @@ export type CardId =
   | 'monarch'
   | 'riposte'
   | 'avenger'
+  | 'kboyan'
+  | 'kvav'
+  | 'kleen'
+  | 'kroda'
+  | 'kdera'
   | 'hunter'
   | 'slayer'
   | 'vampire'
@@ -137,6 +142,10 @@ export type OnSummon =
   | { kind: 'poison'; amount: number }
   /** 敵ユニット 1 体を封印する（能力を無効にする）。 */
   | { kind: 'seal' }
+  /** 場のほかの同じ一族の味方全員の攻撃力と HP を上げる。 */
+  | { kind: 'buffClan'; atk: number; hp: number }
+  /** 場の同じ一族（自分を含む）1 体につき、敵プレイヤーにダメージ。 */
+  | { kind: 'clanBurst'; per: number }
   /** 敵ユニット 1 体を、しばらく攻撃不能にする。 */
   | { kind: 'disarm'; ms: number };
 
@@ -241,6 +250,14 @@ export interface Abilities {
   rally?: number;
   /** 場にいる間、味方ユニットのクールタイム -割合 */
   cooldownCut?: number;
+  /** 一族の名前（場の同じ一族を数える）。 */
+  clan?: string;
+  /** 場にほかの同じ一族がいるとき、攻撃力 +N */
+  clanAtk?: number;
+  /** 場にほかの同じ一族がいるとき、受けるダメージ -N */
+  clanArmor?: number;
+  /** 場にほかの同じ一族が need 体以上いるとき、連撃 */
+  clanDouble?: number;
   /** 妨害耐性: 妨害されても、クールタイムは増えない（足止めも受けない） */
   interfereImmune?: true;
   /** 狙い撃ち: ブロッカー・壁を無視して、好きな相手（プレイヤー・ユニット）を攻撃できる */
@@ -391,6 +408,11 @@ const EPITHET: Partial<Record<CardId, string>> = {
   monarch: '殉葬の王',
   riposte: '返し刃の騎士',
   avenger: '復讐の刃',
+  kboyan: 'K一族の長兵',
+  kvav: 'K一族の鼓手',
+  kleen: 'K一族の盾',
+  kroda: 'K一族の双刃',
+  kdera: 'K一族の砲手',
   hunter: '賞金稼ぎ',
   slayer: '屠る者',
   vampire: '夜を渡る吸血鬼',
@@ -498,6 +520,11 @@ const FLAVOR: Partial<Record<CardId, string>> = {
   monarch: '我が身を捧げよう。国に、金貨の雨を。',
   riposte: '受け止めたなら、返すまでだ。',
   avenger: '止められるたび、刃は研がれる。',
+  kboyan: '一族が揃うとき、Kの刃は最も鋭い。',
+  kvav: 'さあ、Kの者ども！ 声を揃えろ！',
+  kleen: '兄弟が隣にいる。だから俺は倒れない。',
+  kroda: '二人以上の仲間がいれば、剣は二度振るえる。',
+  kdera: '一族の数だけ、砲は火を噴く。',
   hunter: '一人倒せば金貨二枚。実入りがいい。',
   slayer: '倒すたびに、血が力になる。',
   vampire: '敵の血は、いつだって温かい。',
@@ -655,6 +682,11 @@ export const CARDS: Record<CardId, CardDef> = {
   steadfast: unit('steadfast', 'エマ', 4, 3, 4, 15, { interfereImmune: true, onCancelled: { kind: 'buff', atk: 1, hp: 1 } }),
   tactician: unit('tactician', 'ノエル', 3, 3, 3, 15, { onOverwrite: { kind: 'buff', atk: 2, hp: 2 }, onReplaced: { kind: 'buffNew', atk: 1, hp: 1 } }),
   slayer: unit('slayer', 'グリム', 5, 5, 4, 16, { onKill: { kind: 'buff', atk: 1, hp: 1 } }),
+  kboyan: unit('kboyan', 'Ｋ・ボヤン', 4, 3, 4, 15, { clan: 'K', clanAtk: 2 }),
+  kvav: unit('kvav', 'Ｋ・ヴァヴ', 3, 3, 3, 14, { clan: 'K', onSummon: { kind: 'buffClan', atk: 1, hp: 1 } }),
+  kleen: unit('kleen', 'Ｋ・リーン', 2, 1, 4, 15, { clan: 'K', blocker: true, clanArmor: 1 }),
+  kroda: unit('kroda', 'Ｋ・ローダ', 5, 4, 5, 16, { clan: 'K', clanDouble: 2 }),
+  kdera: unit('kdera', 'Ｋ・デラ', 6, 5, 5, 17, { clan: 'K', onSummon: { kind: 'clanBurst', per: 2 } }),
   avenger: unit('avenger', 'ヴェラ', 4, 3, 4, 15, { onCancelled: { kind: 'buff', atk: 2, hp: 0 } }),
   rain: spell('rain', '癒しの雨', 1, { kind: 'healAll', amount: 5 }),
   warcry: spell('warcry', '戦の号令', 2, { kind: 'buffAll', atk: 1, hp: 1 }),
@@ -678,6 +710,7 @@ export const RIVAL_DECKS: { name: string; deck: CardId[] }[] = [
   { name: '割り込み', deck: ['recruit', 'shieldmaid', 'warder', 'diehard', 'ambusher', 'knight', 'gatekeeper', 'ambush'] },
   { name: '生贄', deck: ['offering', 'bomber', 'heir', 'footman', 'usurper', 'phoenix', 'conqueror', 'knight'] },
   { name: '討伐', deck: ['herald', 'hunter', 'avenger', 'knight', 'slayer', 'riposte', 'trickster', 'monarch'] },
+  { name: 'K一族', deck: ['kleen', 'kvav', 'kboyan', 'kroda', 'kdera', 'recruit', 'knight', 'captain'] },
   { name: '封印', deck: ['informer', 'spy', 'sealer', 'binder', 'blockader', 'knight', 'quarry', 'poisoner'] },
 ];
 
@@ -738,6 +771,7 @@ export const KEYWORDS: string[] = ['ブロッカー', '速攻', '結界', 'ス�
 export function abilityLines(card: CardId): string[] {
   const a = CARDS[card].ab;
   const lines: string[] = [];
+  if (a.clan) lines.push(`一族：${a.clan}（場の ${a.clan} 一族で効果が変わる）`);
   if (a.blocker) lines.push('ブロッカー（相手はブロッカーしか攻撃できない）');
   if (a.haste) lines.push('速攻（召喚してすぐ攻撃できる）');
   if (a.barrier) lines.push('結界（最初に受けるダメージを 0 にする）');
@@ -754,8 +788,13 @@ export function abilityLines(card: CardId): string[] {
   if (s?.kind === 'buffAlly') lines.push(`登場時：味方ユニット 1 体の${buffText(s.atk, s.hp)}`);
   if (s?.kind === 'buffAllies') lines.push(`登場時：自分のほかのユニット全員の${buffText(s.atk, s.hp)}`);
   if (s?.kind === 'poison') lines.push(`登場時：敵ユニット 1 体に毒 ${s.amount} を与える`);
+  if (s?.kind === 'buffClan') lines.push(`登場時：場のほかの ${a.clan} 一族全員の${buffText(s.atk, s.hp)}`);
+  if (s?.kind === 'clanBurst') lines.push(`登場時：場の ${a.clan} 一族（自分を含む）1 体につき、敵プレイヤーに ${s.per} ダメージ`);
   if (s?.kind === 'seal') lines.push('登場時：敵ユニット 1 体を封印する（能力を無効にする）');
   if (s?.kind === 'disarm') lines.push(`登場時：敵ユニット 1 体を ${s.ms / 1000} 秒間、攻撃不能にする`);
+  if (a.clanAtk) lines.push(`場にほかの ${a.clan} 一族がいるとき：攻撃力 +${a.clanAtk}`);
+  if (a.clanArmor) lines.push(`場にほかの ${a.clan} 一族がいるとき：受けるダメージ -${a.clanArmor}`);
+  if (a.clanDouble) lines.push(`場にほかの ${a.clan} 一族が ${a.clanDouble} 体以上いるとき：連撃（1 回のクールタイムで 2 回攻撃）`);
   if (a.freeAim) lines.push('狙い撃ち（ブロッカー・壁を無視して、好きな相手を攻撃できる）');
   if (a.doubleStrike) lines.push('連撃（1 回のクールタイムで 2 回攻撃する）');
   if (a.cannotAttack) lines.push('攻撃不能（このカードは、自分に攻撃不能の状態を持つ）');

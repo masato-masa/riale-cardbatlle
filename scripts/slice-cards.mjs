@@ -63,6 +63,7 @@ const SHEETS = {
   17: [...['titan', 'overlord'].map((n) => `cards/${n}`), null, null, null, null, null, null, null],
   18: [...['scout', 'oldguard'].map((n) => `cards/${n}`), null, null, null, null, null, null, null],
   // 4 列×3 行（縦長のマス）。左上の 4 枚だけ
+  20: [...['kboyan', 'kvav', 'kleen', 'kroda', 'kdera'].map((n) => `cards/${n}`), null, null, null, null],
   19: {
     cols: 4,
     rows: 3,

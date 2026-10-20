@@ -195,6 +195,19 @@ export function units(player: PlayerState): Unit[] {
 }
 
 /** そのユニットの、いま効いている能力（封印されていれば何も無い）。 */
+/** 場にいる、同じ一族のほかのカードの数（一族でないカードは 0）。 */
+export function clanOthers(player: PlayerState, unit: Unit): number {
+  const clan = CARDS[unit.card].ab.clan;
+  if (!clan) return 0;
+  return player.field.filter((u) => u && u.uid !== unit.uid && CARDS[u.card].ab.clan === clan).length;
+}
+
+/** 連撃か（一族の条件つきを含む）。 */
+export function isDoubleStrike(player: PlayerState, u: Unit): boolean {
+  const a = abOf(u);
+  return !!a.doubleStrike || (!!a.clanDouble && clanOthers(player, u) >= a.clanDouble);
+}
+
 export function abOf(u: Unit): Abilities {
   return u.sealed ? {} : CARDS[u.card].ab;
 }
@@ -230,7 +243,8 @@ export function attackOf(player: PlayerState, unit: Unit): number {
   if (CARDS[unit.card].type !== 'unit') return 0;
   let rally = 0;
   for (const u of player.field) if (u && u.uid !== unit.uid) rally += abOf(u).rally ?? 0;
-  return CARDS[unit.card].atk + rally + (unit.atkBuff ?? 0);
+  const clan = clanOthers(player, unit) > 0 ? (abOf(unit).clanAtk ?? 0) : 0;
+  return CARDS[unit.card].atk + rally + clan + (unit.atkBuff ?? 0);
 }
 
 /** コインのたまる速さの倍率（増収を含む）。 */
@@ -387,7 +401,7 @@ function hurtUnit(d: Draft, p: PlayerIndex, unit: Unit, amount: number): number 
     d.events.push({ kind: 'damage', p, target: { kind: 'unit', uid: unit.uid }, amount: 0, guard: 'barrier' });
     return 0;
   }
-  const armor = abOf(unit).armor ?? 0;
+  const armor = (abOf(unit).armor ?? 0) + (clanOthers(d.players[p], unit) > 0 ? (abOf(unit).clanArmor ?? 0) : 0);
   let dealt = Math.max(0, amount - armor);
   // 不屈: 最初に倒されるとき、HP 1 で耐える
   if (unit.endure && unit.hp - dealt <= 0) {
@@ -676,7 +690,7 @@ function pulses(state: GameState): GameState {
 
 /** 攻撃を選んだ（始めた）ときのクールタイム。連撃は、1 回目はクールタイムなしで、2 回目に全体のクールタイム。 */
 function startCooldown(d: Draft, p: PlayerIndex, u: Unit): void {
-  if (abOf(u).doubleStrike && !u.second) {
+  if (isDoubleStrike(d.players[p], u) && !u.second) {
     u.second = true;
     u.readyAt = d.time;
   } else {
@@ -963,6 +977,11 @@ function summon(state: GameState, p: PlayerIndex, handIndex: number, slot: numbe
     }
   } else if (os?.kind === 'buffAllies') {
     for (const u of units(pl)) if (u.uid !== placed.uid && CARDS[u.card].type === 'unit') buffUnit(d, p, u, os.atk, os.hp);
+  } else if (os?.kind === 'buffClan') {
+    for (const u of units(pl)) if (u.uid !== placed.uid && CARDS[u.card].ab.clan && CARDS[u.card].ab.clan === CARDS[card].ab.clan) buffUnit(d, p, u, os.atk, os.hp);
+  } else if (os?.kind === 'clanBurst') {
+    const n = 1 + clanOthers(pl, placed);
+    hurtPlayer(d, q, n * os.per);
   } else if (os?.kind === 'cdCut') {
     for (const u of units(pl)) {
       if (u.uid === placed.uid || CARDS[u.card].type !== 'unit') continue;

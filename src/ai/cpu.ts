@@ -102,6 +102,10 @@ function worth(card: CardId, hp: number, atk: number, allies: number, barrier: b
   // 追加の能力
   if (ab.freeAim) v += 1.4;
   if (ab.doubleStrike) v += atk * 0.9 * rate;
+  // 一族の条件つき（そろえば強い。そろう見込みを半分見る）
+  if (ab.clanAtk) v += ab.clanAtk * 0.7 * rate * 0.6;
+  if (ab.clanArmor) v += ab.clanArmor * 0.6;
+  if (ab.clanDouble) v += atk * 0.9 * rate * 0.45;
   if (ab.lifesteal) v += 1.0;
   if (ab.endure) v += 1.0;
   if (ab.venom) v += ab.venom * 0.6;
@@ -506,6 +510,12 @@ function summonCandidates(state: GameState, p: PlayerIndex, t: Tuning): Candidat
       const myLoss = units(me).filter((u) => CARDS[u.card].type === 'unit').reduce((n, u) => n + unitWorth(me, u), 0);
       s += (foeLoss * 0.85 - myLoss) * 0.5 * t.skill - 1.0;
     }
+    // 一族の登場時: 場の同じ一族が多いほど強い
+    if (os?.kind === 'buffClan' || os?.kind === 'clanBurst') {
+      const mates = units(me).filter((u) => ab.clan && CARDS[u.card].ab.clan === ab.clan).length;
+      s += os.kind === 'buffClan' ? mates * (os.atk + os.hp) * 0.9 * t.skill : (1 + mates) * os.per * 0.7 * t.skill;
+    }
+    if (ab.clan) s += units(me).filter((u) => CARDS[u.card].ab.clan === ab.clan).length * 0.5 * t.skill; // 一族がそろうと強い
     // 全員に効く登場時の強化: 味方が多いほど価値が高い
     if (os?.kind === 'buffAllies') {
       const mine = units(me).filter((u) => CARDS[u.card].type === 'unit');
