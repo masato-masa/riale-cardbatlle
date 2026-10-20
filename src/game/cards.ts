@@ -422,8 +422,8 @@ export const CARDS: Record<CardId, CardDef> = {
   captain: unit('captain', 'ハンス', 5, 5, 6, 16),
   warlord: unit('warlord', 'ガイウス', 7, 8, 8, 16),
   champion: unit('champion', 'ヴォルフ', 8, 9, 9, 16),
-  ogre: unit('ogre', 'ドーン', 9, 10, 10, 17),
-  dragoon: unit('dragoon', 'ファイ', 10, 11, 11, 18),
+  ogre: unit('ogre', 'ドーン', 9, 10, 10, 14),
+  dragoon: unit('dragoon', 'ファイ', 10, 11, 11, 15),
 
   // ---- 能力つき（能力ぶんだけスタッツを減らす） ----
   needle: unit('needle', 'ピオ', 1, 1, 1, 10, { venom: 1 }),
@@ -449,7 +449,7 @@ export const CARDS: Record<CardId, CardDef> = {
   warden: unit('warden', 'エルヴァ', 7, 6, 6, 16, { freeAim: true, lifesteal: true }),
   ironwall: unit('ironwall', 'ヴァル', 8, 6, 10, 18, { blocker: true, endure: true }),
   banner: unit('banner', 'ミナ', 9, 6, 6, 16, { onSummon: { kind: 'buffAllies', atk: 2, hp: 2 } }),
-  reaper: unit('reaper', 'ラスト', 10, 9, 9, 20, { doubleStrike: true }),
+  reaper: unit('reaper', 'ラスト', 10, 9, 9, 17, { doubleStrike: true }),
 
   wall: building('wall', '城壁', 2, 8, { blocker: true }),
   exchange: building('exchange', '補給所', 3, 5, { coinBoost: 0.3 }),
