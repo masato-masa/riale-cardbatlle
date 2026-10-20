@@ -20,7 +20,7 @@ for (let g = 0; g < N; g++) {
     }
     return a.slice(0, 10);
   };
-  const decks = [deck(), deck()];
+  const decks: [CardId[], CardId[]] = [deck(), deck()];
   let state = createGame(decks, g + 1);
   const brains = [createBrain(), createBrain()];
   const rands = [makeRng(g * 2 + 1), makeRng(g * 2 + 2)];
