@@ -1973,3 +1973,81 @@
   background: radial-gradient(circle, #fff 0 35%, rgb(255 255 255 / 0.45) 38% 62%, transparent 65%);
   box-shadow: 0 0 0 3px rgb(255 216 74 / 0.9), 0 0 18px 6px rgb(255 255 255 / 0.7);
 }
+
+/* ---- 結果: 宝箱ゲージと新しいカード ---- */
+.result-reward {
+  display: grid;
+  justify-items: center;
+  gap: 8px;
+  margin-top: 6px;
+}
+
+.reward-meter {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: #ffe28a;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.reward-meter i {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: 2px solid #8a560a;
+  background: #2a2216;
+}
+
+.reward-meter i.is-on {
+  background: radial-gradient(circle at 35% 28%, #fff6c4, #ffd84a 50%, #d9941a);
+}
+
+.reward-card {
+  display: grid;
+  justify-items: center;
+  gap: 4px;
+  padding: 8px 14px 10px;
+  border: 2px solid #ffd84a;
+  border-radius: 14px;
+  background: radial-gradient(circle at 50% 30%, rgb(255 216 74 / 0.35), rgb(20 12 50 / 0.9));
+  box-shadow: 0 0 22px rgb(255 216 74 / 0.6);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.reward-card b {
+  color: #ffe28a;
+}
+
+.reward-face {
+  position: relative;
+  width: 74px;
+  aspect-ratio: 68 / 84;
+  container-type: inline-size;
+}
+
+/* 未獲得のカード: 暗くして鍵 */
+.deck-card.is-locked .face {
+  filter: grayscale(1) brightness(0.45);
+}
+
+.lock-mark {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  pointer-events: none;
+}
+
+.lock-mark svg {
+  width: 38%;
+  filter: drop-shadow(0 2px 3px #000);
+}
+
+.locked-note {
+  margin: 0 0 8px;
+  color: #cdbfa0;
+  font-size: 12px;
+}

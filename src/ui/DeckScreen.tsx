@@ -1,7 +1,8 @@
 import { AnimatePresence, motion } from 'motion/react';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 
 import { CARDS, TYPE_NAME, type CardId, type CardType } from '@/game/cards';
+import { loadUnlocked } from '@/storage/collection';
 import { averageCost, COLLECTION, saveDeck } from '@/storage/deck';
 
 import { CardFace } from './CardFace';
@@ -39,7 +40,8 @@ const MOVE_PX = 9;
  *  タップなら説明と「デッキに入れる」→ 入れ替えるデッキのカードをタップ。
  *  デッキはいつも 10 枚のまま（入れ替えだけ）。変えたらその場で保存する。 */
 export function DeckScreen({ deck, onChange, onBack }: { deck: CardId[]; onChange: (deck: CardId[]) => void; onBack: () => void }) {
-  const [open, setOpen] = useState<{ card: CardId; inDeck: boolean } | null>(null);
+  const [open, setOpen] = useState<{ card: CardId; inDeck: boolean; locked?: boolean } | null>(null);
+  const unlocked = useMemo(() => loadUnlocked(), []);
   /** 入れようとしているカード。決まっている間は、デッキのカードをタップすると入れ替わる。 */
   const [swapIn, setSwapIn] = useState<CardId | null>(null);
   /** いま入れ替わって入ったカード（ポンと弾ませる。少しだけ覚える）。 */
@@ -50,7 +52,8 @@ export function DeckScreen({ deck, onChange, onBack }: { deck: CardId[]; onChang
     const c = CARDS[id].summon;
     return band === 0 || (band === 1 && c <= 2) || (band === 2 && c >= 3 && c <= 4) || (band === 3 && c >= 5 && c <= 6) || (band === 4 && c >= 7);
   };
-  const rest = sorted(COLLECTION.filter((id) => !deck.includes(id) && inBand(id)));
+  const rest = sorted(COLLECTION.filter((id) => !deck.includes(id) && unlocked.has(id) && inBand(id)));
+  const lockedList = sorted(COLLECTION.filter((id) => !unlocked.has(id) && inBand(id)));
   const deckView = byCost(deck);
 
   /** 一覧のカード incoming を、デッキのカード out と入れ替える。 */
@@ -245,6 +248,33 @@ export function DeckScreen({ deck, onChange, onBack }: { deck: CardId[]; onChang
             </section>
           );
         })}
+
+        {lockedList.length > 0 ? (
+          <section className="collection is-locked-section">
+            <h2 className="collection-title">まだ持っていない（{COLLECTION.length - unlocked.size} 枚）</h2>
+            <p className="locked-note">対戦するとたまる宝箱で、1 枚ずつ手に入ります。</p>
+            <div className="collection-grid">
+              {lockedList.map((id) => (
+                <button
+                  key={id}
+                  className="deck-card is-locked"
+                  onClick={() => {
+                    playUiTap();
+                    setOpen({ card: id, inDeck: true, locked: true });
+                  }}
+                >
+                  <CardFace card={id} />
+                  <span className="lock-mark" aria-label="未獲得">
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                      <rect x="5" y="11" width="14" height="10" rx="2" fill="#fff" />
+                      <path d="M8 11 V8 a4 4 0 0 1 8 0 V11" fill="none" stroke="#fff" strokeWidth="2.4" />
+                    </svg>
+                  </span>
+                </button>
+              ))}
+            </div>
+          </section>
+        ) : null}
       </main>
 
       {lift ? (

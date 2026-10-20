@@ -33,6 +33,7 @@ import {
   type Unit,
 } from '@/game/engine';
 import { makeRng } from '@/game/rng';
+import { awardMatch, CHEST_POINTS, type MatchReward } from '@/storage/collection';
 import { addResult, isTutorialDone, setTutorialDone } from '@/storage/profile';
 import { COIN_MAX, DOUBLE_COIN_FROM_MS, FIELD_SLOTS, MATCH_MS, WINDUP_MS } from '@/game/rules';
 
@@ -190,6 +191,8 @@ export function Game({ level, deck, onExit }: { level: CpuLevel; deck: CardId[];
   const [menu, setMenu] = useState<'menu' | 'help' | null>(null);
   /** 登場時に敵を選ぶカードを置いたあと、効かせる敵をタップして選ぶ待ち。選ぶまで時間は止まる。 */
   const [pick, setPick] = useState<{ index: number; slot: number; card: CardId } | null>(null);
+  /** 試合の報酬（ポイントと宝箱から出たカード）。 */
+  const [reward, setReward] = useState<MatchReward | null>(null);
   /** 初回の案内（済んでいれば null）。最初の説明の間は時間を止める。 */
   const [tut, setTut] = useState<TutorialStep | null>(() => (isTutorialDone() ? null : 0));
   const pausedRef = useRef(false);
@@ -431,6 +434,7 @@ export function Game({ level, deck, onExit }: { level: CpuLevel; deck: CardId[];
       if (e.kind === 'end') {
         const r = gameRef.current.result;
         addResult(r?.winner ?? null);
+        setReward(awardMatch(r?.winner ?? null));
         // 決着の見せ場: 倒れた側のプレイヤー札で連続の爆発・画面の閃光・大きな揺れ
         if (r && r.reason === 'hp' && r.winner !== null) {
           const loser = heroEl(r.winner === 0 ? 1 : 0);
@@ -903,6 +907,7 @@ export function Game({ level, deck, onExit }: { level: CpuLevel; deck: CardId[];
     cdFrom.current.clear();
     setStunned(new Set());
     setSeed(next);
+    setReward(null);
     commit(createGame([deck, RIVAL_DECKS[next % RIVAL_DECKS.length]!.deck], next));
   };
 
@@ -1395,6 +1400,30 @@ export function Game({ level, deck, onExit }: { level: CpuLevel; deck: CardId[];
                         <b>{foe.hp}</b>
                       </span>
                     </div>
+                    {reward ? (
+                      <div className="result-reward">
+                        <div className="reward-meter" aria-label={`宝箱ゲージ ${reward.points}/${CHEST_POINTS}`}>
+                          <span className="reward-label">宝箱ゲージ +{reward.gained}</span>
+                          {Array.from({ length: CHEST_POINTS }, (_, i) => (
+                            <i key={i} className={i < reward.points || reward.cards.length > 0 ? 'is-on' : ''} />
+                          ))}
+                        </div>
+                        {reward.cards.map((c, i) => (
+                          <motion.div
+                            key={c}
+                            className="reward-card"
+                            initial={{ scale: 0, rotate: -12 }}
+                            animate={{ scale: 1, rotate: 0, transition: { delay: 1.5 + i * 0.3, type: 'spring', stiffness: 300, damping: 14 } }}
+                          >
+                            <b>宝箱が開いた！ 新しいカード</b>
+                            <div className="reward-face">
+                              <CardFace card={c} />
+                            </div>
+                            <span>{CARDS[c].name}</span>
+                          </motion.div>
+                        ))}
+                      </div>
+                    ) : null}
                   </>
                 );
               })()}
