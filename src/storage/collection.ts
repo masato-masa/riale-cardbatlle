@@ -13,7 +13,7 @@ export const CHEST_POINTS = 2;
 const ALL: CardId[] = (Object.keys(CARDS) as CardId[]).filter((id) => !CARDS[id].token);
 
 /** 最初から持っているカード。 */
-export const START_CARDS: CardId[] = [...STARTER_DECK, 'recruit', 'footman', 'lancer', 'knight', 'captain', 'medic'];
+export const START_CARDS: CardId[] = [...STARTER_DECK, 'architect', 'recruit', 'footman', 'lancer', 'captain', 'medic'];
 
 function unlockAllByUrl(): boolean {
   try {
