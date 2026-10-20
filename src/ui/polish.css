@@ -2409,3 +2409,9 @@
   margin: 4px 0 14px;
   flex-wrap: wrap;
 }
+
+/* 能力の名前・状態の名前は黄色（ドラクエライバルズのキーワードと同じ） */
+.card-detail-text .kw {
+  color: #ffd84a;
+  font-weight: 800;
+}

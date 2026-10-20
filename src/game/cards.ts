@@ -171,7 +171,7 @@ export type OnReplaced =
   /** 上書きした新しいカードの攻撃力と HP を上げる。 */
   | { kind: 'buffNew'; atk: number; hp: number };
 
-/** 上書き召喚時: 自分のカードの上に召喚したときに起きること。 */
+/** チェンジ登場時: 自分のカードの上に召喚したときに起きること。 */
 export type OnOverwrite =
   | { kind: 'buff'; atk: number; hp: number }
   /** 上書きされたカードのコストの半分（切り捨て）のコインが戻る。 */
@@ -265,7 +265,7 @@ export interface Abilities {
   onKill?: OnKill;
   /** 生贄時（自分のカードの上に召喚されて場から除かれたとき） */
   onReplaced?: OnReplaced;
-  /** 上書き召喚時（自分のカードの上に召喚したとき） */
+  /** チェンジ登場時（自分のカードの上に召喚したとき） */
   onOverwrite?: OnOverwrite;
   pulse?: Pulse;
   spell?: SpellEffect;
@@ -725,8 +725,11 @@ export const STATUS_NOTES: string[] = [
   '攻撃不能: しばらく、または能力で、攻撃できない',
 ];
 
+/** 説明の中で黄色く出す言葉（基本能力の名前と状態の名前。ドラクエライバルズのキーワードと同じ扱い）。 */
+export const KEYWORDS: string[] = ['ブロッカー', '速攻', '結界', 'ステルス', '狙い撃ち', '連撃', '遠隔', '吸血', '不屈', '鉄壁', '妨害耐性', '攻撃不能', '毒', '封印'];
+
 /** 能力の説明（長押しの説明・ドラッグ中の案内）。ドラクエライバルズの書き方にそろえる:
- *  キーワード（ブロッカー・速攻・結界）はそのまま、時機のある能力は「召喚時：」「攻撃時：」「死亡時：」
+ *  キーワード（ブロッカー・速攻・結界）はそのまま、時機のある能力は「登場時：」「攻撃時：」「死亡時：」
  *  「N 秒ごと：」を頭に付け、いつでも効く能力は効果だけを書く。
  *  言葉: 敵カード＝相手のユニットと建築物、敵ユニット＝相手のユニットだけ、敵プレイヤー＝相手。 */
 export function abilityLines(card: CardId): string[] {
@@ -737,22 +740,22 @@ export function abilityLines(card: CardId): string[] {
   if (a.barrier) lines.push('結界（最初に受けるダメージを 0 にする）');
   if (a.stealth) lines.push('ステルス（自分で攻撃するまで、相手に選ばれない）');
   const s = a.onSummon;
-  if (s?.kind === 'token') lines.push('召喚時：空いている枠に志願兵（攻撃 1・HP 1）を出す');
-  if (s?.kind === 'heal') lines.push(`召喚時：自分の HP を ${s.amount} 回復`);
-  if (s?.kind === 'strike') lines.push(`召喚時：敵カード 1 枚に ${s.amount} ダメージ`);
-  if (s?.kind === 'stun') lines.push(`召喚時：敵ユニット 1 体のクールタイム +${s.ms / 1000} 秒`);
-  if (s?.kind === 'destroy') lines.push('召喚時：敵ユニット 1 体を破壊する');
-  if (s?.kind === 'cdCut') lines.push(`召喚時：自分のほかのユニットのクールタイムを ${s.ms / 1000} 秒減らす`);
-  if (s?.kind === 'wipe') lines.push('召喚時：ほかのユニットを敵味方すべて破壊する');
-  if (s?.kind === 'healAlly') lines.push(`召喚時：味方ユニット 1 体の HP を ${s.amount} 回復`);
-  if (s?.kind === 'buffAlly') lines.push(`召喚時：味方ユニット 1 体の${buffText(s.atk, s.hp)}`);
-  if (s?.kind === 'buffAllies') lines.push(`召喚時：自分のほかのユニット全員の${buffText(s.atk, s.hp)}`);
-  if (s?.kind === 'poison') lines.push(`召喚時：敵ユニット 1 体に毒 ${s.amount} を与える`);
-  if (s?.kind === 'seal') lines.push('召喚時：敵ユニット 1 体を封印する（能力を無効にする）');
-  if (s?.kind === 'disarm') lines.push(`召喚時：敵ユニット 1 体を ${s.ms / 1000} 秒間、攻撃不能にする`);
+  if (s?.kind === 'token') lines.push('登場時：空いている枠に志願兵（攻撃 1・HP 1）を出す');
+  if (s?.kind === 'heal') lines.push(`登場時：自分の HP を ${s.amount} 回復`);
+  if (s?.kind === 'strike') lines.push(`登場時：敵カード 1 枚に ${s.amount} ダメージ`);
+  if (s?.kind === 'stun') lines.push(`登場時：敵ユニット 1 体のクールタイム +${s.ms / 1000} 秒`);
+  if (s?.kind === 'destroy') lines.push('登場時：敵ユニット 1 体を破壊する');
+  if (s?.kind === 'cdCut') lines.push(`登場時：自分のほかのユニットのクールタイムを ${s.ms / 1000} 秒減らす`);
+  if (s?.kind === 'wipe') lines.push('登場時：ほかのユニットを敵味方すべて破壊する');
+  if (s?.kind === 'healAlly') lines.push(`登場時：味方ユニット 1 体の HP を ${s.amount} 回復`);
+  if (s?.kind === 'buffAlly') lines.push(`登場時：味方ユニット 1 体の${buffText(s.atk, s.hp)}`);
+  if (s?.kind === 'buffAllies') lines.push(`登場時：自分のほかのユニット全員の${buffText(s.atk, s.hp)}`);
+  if (s?.kind === 'poison') lines.push(`登場時：敵ユニット 1 体に毒 ${s.amount} を与える`);
+  if (s?.kind === 'seal') lines.push('登場時：敵ユニット 1 体を封印する（能力を無効にする）');
+  if (s?.kind === 'disarm') lines.push(`登場時：敵ユニット 1 体を ${s.ms / 1000} 秒間、攻撃不能にする`);
   if (a.freeAim) lines.push('狙い撃ち（ブロッカー・壁を無視して、好きな相手を攻撃できる）');
   if (a.doubleStrike) lines.push('連撃（1 回のクールタイムで 2 回攻撃する）');
-  if (a.cannotAttack) lines.push('攻撃できない');
+  if (a.cannotAttack) lines.push('攻撃不能（このカードは、自分に攻撃不能の状態を持つ）');
   if (a.lifesteal) lines.push('吸血（攻撃で与えたダメージぶん、自分の HP を回復）');
   if (a.endure) lines.push('不屈（最初に倒されるとき、HP 1 で耐える）');
   if (a.venom) lines.push(`攻撃時：攻撃した敵ユニットに毒 ${a.venom} を与える`);
@@ -791,7 +794,7 @@ export function abilityLines(card: CardId): string[] {
   if (p?.kind === 'buff') lines.push(`${p.everyMs / 1000} 秒ごと：攻撃力がいちばん低い味方ユニットの攻撃力 +${p.atk}`);
   if (a.faceBonus) lines.push(`敵プレイヤーへのダメージ +${a.faceBonus}`);
   if (a.unitBonus) lines.push(`攻撃時：敵カードへのダメージ +${a.unitBonus}`);
-  if (a.armor) lines.push(`受けるダメージ -${a.armor}`);
+  if (a.armor) lines.push(`鉄壁（受けるダメージ -${a.armor}）`);
   if (a.rally) lines.push(`ほかの味方ユニットの攻撃力 +${a.rally}`);
   if (a.coinBoost) lines.push(`コインのたまる速さ +${Math.round(a.coinBoost * 100)}%`);
   if (a.cooldownCut) lines.push(`味方ユニットのクールタイム -${Math.round(a.cooldownCut * 100)}%`);

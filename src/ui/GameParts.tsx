@@ -1,7 +1,13 @@
-import { abilityLines, CARDS, STATUS_NOTES, TYPE_NAME, usageNote, WALL_TEXT, type CardId } from '@/game/cards';
+import { abilityLines, CARDS, KEYWORDS, STATUS_NOTES, TYPE_NAME, usageNote, WALL_TEXT, type CardId } from '@/game/cards';
 import { PLAYER_ATK, PLAYER_HP } from '@/game/rules';
 
 import { CardFace } from './CardFace';
+
+/** 説明の中のキーワード（基本能力・状態の名前）を黄色にする。 */
+function highlight(line: string): React.ReactNode[] {
+  const re = new RegExp(`(${KEYWORDS.join('|')})`, 'g');
+  return line.split(re).map((part, i) => (KEYWORDS.includes(part) ? <b key={i} className="kw">{part}</b> : part));
+}
 
 export function HeroBadge({ hp, label, walled, portrait }: { hp: number; label: string; walled: boolean; portrait: string }) {
   const ratio = hp / PLAYER_HP;
@@ -62,7 +68,7 @@ export function CardDetail({ card, hp }: { card: CardId; hp?: number }) {
       </dl>
       {abilityLines(card).map((line) => (
         <p key={line} className="card-detail-text">
-          {line}
+          {highlight(line)}
         </p>
       ))}
       {abilityLines(card).length === 0 ? <p className="card-detail-text">能力なし</p> : null}
