@@ -97,7 +97,9 @@ export type CardId =
   | 'riposte'
   | 'avenger'
   | 'hunter'
-  | 'slayer';
+  | 'slayer'
+  | 'vampire'
+  | 'plunderer';
 
 export type CardType = 'unit' | 'building' | 'spell';
 
@@ -363,6 +365,8 @@ const EPITHET: Partial<Record<CardId, string>> = {
   avenger: '復讐の刃',
   hunter: '賞金稼ぎ',
   slayer: '屠る者',
+  vampire: '夜を渡る吸血鬼',
+  plunderer: '戦場の略奪者',
 };
 
 /** 一言（説明のシートの下に出す。ゲームの数値には関係しない）。 */
@@ -456,6 +460,8 @@ const FLAVOR: Partial<Record<CardId, string>> = {
   avenger: '止められるたび、刃は研がれる。',
   hunter: '一人倒せば金貨二枚。実入りがいい。',
   slayer: '倒すたびに、血が力になる。',
+  vampire: '敵の血は、いつだって温かい。',
+  plunderer: '倒したやつの財布は、全部いただく。',
 };
 
 /** cdSec はクールタイム（秒）。 */
@@ -589,6 +595,8 @@ export const CARDS: Record<CardId, CardDef> = {
   monarch: unit('monarch', 'ロデリク', 6, 6, 6, 17, { onReplaced: { kind: 'coin', amount: 5 } }),
   riposte: unit('riposte', 'セドリック', 5, 4, 5, 16, { blocker: true, onInterrupt: { kind: 'strike', amount: 3 }, onCancelled: { kind: 'ready' } }),
   hunter: unit('hunter', 'ロッコ', 3, 2, 4, 15, { onKill: { kind: 'coin', amount: 2 } }),
+  vampire: unit('vampire', 'カーミラ', 4, 3, 4, 15, { onKill: { kind: 'heal', amount: 3 } }),
+  plunderer: unit('plunderer', 'ガルド', 6, 6, 6, 17, { onKill: { kind: 'coin', amount: 3 } }),
   slayer: unit('slayer', 'グリム', 5, 5, 4, 16, { onKill: { kind: 'buff', atk: 1, hp: 1 } }),
   avenger: unit('avenger', 'ヴェラ', 4, 3, 4, 15, { onCancelled: { kind: 'buff', atk: 2, hp: 0 } }),
   rain: spell('rain', '癒しの雨', 1, { kind: 'healAll', amount: 5 }),
