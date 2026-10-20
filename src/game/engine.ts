@@ -905,7 +905,8 @@ function applyAbility(d: Draft, p: PlayerIndex, uid: number, card: CardId, targe
  *  （先に倒れた攻撃元・対象の行動は中断になる）。 */
 function resolvePending(state: GameState): GameState {
   const d = draftOf(state);
-  const due = d.pending.filter((x) => x.at <= d.time);
+  // 溜めが明けた順に解決する（同時なら選んだ順）。まとめて時間が進んでも、登場が攻撃より先なら先に起きる
+  const due = d.pending.filter((x) => x.at <= d.time).sort((x, y) => x.at - y.at || x.id - y.id);
   d.pending = d.pending.filter((x) => x.at > d.time);
   for (const x of due) {
     if (d.players[0].hp <= 0 || d.players[1].hp <= 0) break;

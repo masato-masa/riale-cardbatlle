@@ -23,7 +23,7 @@ export const WINDUP_MS = 1000;
 
 /** 登場の溜め: カードを配置してから、実際に登場するまでの時間（ms）。攻撃の溜め（WINDUP_MS）と同じ。
  *  相手の攻撃を見てから妨害のブロッカーを出しても間に合わないので、先読みが要る。0 にすると即時登場（テスト用）。 */
-export let SUMMON_WINDUP_MS = 1000;
+export let SUMMON_WINDUP_MS = 500;
 
 /** テスト用: 登場の溜めを変える（0 で即時）。ゲームからは呼ばない。 */
 export function overrideSummonWindupForTests(ms: number): void {

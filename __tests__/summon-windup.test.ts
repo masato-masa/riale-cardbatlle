@@ -4,7 +4,7 @@ import { CARDS, STARTER_DECK, type CardId } from '../src/game/cards';
 import { createGame, findUnit, step, summonBlock, type GameState, type PlayerIndex, type Unit } from '../src/game/engine';
 import { COIN_MAX, overrideSummonWindupForTests, SUMMON_WINDUP_MS, WINDUP_MS } from '../src/game/rules';
 
-beforeEach(() => overrideSummonWindupForTests(1000));
+beforeEach(() => overrideSummonWindupForTests(500));
 afterEach(() => overrideSummonWindupForTests(0));
 
 const fresh = (): GameState => createGame([STARTER_DECK, STARTER_DECK], 1);
@@ -42,15 +42,29 @@ describe('登場の溜め（配置してから 1 秒後に登場）', () => {
     expect(summonBlock(s, 0, 1, 0)).toBeNull();
   });
 
-  it('攻撃を見てから出したブロッカーは、間に合わない（攻撃は当たる）', () => {
+  it('攻撃を見てから 0.5 秒以内に出したブロッカーは、間に合って妨害できる', () => {
     let [s, a] = place(fresh(), 0, 0, 'knight');
     let t: Unit;
     [s, t] = place(s, 1, 0, 'footman');
     s = step(s, { type: 'attack', p: 0, uid: a.uid, target: { kind: 'unit', uid: t.uid } });
+    s = tick(s, 300);
     s = withHand(s, 1, ['guard']);
-    s = step(s, { type: 'summon', p: 1, handIndex: 0, slot: 1 }); // 攻撃を見てから
-    s = tick(s, WINDUP_MS);
-    expect(unitOf(s, 1, t.uid)).toBeUndefined(); // 攻撃が先に当たって倒れた
+    s = step(s, { type: 'summon', p: 1, handIndex: 0, slot: 1 }); // 攻撃開始から 0.3 秒後に配置 → 0.8 秒後に登場
+    s = tick(s, 800);
+    expect(s.events.some((e) => e.kind === 'cancel' && e.reason === 'blocked')).toBe(true);
+    expect(unitOf(s, 1, t.uid)!.hp).toBe(CARDS.footman.hp);
+  });
+
+  it('遅れて（0.6 秒後に）出したブロッカーは間に合わず、攻撃が当たる', () => {
+    let [s, a] = place(fresh(), 0, 0, 'knight');
+    let t: Unit;
+    [s, t] = place(s, 1, 0, 'footman');
+    s = step(s, { type: 'attack', p: 0, uid: a.uid, target: { kind: 'unit', uid: t.uid } });
+    s = tick(s, 600);
+    s = withHand(s, 1, ['guard']);
+    s = step(s, { type: 'summon', p: 1, handIndex: 0, slot: 1 }); // 1.1 秒後に登場。攻撃は 1.0 秒後
+    s = tick(s, 600);
+    expect(unitOf(s, 1, t.uid)).toBeUndefined();
   });
 
   it('先読みして先に出したブロッカーなら、攻撃を妨害できる', () => {
@@ -59,9 +73,9 @@ describe('登場の溜め（配置してから 1 秒後に登場）', () => {
     [s, t] = place(s, 1, 0, 'footman');
     s = withHand(s, 1, ['guard']);
     s = step(s, { type: 'summon', p: 1, handIndex: 0, slot: 1 }); // 先に配置
-    s = tick(s, 400);
+    s = tick(s, 100);
     s = step(s, { type: 'attack', p: 0, uid: a.uid, target: { kind: 'unit', uid: t.uid } }); // 攻撃開始（溜め 1 秒）
-    s = tick(s, 700); // ブロッカーが登場（配置から 1.1 秒）→ 攻撃は溜めの途中で止まる
+    s = tick(s, 500); // ブロッカーが登場（配置から 0.6 秒）→ 攻撃は溜めの途中で止まる
     expect(s.events.some((e) => e.kind === 'cancel' && e.reason === 'blocked')).toBe(true);
     expect(unitOf(s, 1, t.uid)!.hp).toBe(CARDS.footman.hp);
   });
