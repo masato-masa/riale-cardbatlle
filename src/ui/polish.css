@@ -2310,3 +2310,8 @@
 .hand {
   margin-bottom: 10px;
 }
+
+/* 生贄！の文字と「コイン +N」の文字が重ならないよう、生贄！を下へずらす */
+.callout-sacrifice {
+  margin-top: 40px;
+}
