@@ -570,7 +570,7 @@ export const CARDS: Record<CardId, CardDef> = {
   creeper: unit('creeper', 'ハッカ', 2, 1, 2, 12, { onDeath: { kind: 'poisonFoes', amount: 1 } }),
   marksman: unit('marksman', 'リュカ', 3, 2, 3, 14, { freeAim: true }),
   twin: unit('twin', 'ミルカ', 3, 2, 3, 15, { doubleStrike: true }),
-  bloody: unit('bloody', 'グレン', 3, 3, 3, 14, { lifesteal: true }),
+  bloody: unit('bloody', 'グレン', 3, 3, 3, 16, { lifesteal: true }),
   bard: unit('bard', 'ノア', 3, 2, 2, 14, { onSummon: { kind: 'buffAlly', atk: 1, hp: 1 } }),
   sealer: unit('sealer', 'ヴィク', 4, 3, 4, 15, { onSummon: { kind: 'seal' } }),
   binder: unit('binder', 'カイ', 4, 4, 3, 16, { onSummon: { kind: 'disarm', ms: 10000 } }),
@@ -593,7 +593,7 @@ export const CARDS: Record<CardId, CardDef> = {
   exchange: building('exchange', '補給所', 3, 5, { coinBoost: 0.3 }),
   tradingHouse: building('tradingHouse', '戦旗塔', 2, 5, { rally: 1 }),
   factory: building('factory', '兵舎', 3, 5, { pulse: { everyMs: 5000, kind: 'token' } }),
-  cathedral: building('cathedral', '鐘楼', 2, 6, { cooldownCut: 0.3 }),
+  cathedral: building('cathedral', '鐘楼', 2, 9, { cooldownCut: 0.3 }),
   fortress: building('fortress', '砦', 5, 8, { pulse: { everyMs: 9000, kind: 'snipe', amount: 1 } }),
   infirmary: building('infirmary', '治療所', 1, 5, { pulse: { everyMs: 8000, kind: 'heal', amount: 2 } }),
   altar: building('altar', '毒の祭壇', 3, 5, { pulse: { everyMs: 8000, kind: 'poison', amount: 1 } }),
@@ -601,7 +601,7 @@ export const CARDS: Record<CardId, CardDef> = {
 
   quarry: spell('quarry', '投石', 4, { kind: 'bolt', amount: 5 }),
   quake: spell('quake', '大地割り', 4, { kind: 'blast', amount: 2 }),
-  roadblock: spell('roadblock', 'バリケード', 2, { kind: 'freeze', ms: 10000 }),
+  roadblock: spell('roadblock', 'バリケード', 2, { kind: 'freeze', ms: 14000 }),
   festival: spell('festival', '鬨の声', 1, { kind: 'ready' }),
 
   // ---- 割り込み（ブロッカーが攻撃を中断させる）・攻撃中断・生贄（上書き）・上書き召喚の能力 ----
