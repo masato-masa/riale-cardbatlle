@@ -3,10 +3,14 @@ import { PLAYER_ATK, PLAYER_HP } from '@/game/rules';
 
 import { CardFace } from './CardFace';
 
-/** 説明の中のキーワード（基本能力・状態の名前）を黄色にする。 */
+/** 説明の中のキーワード（基本能力・状態の名前）と、時機の見出し（登場時・攻撃時・N 秒ごと など、「：」の前）を黄色にする。 */
 function highlight(line: string): React.ReactNode[] {
   const re = new RegExp(`(${KEYWORDS.join('|')})`, 'g');
-  return line.split(re).map((part, i) => (KEYWORDS.includes(part) ? <b key={i} className="kw">{part}</b> : part));
+  const colon = line.indexOf('：');
+  const head = colon > 0 && colon <= 14 ? line.slice(0, colon) : '';
+  const rest = head ? line.slice(colon) : line;
+  const body = rest.split(re).map((part, i) => (KEYWORDS.includes(part) ? <b key={i} className="kw">{part}</b> : part));
+  return head ? [<b key="t" className="kw">{head}</b>, ...body] : body;
 }
 
 export function HeroBadge({ hp, label, walled, portrait }: { hp: number; label: string; walled: boolean; portrait: string }) {
