@@ -2268,3 +2268,14 @@
   width: 130px;
   height: 130px;
 }
+
+.locked-toggle {
+  display: block;
+  width: 100%;
+  text-align: left;
+  cursor: pointer;
+}
+
+.collection-grid[hidden] {
+  display: none;
+}

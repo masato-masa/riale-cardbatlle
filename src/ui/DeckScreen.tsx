@@ -42,6 +42,8 @@ const MOVE_PX = 9;
 export function DeckScreen({ deck, onChange, onBack }: { deck: CardId[]; onChange: (deck: CardId[]) => void; onBack: () => void }) {
   const [open, setOpen] = useState<{ card: CardId; inDeck: boolean; locked?: boolean } | null>(null);
   const unlocked = useMemo(() => loadUnlocked(), []);
+  /** 未獲得の一覧は最初は閉じておく（60 枚以上あって長いため）。 */
+  const [showLocked, setShowLocked] = useState(false);
   /** 入れようとしているカード。決まっている間は、デッキのカードをタップすると入れ替わる。 */
   const [swapIn, setSwapIn] = useState<CardId | null>(null);
   /** いま入れ替わって入ったカード（ポンと弾ませる。少しだけ覚える）。 */
@@ -251,9 +253,18 @@ export function DeckScreen({ deck, onChange, onBack }: { deck: CardId[]; onChang
 
         {lockedList.length > 0 ? (
           <section className="collection is-locked-section">
-            <h2 className="collection-title">まだ持っていない（{COLLECTION.length - unlocked.size} 枚）</h2>
-            <p className="locked-note">対戦するとたまる宝箱で、1 枚ずつ手に入ります。</p>
-            <div className="collection-grid">
+            <button
+              className="collection-title locked-toggle"
+              aria-expanded={showLocked}
+              onClick={() => {
+                playUiTap();
+                setShowLocked((v) => !v);
+              }}
+            >
+              まだ持っていない（{COLLECTION.length - unlocked.size} 枚）{showLocked ? ' ▲' : ' ▼'}
+            </button>
+            {showLocked ? <p className="locked-note">対戦するとたまる宝箱で、1 枚ずつ手に入ります。</p> : null}
+            <div className="collection-grid" hidden={!showLocked}>
               {lockedList.map((id) => (
                 <button
                   key={id}
