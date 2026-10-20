@@ -515,8 +515,8 @@ export function Game({ level, deck, onExit }: { level: CpuLevel; deck: CardId[];
       if (e.kind === 'spell') {
         const eff = CARDS[e.card].ab.spell!;
         // 全体・遅延は相手の場ごと、再動は自分の場ごと光らせる。単体は使った側から弾を飛ばす。
-        if (eff.kind === 'parry') addCallout(heroEl(e.p), 'パリィ！', 'parry');
-        else if (eff.kind === 'ambush') addCallout(heroEl(e.p), '待ち伏せ！', 'overwrite');
+        if (eff.kind === 'parry') addCallout(document.querySelector('.midline'), 'パリィ！', 'parry');
+        else if (eff.kind === 'ambush') addCallout(document.querySelector('.midline'), '待ち伏せ！', 'overwrite');
         else if (eff.kind === 'bolt' && e.target !== null) shoot(heroEl(e.p), unitEl(e.target), 'rock');
         else {
           const foeSide = eff.kind === 'blast' || eff.kind === 'freeze' || eff.kind === 'poisonAll' || eff.kind === 'sealAll';
