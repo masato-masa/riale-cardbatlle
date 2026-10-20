@@ -204,7 +204,14 @@ describe('毒（poison）', () => {
     s = step(s, { type: 'summon', p: 0, handIndex: 0, slot: 0, target: t.uid });
     expect(unitOf(s, 1, t.uid)!.poison).toBe(2);
     s = step(s, { type: 'summon', p: 0, handIndex: 1, slot: -1 });
-    expect(unitOf(s, 1, t.uid)!.poison).toBe(4);
+    // 同じ状態は重ならない: 毒 2 に毒 2 を重ねても 2 のまま
+    expect(unitOf(s, 1, t.uid)!.poison).toBe(2);
+  });
+
+  it('毒は重ならず、強い毒だけが残る', () => {
+    let [s, t] = place(withHand(['hexer', 'miasma', 'herald', 'herald']), 1, 0, 'ogre', { poison: 1 });
+    s = step(s, { type: 'summon', p: 0, handIndex: 1, slot: -1 }); // 毒霧 2
+    expect(unitOf(s, 1, t.uid)!.poison).toBe(2);
   });
 
   it('ハッカの死亡時: 敵ユニット全員に毒 1', () => {

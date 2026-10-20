@@ -436,8 +436,9 @@ function buffUnit(d: Draft, p: PlayerIndex, unit: Unit, atk: number, hp: number)
 }
 
 function poisonUnit(d: Draft, p: PlayerIndex, unit: Unit, amount: number): void {
-  if (amount <= 0) return;
-  unit.poison = (unit.poison ?? 0) + amount;
+  // 同じ状態は重ならない。毒は、すでにあれば強いほう（数が大きいほう）だけが残る
+  if (amount <= 0 || (unit.poison ?? 0) >= amount) return;
+  unit.poison = amount;
   d.events.push({ kind: 'poison', p, uid: unit.uid, amount: unit.poison });
 }
 
@@ -452,7 +453,10 @@ function sealUnit(d: Draft, p: PlayerIndex, unit: Unit): void {
 }
 
 function disarmUnit(d: Draft, p: PlayerIndex, unit: Unit, ms: number): void {
-  unit.disarmUntil = Math.max(unit.disarmUntil ?? 0, d.time) + ms;
+  // 同じ状態は重ならない: すでに攻撃不能なら、長いほうの終わりまで（足し算しない）
+  const until = d.time + ms;
+  if ((unit.disarmUntil ?? 0) >= until) return;
+  unit.disarmUntil = until;
   d.events.push({ kind: 'disarm', p, uid: unit.uid });
 }
 
@@ -493,7 +497,7 @@ function cancelPending(d: Draft, x: Pending, reason: CancelReason, by?: number):
     u.readyAt = Math.max(u.readyAt, d.time) + INTERFERE_MS;
     d.events.push({ kind: 'stun', p: x.p, uid: u.uid });
   }
-  // 妨害成功時: 阻んだブロッカー（かわしたカード）の能力
+  // 妨害時: 阻んだブロッカー（かわしたカード）の能力
   if ((reason === 'blocked' || reason === 'dodge') && by !== undefined) {
     const b = findUnit(d.players[q], by)?.unit;
     const oi = b ? abOf(b).onInterrupt : undefined;
@@ -926,7 +930,7 @@ function summon(state: GameState, p: PlayerIndex, handIndex: number, slot: numbe
     }
   }
   const placed = place(d, p, card, slot, false);
-  // チェンジでかわした攻撃は妨害になる（新しいカードの妨害成功時の能力も起きる）
+  // チェンジでかわした攻撃は妨害になる（新しいカードの妨害時の能力も起きる）
   for (const x of dodged) cancelPending(d, x, 'dodge', placed.uid);
   if (old) {
     d.events.push({ kind: 'overwrite', p, uid: placed.uid, oldUid: old.uid, slot });

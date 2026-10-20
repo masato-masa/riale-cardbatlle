@@ -34,7 +34,7 @@ const timing: Group[] = [
   { title: '死亡時', note: '倒されたときに起きる', pick: (i) => !!ab(i).onDeath },
   { title: '生贄時', note: 'チェンジで入れ替わって場を離れるとき', pick: (i) => !!ab(i).onReplaced },
   { title: 'チェンジ登場時', note: '自分のカードの上に召喚したとき', pick: (i) => !!ab(i).onOverwrite },
-  { title: '妨害成功時', note: '自分が（ブロッカー・かわして）相手の攻撃を妨害したとき', pick: (i) => !!ab(i).onInterrupt },
+  { title: '妨害時', note: '自分が（ブロッカー・かわして）相手の攻撃を妨害したとき', pick: (i) => !!ab(i).onInterrupt },
 ];
 
 /** 3. そのほか: 「されたとき」系など、いまは時機に入れないもの。 */

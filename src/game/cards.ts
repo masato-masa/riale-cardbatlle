@@ -506,6 +506,9 @@ const FLAVOR: Partial<Record<CardId, string>> = {
   swindler: '捨て石？ いいや、これは仕込みさ。',
 };
 
+/** 全ユニットのクールタイムに足す時間（秒）。カードごとの値（cdSec）はそのままで、ここで一括して延ばす。 */
+const CD_BONUS_SEC = 4;
+
 /** cdSec はクールタイム（秒）。 */
 const unit = (id: CardId, name: string, summon: number, atk: number, hp: number, cdSec: number, ab: Abilities = {}): CardDef => ({
   id,
@@ -516,7 +519,7 @@ const unit = (id: CardId, name: string, summon: number, atk: number, hp: number,
   summon,
   atk,
   hp,
-  cd: cdSec * 1000,
+  cd: (cdSec + CD_BONUS_SEC) * 1000,
   ab,
 });
 const building = (id: CardId, name: string, summon: number, hp: number, ab: Abilities): CardDef => ({
@@ -764,10 +767,10 @@ export function abilityLines(card: CardId): string[] {
   if (a.onDeath?.kind === 'face') lines.push(`死亡時：敵プレイヤーに ${a.onDeath.amount} ダメージ`);
   if (a.onDeath?.kind === 'buffAllies') lines.push(`死亡時：味方ユニット全員の${buffText(a.onDeath.atk, a.onDeath.hp)}`);
   const oi = a.onInterrupt;
-  if (oi?.kind === 'strike') lines.push(`妨害成功時：妨害した敵ユニットに ${oi.amount} ダメージ`);
-  if (oi?.kind === 'stun') lines.push(`妨害成功時：妨害した敵ユニットのクールタイム +${oi.ms / 1000} 秒`);
-  if (oi?.kind === 'coin') lines.push(`妨害成功時：コイン +${oi.amount}`);
-  if (oi?.kind === 'buff') lines.push(`妨害成功時：自分の${buffText(oi.atk, oi.hp)}`);
+  if (oi?.kind === 'strike') lines.push(`妨害時：妨害した敵ユニットに ${oi.amount} ダメージ`);
+  if (oi?.kind === 'stun') lines.push(`妨害時：妨害した敵ユニットのクールタイム +${oi.ms / 1000} 秒`);
+  if (oi?.kind === 'coin') lines.push(`妨害時：コイン +${oi.amount}`);
+  if (oi?.kind === 'buff') lines.push(`妨害時：自分の${buffText(oi.atk, oi.hp)}`);
   if (a.interfereImmune) lines.push('妨害耐性（妨害されても、クールタイムが増えない）');
   const oc = a.onCancelled;
   if (oc?.kind === 'ready') lines.push('妨害された時：クールタイムがなくなる');
@@ -784,7 +787,7 @@ export function abilityLines(card: CardId): string[] {
   const oo = a.onOverwrite;
   if (oo?.kind === 'buff') lines.push(`チェンジ登場時：自分の${buffText(oo.atk, oo.hp)}`);
   if (oo?.kind === 'refund') lines.push('チェンジ登場時：入れ替わったカードのコストの半分のコインが戻る');
-  if (oo?.kind === 'haste') lines.push('チェンジ登場時：すぐ攻撃できる');
+  if (oo?.kind === 'haste') lines.push('チェンジ登場時：速攻');
   if (a.onDeath?.kind === 'poisonFoes') lines.push(`死亡時：敵ユニット全員に毒 ${a.onDeath.amount} を与える`);
   const p = a.pulse;
   if (p?.kind === 'token') lines.push(`${p.everyMs / 1000} 秒ごと：空いている枠に志願兵を出す`);

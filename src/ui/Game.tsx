@@ -142,6 +142,10 @@ interface Zone {
   tone: 'quake' | 'block';
 }
 
+const PICK_LIMIT_MS = 6000;
+/** 決着から結果のポップアップまでの時間（ms）。やられた演出と勝敗の文字を見せる。 */
+const RESULT_DELAY_MS = 4200;
+
 const SUMMON_REASON = {
   coins: 'コインが足りません',
   slot: '場がいっぱいです',
@@ -211,12 +215,14 @@ export function Game({ level, deck, onExit }: { level: CpuLevel; deck: CardId[];
   const [menu, setMenu] = useState<'menu' | 'help' | null>(null);
   /** 登場時に敵を選ぶカードを置いたあと、効かせる敵をタップして選ぶ待ち。選ぶまで時間は止まる。 */
   const [pick, setPick] = useState<{ index: number; slot: number; card: CardId } | null>(null);
+  /** 決着の演出（倒れる→勝敗の文字→余韻）のあと、結果のポップアップを出す。 */
+  const [resultShown, setResultShown] = useState(false);
   /** 試合の報酬（ポイントと宝箱から出たカード）。 */
   const [reward, setReward] = useState<MatchReward | null>(null);
   /** 初回の案内（済んでいれば null）。最初の説明の間は時間を止める。 */
   const [tut, setTut] = useState<TutorialStep | null>(() => (isTutorialDone() ? null : 0));
   const pausedRef = useRef(false);
-  pausedRef.current = detail !== null || menu !== null || pick !== null || tut === 0;
+  pausedRef.current = detail !== null || menu !== null || tut === 0;
   /** 開始の演出（VS）のあいだは時間を進めない。 */
   const introRef = useRef(true);
   /** 初回は、案内のあいだ相手を「よわい」にする。 */
@@ -539,6 +545,8 @@ export function Game({ level, deck, onExit }: { level: CpuLevel; deck: CardId[];
         const r = gameRef.current.result;
         addResult(r?.winner ?? null);
         setReward(awardMatch(r?.winner ?? null));
+        // 倒れる演出 → 勝敗の文字 → 余韻のあとに結果のポップアップ
+        window.setTimeout(() => setResultShown(true), RESULT_DELAY_MS);
         // 決着の見せ場: 倒れた側のプレイヤー札で連続の爆発・画面の閃光・大きな揺れ
         if (r && r.reason === 'hp' && r.winner !== null) {
           const loser = heroEl(r.winner === 0 ? 1 : 0);
@@ -1003,6 +1011,18 @@ export function Game({ level, deck, onExit }: { level: CpuLevel; deck: CardId[];
     return Math.min(1, (u.readyAt - game.time) / Math.max(1, u.readyAt - m.from));
   };
 
+  // 対象を選ぶ間も時間は止まらない（対人戦を考えて）。6 秒で取りやめ。選べる対象がいなくなっても取りやめ
+  useEffect(() => {
+    if (!pick) return;
+    const t = window.setTimeout(() => cancelPick('時間切れで取りやめました'), PICK_LIMIT_MS);
+    return () => window.clearTimeout(t);
+  }, [pick]);
+  useEffect(() => {
+    if (!pick) return;
+    const side = summonSide(pick.card) === 'ally' ? 0 : 1;
+    if (game.result || summonTargets(game.players[side], pick.card).length === 0) cancelPick('選べる対象がいなくなりました');
+  }, [game, pick]);
+
   const restart = () => {
     const next = (seed * 1103515245 + 12345) >>> 1;
     seenEvent.current = 0;
@@ -1012,6 +1032,7 @@ export function Game({ level, deck, onExit }: { level: CpuLevel; deck: CardId[];
     setStunned(new Set());
     setSeed(next);
     setReward(null);
+    setResultShown(false);
     commit(createGame([deck, RIVAL_DECKS[next % RIVAL_DECKS.length]!.deck], next));
   };
 
@@ -1465,7 +1486,18 @@ export function Game({ level, deck, onExit }: { level: CpuLevel; deck: CardId[];
       </div>
 
       <AnimatePresence>
-        {game.result ? (
+        {game.result && !resultShown ? (
+          <motion.div
+            key="end-banner"
+            className={`end-banner is-${game.result.winner === 0 ? 'win' : game.result.winner === null ? 'draw' : 'lose'}`}
+            initial={{ opacity: 0, scale: 2.2 }}
+            animate={{ opacity: 1, scale: 1, transition: { delay: 0.7, type: 'spring', stiffness: 260, damping: 18 } }}
+            exit={{ opacity: 0 }}
+          >
+            {game.result.winner === 0 ? '勝利！' : game.result.winner === null ? '引き分け' : '敗北…'}
+          </motion.div>
+        ) : null}
+        {game.result && resultShown ? (
           <motion.div
             key="result"
             className={`result${game.result.winner === 0 ? ' is-win' : ''}`}

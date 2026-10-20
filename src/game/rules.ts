@@ -5,13 +5,13 @@ export const PLAYER_HP = 20;
 /** プレイヤーの攻撃力。プレイヤーを攻撃したユニットは、この分の反撃を受ける（遠隔は受けない）。 */
 export const PLAYER_ATK = 0;
 /** 試合の長さ（ms）。 */
-export const MATCH_MS = 180_000;
+export const MATCH_MS = 240_000;
 /** この時刻（ms）からコインが 2 倍速になる。 */
-export const DOUBLE_COIN_FROM_MS = 120_000;
+export const DOUBLE_COIN_FROM_MS = 180_000;
 /** コイン 1 枚がたまるまでの時間（ms）。 */
 export const COIN_MS = 3000;
 export const COIN_MAX = 10;
-export const COIN_START = 5;
+export const COIN_START = 3;
 /** 場の枠の数。 */
 export const FIELD_SLOTS = 3;
 /** 手札の枚数（このほかに「次のカード」を 1 枚見せる）。 */

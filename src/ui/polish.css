@@ -2415,3 +2415,32 @@
   color: #ffd84a;
   font-weight: 800;
 }
+
+/* 決着の勝敗の文字（ポップアップの前に、盤面の上へ大きく） */
+.end-banner {
+  position: fixed;
+  left: 0;
+  right: 0;
+  top: 38%;
+  z-index: 55;
+  text-align: center;
+  pointer-events: none;
+  font-size: 64px;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  color: #fff3b0;
+  -webkit-text-stroke: 10px #5a3a00;
+  paint-order: stroke fill;
+  text-shadow: 0 0 30px rgb(255 216 74 / 0.9);
+}
+
+.end-banner.is-lose {
+  color: #c9c3e6;
+  -webkit-text-stroke-color: #1c1840;
+  text-shadow: 0 0 24px rgb(120 110 200 / 0.8);
+}
+
+.end-banner.is-draw {
+  color: #e8e8f4;
+  -webkit-text-stroke-color: #2a2a48;
+}

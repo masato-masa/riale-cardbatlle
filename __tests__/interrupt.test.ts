@@ -291,7 +291,7 @@ describe('妨害（クールタイム +5 秒）と妨害耐性', () => {
     s = step(s, { type: 'summon', p: 0, handIndex: 0, slot: 0 });
     expect(unitOf(s, 1, a.uid)!.readyAt).toBe(Math.max(rb, s.time) + INTERFERE_MS);
   });
-  it('チェンジで入った妨害成功時の能力持ちは、かわしたときに効く（ジーナ型でなくホルス）', () => {
+  it('チェンジで入った妨害時の能力持ちは、かわしたときに効く（ジーナ型でなくホルス）', () => {
     let s = fresh();
     let a: Unit;
     let t: Unit;
@@ -310,7 +310,7 @@ describe('妨害（クールタイム +5 秒）と妨害耐性', () => {
     expect(cancels(n).length).toBe(1);
     expect(unitOf(n, 0, a.uid)!.readyAt).toBe(rb);
   });
-  it('妨害成功時に強化（ウォール）', () => {
+  it('妨害時に強化（ウォール）', () => {
     const { s } = attacking('lancer', 'recruit');
     let n = withHand(s, 1, ['wallguard']);
     n = step(n, { type: 'summon', p: 1, handIndex: 0, slot: 1 });
