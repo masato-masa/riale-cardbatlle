@@ -1284,6 +1284,7 @@ export function Game({ level, deck, onExit }: { level: CpuLevel; deck: CardId[];
                   <img src={HERO_FOE_URL} alt="" draggable={false} />
                 </span>
                 <b>あいて</b>
+                <small className="intro-deck">{RIVAL_DECKS[seed % RIVAL_DECKS.length]!.name}デッキ</small>
               </motion.div>
             </div>
             <motion.div

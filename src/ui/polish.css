@@ -2120,3 +2120,11 @@
 .chest-img {
   margin-top: 30px;
 }
+
+/* VS 画面: 相手のデッキのテーマ */
+.intro-deck {
+  color: #ffe28a;
+  font-size: 12px;
+  font-weight: 800;
+  text-shadow: 0 1px 3px #000;
+}
