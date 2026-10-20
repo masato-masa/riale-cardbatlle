@@ -8,7 +8,7 @@ import {
   isBlocker,
   needsTarget,
   requiresTarget,
-  RIVAL_DECK,
+  RIVAL_DECKS,
   summonSide,
   usageNote,
   type CardId,
@@ -176,8 +176,9 @@ function CrossMask({ id, x0, y0, x1, y1 }: { id: string; x0: number; y0: number;
 }
 
 export function Game({ level, deck, onExit }: { level: CpuLevel; deck: CardId[]; onExit: () => void }) {
-  const decks: [CardId[], CardId[]] = [deck, RIVAL_DECK];
   const [seed, setSeed] = useState(() => (Date.now() & 0x7fffffff) >>> 0);
+  // 相手のデッキはテーマ別に、試合ごと（シードごと）に選ぶ
+  const decks: [CardId[], CardId[]] = [deck, RIVAL_DECKS[seed % RIVAL_DECKS.length]!.deck];
   const [game, setGame] = useState<GameState>(() => createGame(decks, seed));
   const gameRef = useRef(game);
   const brainRef = useRef(createBrain());
@@ -875,7 +876,7 @@ export function Game({ level, deck, onExit }: { level: CpuLevel; deck: CardId[];
     cdFrom.current.clear();
     setStunned(new Set());
     setSeed(next);
-    commit(createGame(decks, next));
+    commit(createGame([deck, RIVAL_DECKS[next % RIVAL_DECKS.length]!.deck], next));
   };
 
   /** 場のカードの状態アイコン。 */

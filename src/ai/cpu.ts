@@ -231,6 +231,17 @@ function buildingValue(state: GameState, me: PlayerState, foe: PlayerState, card
     const shots = Math.min(5, (MATCH_MS * left) / ab.pulse.everyMs);
     v += Math.min(3.2, shots * ab.pulse.amount * 0.5 + (units(foe).length > 0 ? 0.6 : 0)) * t.skill;
   }
+  const pulses = Math.min(6, (MATCH_MS * left) / (ab.pulse?.everyMs ?? 1e9));
+  if (ab.pulse?.kind === 'heal') {
+    // 味方が多いほど、時間が残っているほど効く（HP は減るので、早いほど得）
+    v += Math.min(3.4, pulses * ab.pulse.amount * 0.22 * (0.6 + mine.length * 0.5)) * t.skill;
+  }
+  if (ab.pulse?.kind === 'poison') {
+    v += Math.min(3.6, pulses * ab.pulse.amount * 0.4 * (0.5 + Math.min(units(foe).length, 3) * 0.5)) * t.skill;
+  }
+  if (ab.pulse?.kind === 'buff') {
+    v += Math.min(4, pulses * ab.pulse.atk * 0.35 * (0.4 + mine.length * 0.5)) * t.skill;
+  }
   return v;
 }
 

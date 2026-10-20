@@ -422,8 +422,8 @@ export const CARDS: Record<CardId, CardDef> = {
   captain: unit('captain', 'ハンス', 5, 5, 6, 16),
   warlord: unit('warlord', 'ガイウス', 7, 8, 8, 16),
   champion: unit('champion', 'ヴォルフ', 8, 9, 9, 16),
-  ogre: unit('ogre', 'ドーン', 9, 10, 10, 14),
-  dragoon: unit('dragoon', 'ファイ', 10, 11, 11, 15),
+  ogre: unit('ogre', 'ドーン', 9, 10, 10, 12),
+  dragoon: unit('dragoon', 'ファイ', 10, 11, 11, 10),
 
   // ---- 能力つき（能力ぶんだけスタッツを減らす） ----
   needle: unit('needle', 'ピオ', 1, 1, 1, 10, { venom: 1 }),
@@ -455,18 +455,18 @@ export const CARDS: Record<CardId, CardDef> = {
   exchange: building('exchange', '補給所', 3, 5, { coinBoost: 0.3 }),
   tradingHouse: building('tradingHouse', '戦旗塔', 3, 4, { rally: 1 }),
   factory: building('factory', '兵舎', 4, 5, { pulse: { everyMs: 6000, kind: 'token' } }),
-  cathedral: building('cathedral', '鐘楼', 4, 6, { cooldownCut: 0.3 }),
+  cathedral: building('cathedral', '鐘楼', 3, 6, { cooldownCut: 0.3 }),
   fortress: building('fortress', '砦', 5, 8, { pulse: { everyMs: 9000, kind: 'snipe', amount: 1 } }),
   infirmary: building('infirmary', '治療所', 2, 5, { pulse: { everyMs: 8000, kind: 'heal', amount: 2 } }),
-  altar: building('altar', '毒の祭壇', 4, 5, { pulse: { everyMs: 10000, kind: 'poison', amount: 1 } }),
+  altar: building('altar', '毒の祭壇', 3, 5, { pulse: { everyMs: 8000, kind: 'poison', amount: 1 } }),
   forge: building('forge', '鍛冶場', 4, 6, { pulse: { everyMs: 10000, kind: 'buff', atk: 1 } }),
 
   quarry: spell('quarry', '投石', 4, { kind: 'bolt', amount: 5 }),
   quake: spell('quake', '大地割り', 4, { kind: 'blast', amount: 2 }),
-  roadblock: spell('roadblock', 'バリケード', 3, { kind: 'freeze', ms: 8000 }),
+  roadblock: spell('roadblock', 'バリケード', 2, { kind: 'freeze', ms: 8000 }),
   festival: spell('festival', '鬨の声', 2, { kind: 'ready' }),
-  rain: spell('rain', '癒しの雨', 2, { kind: 'healAll', amount: 3 }),
-  warcry: spell('warcry', '戦の号令', 3, { kind: 'buffAll', atk: 1, hp: 1 }),
+  rain: spell('rain', '癒しの雨', 1, { kind: 'healAll', amount: 4 }),
+  warcry: spell('warcry', '戦の号令', 2, { kind: 'buffAll', atk: 1, hp: 1 }),
   miasma: spell('miasma', '毒霧', 3, { kind: 'poisonAll', amount: 2 }),
   edict: spell('edict', '封印の儀', 5, { kind: 'sealAll' }),
 };
@@ -497,6 +497,16 @@ export const RIVAL_DECK: CardId[] = [
   'roadblock',
   'quake',
   'strategist',
+];
+
+/** CPU のデッキ（テーマ別。試合ごとに 1 つ選ぶ。どれも 10 枚）。 */
+export const RIVAL_DECKS: { name: string; deck: CardId[] }[] = [
+  { name: '商人', deck: RIVAL_DECK },
+  { name: '毒', deck: ['needle', 'creeper', 'medic', 'footman', 'poisoner', 'hexer', 'altar', 'miasma', 'knight', 'raider'] },
+  { name: '巨人', deck: ['recruit', 'bulwark', 'lancer', 'stalwart', 'captain', 'warlord', 'champion', 'ironwall', 'ogre', 'forge'] },
+  { name: '連撃', deck: ['herald', 'recruit', 'twin', 'bloody', 'drummer', 'duelist', 'bloodknight', 'warcry', 'raider', 'reaper'] },
+  { name: '狙撃', deck: ['guard', 'marksman', 'bard', 'lancer', 'sniper', 'priest', 'infirmary', 'rain', 'warden', 'banner'] },
+  { name: '封印', deck: ['informer', 'spy', 'sealer', 'binder', 'blockader', 'roadblock', 'quarry', 'edict', 'quake', 'martyr'] },
 ];
 
 export function isBlocker(card: CardId): boolean {

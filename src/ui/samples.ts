@@ -99,8 +99,11 @@ export function setKit(n: number): void {
 export function chooseBuffer(name: VoiceName, forceVariant?: number): AudioBuffer | null {
   const map = buffers.get(name);
   if (!map || map.size === 0) return null;
-  for (const n of [forceVariant, getPick(name), getKit()]) {
+  for (const n of [forceVariant, getPick(name)]) {
     if (n != null && map.has(n)) return map.get(n)!;
   }
-  return map.get(Math.min(...map.keys()))!;
+  // セットの番号: その番号の録音があればそれ、無ければ並んでいる録音を順にあてる（C・D が A と同じにならないように）
+  const keys = [...map.keys()].sort((x, y) => x - y);
+  const kit = getKit();
+  return map.get(map.has(kit) ? kit : keys[(kit - 1) % keys.length]!)!;
 }

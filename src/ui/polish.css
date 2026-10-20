@@ -1893,3 +1893,21 @@
   color: #fff;
   -webkit-text-stroke: 0;
 }
+
+/* 場の上下に、はみ出した台座ぶんの余白（HP バーに触れない） */
+.field-me {
+  margin-bottom: 8px;
+}
+
+.field-foe {
+  margin-top: 8px;
+}
+
+/* クールタイムの台座は暗い絵に沈まないよう明るくする */
+.pip-cd .pip-bg {
+  filter: brightness(1.45) saturate(1.25);
+}
+
+.pip-cd > i {
+  -webkit-text-stroke-color: #12304f;
+}

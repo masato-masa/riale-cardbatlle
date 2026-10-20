@@ -18,3 +18,4 @@
 - ルールの数値は `src/game/rules.ts`、カードは `src/game/cards.ts` だけに書く。
   変えたら `npm run simulate` で試合の長さと勝率を測り直す。
 - 公開: `npm run deploy`（gh-pages ブランチへ）。
+- 開発サーバー（Vite）は、起動後に追加した素材を拾えず 404 になることがある。素材を足したら dev サーバーを再起動する（本番ビルドは問題なし）。
