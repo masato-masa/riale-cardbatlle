@@ -2107,3 +2107,16 @@
 .chest-card b {
   color: #ffe28a;
 }
+
+.chest {
+  min-height: 190px;
+  margin-top: 6px;
+}
+
+.chest-card {
+  top: 6px;
+}
+
+.chest-img {
+  margin-top: 30px;
+}
