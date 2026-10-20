@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import { CARDS, STARTER_DECK, type CardId } from '../src/game/cards';
 import { createGame, findUnit, step, summonBlock, type GameState, type PlayerIndex, type Unit } from '../src/game/engine';
-import { COIN_MAX, overrideSummonWindupForTests, SUMMON_WINDUP_MS, WINDUP_MS } from '../src/game/rules';
+import { COIN_MAX, overrideSummonWindupForTests, SUMMON_WINDUP_MS } from '../src/game/rules';
 
 beforeEach(() => overrideSummonWindupForTests(500));
 afterEach(() => overrideSummonWindupForTests(0));
