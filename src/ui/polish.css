@@ -1697,3 +1697,27 @@
     translate: -50% -85%;
   }
 }
+
+/* 勝利: 紙吹雪のかわりに金貨の雨（コインのゲームなので）。回りながら落ちる。 */
+.confetti i {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 50% 50%, transparent 0 46%, rgb(168 104 15 / 0.9) 48% 54%, transparent 56%),
+    radial-gradient(circle at 35% 28%, #fff6c4, #ffd84a 50%, #d9941a 100%);
+  border: 2px solid #8a560a;
+  box-shadow: 0 0 8px rgb(255 216 74 / 0.8);
+  animation-name: coin-fall;
+}
+
+@keyframes coin-fall {
+  0% {
+    translate: 0 0;
+    transform: rotateY(0deg);
+  }
+  100% {
+    translate: 26px 110vh;
+    transform: rotateY(1080deg);
+  }
+}
