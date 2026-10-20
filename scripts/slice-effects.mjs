@@ -28,3 +28,17 @@ for (const [name, col, row] of [
     .toFile(`${out}/${name}.webp`);
   console.log(`${name}.webp`);
 }
+
+// 2 枚目（art-src/effects-sheet-2.png、3×3）: 毒・回復・強化・封印・吸血・貫通・交差斬り・金貨・盾。
+const src2 = `${root}art-src/effects-sheet-2.png`;
+const m2 = await sharp(src2).metadata();
+const w2 = Math.floor(m2.width / 3);
+const h2 = Math.floor(m2.height / 3);
+['poison', 'heal', 'buff', 'seal', 'drain', 'pierce', 'cross', 'coin', 'guard'].forEach(async (name, i) => {
+  await sharp(src2)
+    .extract({ left: (i % 3) * w2, top: Math.floor(i / 3) * h2, width: w2, height: h2 })
+    .resize(384, 384, { fit: 'cover' })
+    .webp({ quality: 85 })
+    .toFile(`${out}/${name}.webp`);
+  console.log(`${name}.webp`);
+});

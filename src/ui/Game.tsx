@@ -96,7 +96,7 @@ interface Burst {
   id: number;
   x: number;
   y: number;
-  tone: 'hit' | 'face' | 'puff' | 'summon' | 'wave' | 'blast' | 'ice';
+  tone: 'hit' | 'face' | 'puff' | 'summon' | 'wave' | 'blast' | 'ice' | 'poison' | 'heal' | 'buff' | 'seal' | 'drain' | 'pierce' | 'cross' | 'coin' | 'guard';
   /** 素材の向き（度）。斬撃が毎回同じ向きにならないようにする。 */
   r: number;
 }
@@ -438,11 +438,16 @@ export function Game({ level, deck, onExit }: { level: CpuLevel; deck: CardId[];
             const el = unitEl(e.target.uid);
             if (e.guard === 'barrier') {
               addPopup(el, '結界', 'guard');
+              addBurst(el, 'guard');
               playBarrier();
             } else {
               addPopup(el, `-${e.amount}`, e.guard === 'armor' ? 'guard' : 'dmg');
-              addBurst(el, 'hit');
+              const atkEl = attackEv?.kind === 'attack' ? unitEl(attackEv.uid) : null;
+              const atkCard = atkEl?.getAttribute('data-card') as CardId | null;
+              const atkAb = atkCard ? CARDS[atkCard].ab : null;
+              addBurst(el, atkAb?.doubleStrike ? 'cross' : atkAb?.freeAim ? 'pierce' : 'hit');
               addBurst(el, 'wave');
+              if (atkAb?.lifesteal) addBurst(atkEl, 'drain');
               flash(el);
               if (attackEv?.kind === 'attack') recoil(el, unitEl(attackEv.uid));
               if (batch.some((x) => x.kind === 'spell')) {
@@ -484,24 +489,28 @@ export function Game({ level, deck, onExit }: { level: CpuLevel; deck: CardId[];
         }
         if (e.kind === 'healUnit') {
           addPopup(unitEl(e.uid), `+${e.amount}`, 'heal');
+          addBurst(unitEl(e.uid), 'heal');
           flash(unitEl(e.uid));
           playHeal();
         }
         if (e.kind === 'buff') {
           addPopup(unitEl(e.uid), `${e.atk ? `攻+${e.atk}` : ''}${e.atk && e.hp ? ' ' : ''}${e.hp ? `体+${e.hp}` : ''}`, 'buff');
+          addBurst(unitEl(e.uid), 'buff');
           flash(unitEl(e.uid));
           playReady();
         }
         if (e.kind === 'poison') {
           addPopup(unitEl(e.uid), `毒${e.amount}`, 'poison');
-          addBurst(unitEl(e.uid), 'puff');
+          addBurst(unitEl(e.uid), 'poison');
         }
         if (e.kind === 'seal') {
           addPopup(unitEl(e.uid), '封印', 'guard');
+          addBurst(unitEl(e.uid), 'seal');
           playBarrier();
         }
         if (e.kind === 'disarm') {
           addPopup(unitEl(e.uid), '攻撃不能', 'stun');
+          addBurst(unitEl(e.uid), 'seal');
           playStun();
         }
         if (e.kind === 'stun') {

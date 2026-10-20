@@ -1616,3 +1616,84 @@
 .pip-summon > i {
   font-size: max(11px, 25cqw);
 }
+
+/* 新しい演出素材（effects-sheet-2）。黒地を screen で抜く。 */
+.burst-poison,
+.burst-heal,
+.burst-buff,
+.burst-seal,
+.burst-drain,
+.burst-pierce,
+.burst-cross,
+.burst-coin,
+.burst-guard {
+  width: 120px;
+  height: 120px;
+  animation-duration: 0.7s;
+}
+
+.burst-poison {
+  background-image: url('../assets/art/fx/poison.webp');
+  animation-name: burst-rise;
+}
+
+.burst-heal {
+  background-image: url('../assets/art/fx/heal.webp');
+  animation-name: burst-rise;
+}
+
+.burst-buff {
+  background-image: url('../assets/art/fx/buff.webp');
+  animation-name: burst-rise;
+}
+
+.burst-seal {
+  background-image: url('../assets/art/fx/seal.webp');
+  animation-name: burst-circle;
+}
+
+.burst-drain {
+  background-image: url('../assets/art/fx/drain.webp');
+  animation-name: burst-rise;
+}
+
+.burst-pierce {
+  background-image: url('../assets/art/fx/pierce.webp');
+  animation-name: burst-hit;
+  animation-duration: 0.45s;
+}
+
+.burst-cross {
+  background-image: url('../assets/art/fx/cross.webp');
+  animation-name: burst-hit;
+  animation-duration: 0.5s;
+  --r: 0deg !important;
+}
+
+.burst-coin {
+  background-image: url('../assets/art/fx/coin.webp');
+  animation-name: burst-hit;
+  width: 140px;
+  height: 140px;
+}
+
+.burst-guard {
+  background-image: url('../assets/art/fx/guard.webp');
+  animation-name: burst-hit;
+  animation-duration: 0.45s;
+}
+
+@keyframes burst-rise {
+  0% {
+    opacity: 0;
+    scale: 0.5;
+  }
+  25% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    scale: 1.2;
+    translate: -50% -85%;
+  }
+}
