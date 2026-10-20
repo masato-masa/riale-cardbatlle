@@ -503,7 +503,7 @@ export const CARDS: Record<CardId, CardDef> = {
   spy: unit('spy', 'カゲマル', 3, 3, 2, 11, { stealth: true }),
   craftsman: unit('craftsman', 'ゴルド', 3, 3, 3, 14, { unitBonus: 2 }),
   guard: unit('guard', 'ロイ', 2, 1, 3, 16, { blocker: true }),
-  banker: unit('banker', 'ミレーヌ', 3, 3, 3, 16, { coinBoost: 0.22 }),
+  banker: unit('banker', 'ミレーヌ', 3, 3, 3, 16, { coinBoost: 0.18 }),
   informer: unit('informer', 'シオ', 2, 2, 2, 12, { onSummon: { kind: 'stun', ms: 6000 } }),
   taxman: unit('taxman', 'リオ', 4, 3, 3, 14, { onSummon: { kind: 'strike', amount: 2 } }),
   double: unit('double', 'ジーク', 3, 3, 2, 18, { barrier: true }),
@@ -559,7 +559,7 @@ export const CARDS: Record<CardId, CardDef> = {
   wall: building('wall', '城壁', 2, 8, { blocker: true }),
   exchange: building('exchange', '補給所', 3, 5, { coinBoost: 0.3 }),
   tradingHouse: building('tradingHouse', '戦旗塔', 2, 5, { rally: 1 }),
-  factory: building('factory', '兵舎', 4, 5, { pulse: { everyMs: 6000, kind: 'token' } }),
+  factory: building('factory', '兵舎', 3, 5, { pulse: { everyMs: 5000, kind: 'token' } }),
   cathedral: building('cathedral', '鐘楼', 2, 6, { cooldownCut: 0.3 }),
   fortress: building('fortress', '砦', 5, 8, { pulse: { everyMs: 9000, kind: 'snipe', amount: 1 } }),
   infirmary: building('infirmary', '治療所', 1, 5, { pulse: { everyMs: 8000, kind: 'heal', amount: 2 } }),
@@ -569,7 +569,7 @@ export const CARDS: Record<CardId, CardDef> = {
   quarry: spell('quarry', '投石', 4, { kind: 'bolt', amount: 5 }),
   quake: spell('quake', '大地割り', 4, { kind: 'blast', amount: 2 }),
   roadblock: spell('roadblock', 'バリケード', 2, { kind: 'freeze', ms: 10000 }),
-  festival: spell('festival', '鬨の声', 2, { kind: 'ready' }),
+  festival: spell('festival', '鬨の声', 1, { kind: 'ready' }),
 
   // ---- 割り込み（ブロッカーが攻撃を中断させる）・攻撃中断・生贄（上書き）・上書き召喚の能力 ----
   warder: unit('warder', 'ヴィゴ', 3, 2, 4, 15, { blocker: true, onInterrupt: { kind: 'strike', amount: 2 } }),
