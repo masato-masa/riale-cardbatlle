@@ -1422,7 +1422,7 @@ export function Game({ level, deck, onExit }: { level: CpuLevel; deck: CardId[];
           <motion.span
             key={c.id}
             className={`callout callout-${c.tone}`}
-            style={{ left: c.x, top: c.y }}
+            style={{ left: Math.min(Math.max(c.x, 100), window.innerWidth - 100), top: c.y }}
             initial={{ opacity: 0, scale: 2.4, rotate: -8 }}
             animate={{ opacity: [0, 1, 1, 0], scale: [2.4, 1, 1.08, 1], rotate: [-8, -3, -3, -3], y: [0, 0, -10, -22], transition: { duration: 1.25, times: [0, 0.18, 0.7, 1] } }}
           >
