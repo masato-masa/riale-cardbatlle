@@ -58,6 +58,7 @@ const SHEETS = {
   12: [...['trickster', 'monarch', 'riposte', 'avenger'].map((n) => `cards/${n}`), null, null, null, null, null],
   13: [...['hunter', 'slayer'].map((n) => `cards/${n}`), null, null, null, null, null, null, null],
   14: [...['vampire', 'plunderer'].map((n) => `cards/${n}`), null, null, null, null, null, null, null],
+  15: [...['sentinel', 'swindler'].map((n) => `cards/${n}`), null, null, null, null, null, null, null],
   // 3 列×2 行（縦長のマス）。切り札ユニット 5 人と予備 1 枚
   4: {
     cols: 3,

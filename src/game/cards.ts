@@ -99,7 +99,9 @@ export type CardId =
   | 'hunter'
   | 'slayer'
   | 'vampire'
-  | 'plunderer';
+  | 'plunderer'
+  | 'sentinel'
+  | 'swindler';
 
 export type CardType = 'unit' | 'building' | 'spell';
 
@@ -367,6 +369,8 @@ const EPITHET: Partial<Record<CardId, string>> = {
   slayer: '屠る者',
   vampire: '夜を渡る吸血鬼',
   plunderer: '戦場の略奪者',
+  sentinel: '眠らぬ見張り',
+  swindler: '嘘つきの詐欺師',
 };
 
 /** 一言（説明のシートの下に出す。ゲームの数値には関係しない）。 */
@@ -462,6 +466,8 @@ const FLAVOR: Partial<Record<CardId, string>> = {
   slayer: '倒すたびに、血が力になる。',
   vampire: '敵の血は、いつだって温かい。',
   plunderer: '倒したやつの財布は、全部いただく。',
+  sentinel: '止まれ。その剣は、俺が預かる。',
+  swindler: '捨て石？ いいや、これは仕込みさ。',
 };
 
 /** cdSec はクールタイム（秒）。 */
@@ -597,6 +603,8 @@ export const CARDS: Record<CardId, CardDef> = {
   hunter: unit('hunter', 'ロッコ', 3, 2, 4, 15, { onKill: { kind: 'coin', amount: 2 } }),
   vampire: unit('vampire', 'カーミラ', 4, 3, 4, 15, { onKill: { kind: 'heal', amount: 3 } }),
   plunderer: unit('plunderer', 'ガルド', 6, 6, 6, 17, { onKill: { kind: 'coin', amount: 3 } }),
+  sentinel: unit('sentinel', 'ホルス', 4, 2, 5, 16, { blocker: true, onInterrupt: { kind: 'stun', ms: 7000 } }),
+  swindler: unit('swindler', 'レイヴ', 2, 2, 2, 12, { stealth: true, onReplaced: { kind: 'face', amount: 3 } }),
   slayer: unit('slayer', 'グリム', 5, 5, 4, 16, { onKill: { kind: 'buff', atk: 1, hp: 1 } }),
   avenger: unit('avenger', 'ヴェラ', 4, 3, 4, 15, { onCancelled: { kind: 'buff', atk: 2, hp: 0 } }),
   rain: spell('rain', '癒しの雨', 1, { kind: 'healAll', amount: 5 }),
