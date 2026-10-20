@@ -343,6 +343,16 @@ function spellCandidates(state: GameState, p: PlayerIndex, handIndex: number, ca
     }
     if (v < 3) v -= 3;
     v *= t.skill;
+  } else if (sp.kind === 'ambush') {
+    // 民兵（ブロッカー）を出して、溜め中の敵の攻撃を止める。止まる攻撃が多く強いほど得
+    const wasBlocker = units(me).some((u) => isBlocker(u.card));
+    for (const x of state.pending) {
+      if (x.kind !== 'attack' || x.p === p || wasBlocker) continue;
+      const att = findUnit(foe, x.uid)?.unit;
+      if (att) v += attackOf(foe, att) * (x.target.kind === 'player' ? 0.9 : 0.6) + 0.6;
+    }
+    if (v > 0) v += 0.8;
+    v *= 0.5 + 0.5 * t.skill;
   } else if (sp.kind === 'parry') {
     // 相手の溜め中の攻撃を弾く: 弾く攻撃の威力と、足止めのぶんが得
     for (const x of state.pending) {

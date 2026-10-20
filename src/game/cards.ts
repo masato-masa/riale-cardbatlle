@@ -101,7 +101,9 @@ export type CardId =
   | 'vampire'
   | 'plunderer'
   | 'sentinel'
-  | 'swindler';
+  | 'swindler'
+  | 'ambush'
+  | 'militia';
 
 export type CardType = 'unit' | 'building' | 'spell';
 
@@ -200,7 +202,9 @@ export type SpellEffect =
   /** 敵ユニット全員を封印 */
   | { kind: 'sealAll' }
   /** 相手の溜め中の攻撃をすべて中断させ、その攻撃元のクールタイムを延ばす（溜めなしですぐ効く）。 */
-  | { kind: 'parry'; ms: number };
+  | { kind: 'parry'; ms: number }
+  /** 空いている枠に民兵（ブロッカー）を即座に出す。溜め中の攻撃は割り込まれて中断する（溜めなしですぐ効く）。 */
+  | { kind: 'ambush' };
 
 export interface Abilities {
   /** ブロッカー: 相手はブロッカーしか攻撃できない */
@@ -338,6 +342,8 @@ const EPITHET: Partial<Record<CardId, string>> = {
   colossus: '不動の巨人',
   archmage: '終焉の大魔導',
   apprentice: '駆けつけた若者',
+  ambush: '待ち伏せの号令',
+  militia: '伏せていた民兵',
   wall: '石の防壁',
   exchange: '物資の集積地',
   tradingHouse: '翻る軍旗',
@@ -435,6 +441,8 @@ const FLAVOR: Partial<Record<CardId, string>> = {
   colossus: '……通さぬ。',
   archmage: '終わらせましょう。敵も、味方も。',
   apprentice: '俺だって戦える！ 戦わせてくれ！',
+  ambush: '今だ！ 伏せていた者たち、立ち上がれ！',
+  militia: '通さんぞ！ ここは俺たちの場所だ！',
   wall: '何百年も敵を阻んできた、石の壁。',
   exchange: '物資さえあれば、兵はいくらでも動く。',
   tradingHouse: '軍旗が翻る限り、兵の士気は落ちない。',
@@ -530,6 +538,7 @@ export const CARDS: Record<CardId, CardDef> = {
   colossus: unit('colossus', 'グラム', 9, 7, 10, 15, { blocker: true }),
   archmage: unit('archmage', 'オルガ', 10, 10, 10, 30, { onSummon: { kind: 'wipe' } }),
   apprentice: { ...unit('apprentice', '志願兵', 1, 1, 1, 12), token: true },
+  militia: { ...unit('militia', '民兵', 1, 1, 3, 12, { blocker: true }), token: true },
 
   // ---- 基礎スタッツ（能力なし）: コスト 1〜5 は 攻撃/HP がコスト・コスト+1（どちらかが +1）、コスト 7 以上は コスト+1 / コスト+1 ----
   recruit: unit('recruit', 'アルト', 1, 1, 2, 10),
@@ -596,6 +605,7 @@ export const CARDS: Record<CardId, CardDef> = {
   phoenix: unit('phoenix', 'フェン', 4, 4, 4, 15, { onReplaced: { kind: 'heal', amount: 6 } }),
   usurper: unit('usurper', 'クロウ', 3, 3, 3, 14, { onOverwrite: { kind: 'buff', atk: 2, hp: 2 } }),
   conqueror: unit('conqueror', 'レグ', 5, 4, 4, 16, { onOverwrite: { kind: 'refund' } }),
+  ambush: spell('ambush', '待ち伏せ', 2, { kind: 'ambush' }),
   parry: spell('parry', 'パリィ', 1, { kind: 'parry', ms: 5000 }),
   trickster: unit('trickster', 'ピエロ', 3, 3, 2, 12, { stealth: true, onOverwrite: { kind: 'haste' } }),
   monarch: unit('monarch', 'ロデリク', 6, 6, 6, 17, { onReplaced: { kind: 'coin', amount: 5 } }),
@@ -648,7 +658,7 @@ export const RIVAL_DECKS: { name: string; deck: CardId[] }[] = [
   { name: '巨人', deck: ['recruit', 'bulwark', 'lancer', 'stalwart', 'captain', 'warlord', 'champion', 'ironwall', 'ogre', 'forge'] },
   { name: '連撃', deck: ['herald', 'recruit', 'twin', 'bloody', 'drummer', 'duelist', 'bloodknight', 'warcry', 'raider', 'reaper'] },
   { name: '狙撃', deck: ['guard', 'marksman', 'bard', 'lancer', 'sniper', 'priest', 'infirmary', 'rain', 'warden', 'banner'] },
-  { name: '割り込み', deck: ['recruit', 'shieldmaid', 'warder', 'diehard', 'ambusher', 'berserk', 'knight', 'gatekeeper', 'parry', 'captain'] },
+  { name: '割り込み', deck: ['recruit', 'shieldmaid', 'warder', 'diehard', 'ambusher', 'berserk', 'knight', 'gatekeeper', 'ambush', 'captain'] },
   { name: '生贄', deck: ['offering', 'bomber', 'heir', 'footman', 'usurper', 'phoenix', 'conqueror', 'knight', 'captain', 'recruit'] },
   { name: '討伐', deck: ['herald', 'hunter', 'avenger', 'knight', 'slayer', 'riposte', 'trickster', 'captain', 'monarch', 'recruit'] },
   { name: '封印', deck: ['informer', 'spy', 'sealer', 'binder', 'blockader', 'knight', 'quarry', 'captain', 'poisoner', 'martyr'] },
@@ -778,6 +788,7 @@ export function abilityLines(card: CardId): string[] {
   if (sp?.kind === 'buffAll') lines.push(`味方ユニット全員の${buffText(sp.atk, sp.hp)}`);
   if (sp?.kind === 'poisonAll') lines.push(`敵ユニット全員に毒 ${sp.amount} を与える`);
   if (sp?.kind === 'sealAll') lines.push('敵ユニット全員を封印する（能力を無効にする）');
+  if (sp?.kind === 'ambush') lines.push('空いている枠に民兵（ブロッカー）をすぐ出す。溜め中の敵の攻撃は割り込まれて中断する');
   if (sp?.kind === 'parry') lines.push(`溜め中の敵の攻撃をすべて中断させ、攻撃元のクールタイム +${sp.ms / 1000} 秒（すぐ効く）`);
   return lines;
 }
