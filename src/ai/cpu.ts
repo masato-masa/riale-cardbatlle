@@ -113,6 +113,7 @@ function worth(card: CardId, hp: number, atk: number, allies: number, barrier: b
   if (ab.onCancelled) v += 0.7;
   if (ab.onReplaced) v += 0.5;
   if (ab.onOverwrite) v += 0.6;
+  if (ab.onKill) v += ab.onKill.kind === 'coin' ? ab.onKill.amount * 0.5 : ab.onKill.kind === 'buff' ? (ab.onKill.atk + ab.onKill.hp) * 0.6 : ab.onKill.amount * 0.3;
   // 建築物の能力（壊せば止まる）
   if (ab.pulse?.kind === 'token') v += 1.2;
   if (ab.pulse?.kind === 'snipe') v += 1.6;

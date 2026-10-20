@@ -817,6 +817,13 @@ function applyAttack(d: Draft, p: PlayerIndex, uid: number, target: Target): boo
     if (!ab.ranged) hurtUnit(d, p, unit, back);
     // 毒の牙: 攻撃した相手に毒を与える
     if (ab.venom && hit.hp > 0) poisonUnit(d, q, hit, ab.venom);
+    // 討伐: 自分の攻撃で倒した（攻撃した本人が生きていて、相手が倒れた）
+    const ok = ab.onKill;
+    if (ok && hit.hp <= 0 && unit.hp > 0) {
+      if (ok.kind === 'coin') addCoins(d, p, ok.amount, unit.uid);
+      else if (ok.kind === 'buff') buffUnit(d, p, unit, ok.atk, ok.hp);
+      else healPlayer(d, p, ok.amount);
+    }
   }
   // 吸血: 与えたダメージぶん、自分のプレイヤーが回復
   if (ab.lifesteal && dealtTotal > 0) healPlayer(d, p, dealtTotal);

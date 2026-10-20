@@ -95,7 +95,9 @@ export type CardId =
   | 'trickster'
   | 'monarch'
   | 'riposte'
-  | 'avenger';
+  | 'avenger'
+  | 'hunter'
+  | 'slayer';
 
 export type CardType = 'unit' | 'building' | 'spell';
 
@@ -160,6 +162,12 @@ export type OnOverwrite =
   | { kind: 'refund' }
   /** すぐ攻撃できる。 */
   | { kind: 'haste' };
+
+/** 討伐時: 自分の攻撃で敵ユニットを倒したときに起きること。 */
+export type OnKill =
+  | { kind: 'coin'; amount: number }
+  | { kind: 'buff'; atk: number; hp: number }
+  | { kind: 'heal'; amount: number };
 
 /** 建築物が一定時間ごとに起こすこと。 */
 export type Pulse =
@@ -233,6 +241,8 @@ export interface Abilities {
   onInterrupt?: OnInterrupt;
   /** 攻撃中断時（自分の攻撃が中断されたとき） */
   onCancelled?: OnCancelled;
+  /** 討伐時（自分の攻撃で敵ユニットを倒したとき） */
+  onKill?: OnKill;
   /** 生贄時（自分のカードの上に召喚されて場から除かれたとき） */
   onReplaced?: OnReplaced;
   /** 上書き召喚時（自分のカードの上に召喚したとき） */
@@ -351,6 +361,8 @@ const EPITHET: Partial<Record<CardId, string>> = {
   monarch: '殉葬の王',
   riposte: '返し刃の騎士',
   avenger: '復讐の刃',
+  hunter: '賞金稼ぎ',
+  slayer: '屠る者',
 };
 
 /** 一言（説明のシートの下に出す。ゲームの数値には関係しない）。 */
@@ -442,6 +454,8 @@ const FLAVOR: Partial<Record<CardId, string>> = {
   monarch: '我が身を捧げよう。国に、金貨の雨を。',
   riposte: '受け止めたなら、返すまでだ。',
   avenger: '止められるたび、刃は研がれる。',
+  hunter: '一人倒せば金貨二枚。実入りがいい。',
+  slayer: '倒すたびに、血が力になる。',
 };
 
 /** cdSec はクールタイム（秒）。 */
@@ -574,6 +588,8 @@ export const CARDS: Record<CardId, CardDef> = {
   trickster: unit('trickster', 'ピエロ', 3, 3, 2, 12, { stealth: true, onOverwrite: { kind: 'haste' } }),
   monarch: unit('monarch', 'ロデリク', 6, 6, 6, 17, { onReplaced: { kind: 'coin', amount: 5 } }),
   riposte: unit('riposte', 'セドリック', 5, 4, 5, 16, { blocker: true, onInterrupt: { kind: 'strike', amount: 3 }, onCancelled: { kind: 'ready' } }),
+  hunter: unit('hunter', 'ロッコ', 3, 2, 4, 15, { onKill: { kind: 'coin', amount: 2 } }),
+  slayer: unit('slayer', 'グリム', 5, 5, 4, 16, { onKill: { kind: 'buff', atk: 1, hp: 1 } }),
   avenger: unit('avenger', 'ヴェラ', 4, 3, 4, 15, { onCancelled: { kind: 'buff', atk: 2, hp: 0 } }),
   rain: spell('rain', '癒しの雨', 1, { kind: 'healAll', amount: 5 }),
   warcry: spell('warcry', '戦の号令', 2, { kind: 'buffAll', atk: 1, hp: 1 }),
@@ -659,6 +675,7 @@ function buffText(atk: number, hp: number): string {
 
 /** 状態の説明（説明シートの下に出す）。 */
 export const STATUS_NOTES: string[] = [
+  '討伐: 自分の攻撃で敵ユニットを倒すこと（反撃や毒で倒したときは含まない）',
   '割り込み: 攻撃の溜め中に相手のブロッカーが出ると、その攻撃は中断される（クールタイムは戻る）',
   '上書き: 自分のカードの上に召喚すると入れ替わる。入れ替わったカードの「生贄時」の能力が起きる',
   '生贄: 上書きされて場から消えること',
@@ -714,6 +731,10 @@ export function abilityLines(card: CardId): string[] {
   if (or?.kind === 'face') lines.push(`生贄時：敵プレイヤーに ${or.amount} ダメージ`);
   if (or?.kind === 'heal') lines.push(`生贄時：自分の HP を ${or.amount} 回復`);
   if (or?.kind === 'buffNew') lines.push(`生贄時：上書きしたカードの${buffText(or.atk, or.hp)}`);
+  const ok = a.onKill;
+  if (ok?.kind === 'coin') lines.push(`討伐時：コイン +${ok.amount}`);
+  if (ok?.kind === 'buff') lines.push(`討伐時：自分の${buffText(ok.atk, ok.hp)}`);
+  if (ok?.kind === 'heal') lines.push(`討伐時：自分の HP を ${ok.amount} 回復`);
   const oo = a.onOverwrite;
   if (oo?.kind === 'buff') lines.push(`上書き召喚時：自分の${buffText(oo.atk, oo.hp)}`);
   if (oo?.kind === 'refund') lines.push('上書き召喚時：上書きされたカードのコストの半分のコインが戻る');

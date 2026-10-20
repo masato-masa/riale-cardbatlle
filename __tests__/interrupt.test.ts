@@ -234,3 +234,28 @@ describe('追加カード（ピエロ・ロデリク・セドリック・ヴェ�
     expect(unitOf(n, 0, a.uid)!.atkBuff).toBe(2);
   });
 });
+
+describe('討伐時', () => {
+  it('ロッコ: 敵ユニットを倒すとコイン +2', () => {
+    let s = fresh();
+    let a: Unit;
+    let t: Unit;
+    [s, a] = place(s, 0, 0, 'hunter');
+    [s, t] = place(s, 1, 0, 'recruit', { hp: 1 });
+    s = { ...s, players: [{ ...s.players[0], coins: 3 }, s.players[1]] };
+    s = step(s, { type: 'attack', p: 0, uid: a.uid, target: U(t.uid) });
+    s = step(s, { type: 'tick', dt: WINDUP_MS });
+    expect(unitOf(s, 1, t.uid)).toBeUndefined();
+    expect(s.players[0].coins).toBeGreaterThanOrEqual(5);
+  });
+  it('グリム: 倒すと +1/+1。倒せなければ起きない', () => {
+    let s = fresh();
+    let a: Unit;
+    let t: Unit;
+    [s, a] = place(s, 0, 0, 'slayer');
+    [s, t] = place(s, 1, 0, 'recruit', { hp: 9 });
+    s = step(s, { type: 'attack', p: 0, uid: a.uid, target: U(t.uid) });
+    s = step(s, { type: 'tick', dt: WINDUP_MS });
+    expect(unitOf(s, 0, a.uid)!.atkBuff ?? 0).toBe(0);
+  });
+});
