@@ -197,7 +197,7 @@ describe('パリィ（呪文）', () => {
     s = step(s, { type: 'summon', p: 0, handIndex: 0, slot: -1 });
     expect(cancels(s)[0]!.reason).toBe('parry');
     expect(s.pending.length).toBe(0);
-    expect(unitOf(s, 1, a.uid)!.readyAt).toBe(Math.max(readyBefore, s.time) + 3000);
+    expect(unitOf(s, 1, a.uid)!.readyAt).toBe(Math.max(readyBefore, s.time) + 5000);
     // 溜めの時間が過ぎても、攻撃は起きない
     const n = step(s, { type: 'tick', dt: WINDUP_MS });
     expect(unitOf(n, 0, b.uid)!.hp).toBe(CARDS.recruit.hp);
