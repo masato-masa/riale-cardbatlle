@@ -35,7 +35,7 @@ import {
 import { makeRng } from '@/game/rng';
 import { awardMatch, CHEST_POINTS, type MatchReward } from '@/storage/collection';
 import { addResult, isTutorialDone, setTutorialDone } from '@/storage/profile';
-import { COIN_MAX, DOUBLE_COIN_FROM_MS, FIELD_SLOTS, MATCH_MS, WINDUP_MS } from '@/game/rules';
+import { COIN_MAX, DOUBLE_COIN_FROM_MS, FIELD_SLOTS, MATCH_MS, PLAYER_HP, WINDUP_MS } from '@/game/rules';
 
 import { COIN_URL, FIELD_URL, HERO_FOE_URL, HERO_ME_URL, preloadFx } from './art';
 import { setBgmTension, startBgm, stopBgm } from './bgm';
@@ -1133,7 +1133,7 @@ export function Game({ level, deck, onExit }: { level: CpuLevel; deck: CardId[];
       }}
       style={{ backgroundImage: `url(${FIELD_URL})`, backgroundSize: floorBg?.size, backgroundPosition: floorBg?.pos }}
     >
-      <main className={`battle${castReady ? ' is-casting' : ''}`}>
+      <main className={`battle${castReady ? ' is-casting' : ''}${me.hp <= PLAYER_HP * 0.3 && !game.result ? ' is-danger' : ''}`}>
         <div className="arena">
           <div className="arena-top">
             <span className={`clock${remaining <= 30_000 ? ' is-urgent' : ''}`}>
