@@ -289,6 +289,7 @@ export function DeckScreen({ deck, onChange, onBack }: { deck: CardId[]; onChang
         {open ? (
           <Sheet key="card" title={CARDS[open.card].name} anchor="bottom" onClose={() => setOpen(null)}>
             <CardDetail card={open.card} />
+            {open.locked ? <p className="card-detail-note">🔒 まだ持っていません。対戦でたまる宝箱から手に入ります。</p> : null}
             {open.inDeck ? (
               <button className="sheet-btn" onClick={() => setOpen(null)}>
                 とじる
