@@ -105,7 +105,9 @@ export type CardId =
   | 'ambush'
   | 'militia'
   | 'titan'
-  | 'overlord';
+  | 'overlord'
+  | 'scout'
+  | 'oldguard';
 
 export type CardType = 'unit' | 'building' | 'spell';
 
@@ -348,6 +350,8 @@ const EPITHET: Partial<Record<CardId, string>> = {
   militia: '伏せていた民兵',
   titan: '城門を背負う巨神兵',
   overlord: '血に濡れた覇王',
+  scout: '捨て駒の斥候',
+  oldguard: '古参の番兵',
   wall: '石の防壁',
   exchange: '物資の集積地',
   tradingHouse: '翻る軍旗',
@@ -449,6 +453,8 @@ const FLAVOR: Partial<Record<CardId, string>> = {
   militia: '通さんぞ！ ここは俺たちの場所だ！',
   titan: '一歩も引かぬ。この門が、我が墓標だ。',
   overlord: '倒した数だけ、俺の国は大きくなる。',
+  scout: '先に行く。後は、頼んだぞ。',
+  oldguard: '若いの、下がってな。ここは俺の持ち場だ。',
   wall: '何百年も敵を阻んできた、石の壁。',
   exchange: '物資さえあれば、兵はいくらでも動く。',
   tradingHouse: '軍旗が翻る限り、兵の士気は落ちない。',
@@ -623,6 +629,8 @@ export const CARDS: Record<CardId, CardDef> = {
   swindler: unit('swindler', 'レイヴ', 2, 2, 2, 12, { stealth: true, onReplaced: { kind: 'face', amount: 3 } }),
   titan: unit('titan', 'ゴルゴン', 9, 8, 10, 16, { blocker: true, onInterrupt: { kind: 'strike', amount: 6 } }),
   overlord: unit('overlord', 'アシュ', 10, 9, 9, 17, { doubleStrike: true, onKill: { kind: 'coin', amount: 4 } }),
+  scout: unit('scout', 'ティム', 1, 1, 1, 10, { onReplaced: { kind: 'coin', amount: 2 } }),
+  oldguard: unit('oldguard', 'グスタフ', 3, 2, 4, 15, { blocker: true, onInterrupt: { kind: 'coin', amount: 1 }, onReplaced: { kind: 'coin', amount: 2 } }),
   slayer: unit('slayer', 'グリム', 5, 5, 4, 16, { onKill: { kind: 'buff', atk: 1, hp: 1 } }),
   avenger: unit('avenger', 'ヴェラ', 4, 3, 4, 15, { onCancelled: { kind: 'buff', atk: 2, hp: 0 } }),
   rain: spell('rain', '癒しの雨', 1, { kind: 'healAll', amount: 5 }),
