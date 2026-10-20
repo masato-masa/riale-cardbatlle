@@ -230,6 +230,7 @@ export function Game({ level, deck, onExit }: { level: CpuLevel; deck: CardId[];
     if (!overtime) return;
     setBgmTension(true);
     playHorn();
+    addBurst(document.querySelector('.coin-count'), 'coin');
     setOverBanner(true);
     const t = window.setTimeout(() => setOverBanner(false), 2000);
     return () => window.clearTimeout(t);
