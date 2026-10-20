@@ -225,7 +225,7 @@ describe('生産（工房）', () => {
     expect(s.events.some((e) => e.kind === 'pulse')).toBe(true);
     expect(s.events.some((e) => e.kind === 'summon' && e.token)).toBe(true);
     // 山札には入らない
-    expect(s.players[0].hand.length + s.players[0].queue.length).toBe(10);
+    expect(s.players[0].hand.length + s.players[0].queue.length).toBe(8);
   });
 
   it('一度に大きく進めても回数ぶん出る', () => {
@@ -347,7 +347,7 @@ describe('呪文', () => {
     expect(pl.coins).toBeCloseTo(COIN_MAX - CARDS.festival.summon, 0); // 溜めの間にコインが少したまる
     expect(pl.hand).toEqual([next, 'herald', 'guard', 'spy']);
     expect(pl.queue.at(-1)).toBe('festival');
-    expect(pl.hand.length + pl.queue.length).toBe(10);
+    expect(pl.hand.length + pl.queue.length).toBe(8);
     expect(n.events.find((e) => e.kind === 'spell')).toMatchObject({ p: 0, card: 'festival', target: null });
   });
 

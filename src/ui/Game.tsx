@@ -451,7 +451,7 @@ export function Game({ level, deck, onExit }: { level: CpuLevel; deck: CardId[];
           // 割り込み: 阻んだブロッカー（壁なら相手の場）で盾が弾き、攻撃元は押し戻される
           const blocker = e.by !== undefined ? unitEl(e.by) : null;
           const where = blocker ?? (x.p === 0 ? foeFieldRef.current : fieldRef.current);
-          addCallout(where, '割り込み！', 'block');
+          addCallout(where, '妨害！', 'block');
           hapticImpact([20, 40, 20]);
           addBurst(blocker ?? at, 'clash');
           addBurst(at, 'snap');
@@ -486,7 +486,7 @@ export function Game({ level, deck, onExit }: { level: CpuLevel; deck: CardId[];
         const slot = slotEl(e.p, e.slot);
         addGhost(slot, e.card);
         addBurst(slot, 'overwrite');
-        addPopup(slot, '上書き', 'buff');
+        addPopup(slot, 'チェンジ', 'buff');
         playSelect();
       }
       if (e.kind === 'overwrite') {

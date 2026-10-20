@@ -11,6 +11,7 @@ import {
   DOUBLE_COIN_FROM_MS,
   FIELD_SLOTS,
   HAND_SIZE,
+  INTERFERE_MS,
   MATCH_MS,
   PLAYER_ATK,
   PLAYER_HP,
@@ -487,19 +488,27 @@ function cancelPending(d: Draft, x: Pending, reason: CancelReason, by?: number):
   u.readyAt = x.readyBefore + Math.max(0, u.readyAt - x.readyAfter);
   u.second = x.secondBefore ? true : undefined;
   const q = other(x.p);
-  // 割り込み: 阻んだブロッカーの能力
-  if (reason === 'blocked' && by !== undefined) {
+  // 妨害（ブロッカー・壁・チェンジでかわされた）: 妨害された側のクールタイム +5 秒。すぐ動き直せないようにする
+  if ((reason === 'blocked' || reason === 'dodge') && !abOf(u).interfereImmune) {
+    u.readyAt = Math.max(u.readyAt, d.time) + INTERFERE_MS;
+    d.events.push({ kind: 'stun', p: x.p, uid: u.uid });
+  }
+  // 妨害成功時: 阻んだブロッカー（かわしたカード）の能力
+  if ((reason === 'blocked' || reason === 'dodge') && by !== undefined) {
     const b = findUnit(d.players[q], by)?.unit;
     const oi = b ? abOf(b).onInterrupt : undefined;
     if (b && oi) {
       if (oi.kind === 'strike') hurtUnit(d, x.p, u, oi.amount);
       else if (oi.kind === 'stun') {
-        u.readyAt = Math.max(u.readyAt, d.time) + oi.ms;
-        d.events.push({ kind: 'stun', p: x.p, uid: u.uid });
-      } else addCoins(d, q, oi.amount, b.uid);
+        if (!abOf(u).interfereImmune) {
+          u.readyAt = Math.max(u.readyAt, d.time) + oi.ms;
+          d.events.push({ kind: 'stun', p: x.p, uid: u.uid });
+        }
+      } else if (oi.kind === 'buff') buffUnit(d, q, b, oi.atk, oi.hp);
+      else addCoins(d, q, oi.amount, b.uid);
     }
   }
-  // 攻撃中断: 中断された側の能力
+  // 妨害された時: 妨害された側の能力
   const oc = u.hp > 0 ? abOf(u).onCancelled : undefined;
   if (oc?.kind === 'ready') {
     u.readyAt = d.time;
@@ -903,18 +912,22 @@ function summon(state: GameState, p: PlayerIndex, handIndex: number, slot: numbe
   pl.queue = [...rest, card];
   pl.coins -= CARDS[card].summon;
   const old = pl.field[slot];
+  let dodged: Extract<Pending, { kind: 'attack' }>[] = [];
   if (old) {
     // 自分のカードの上に召喚した: 元のカードは除くだけ（倒れたのではないので死亡時は起きない）
     pl.field[slot] = null;
     d.events.push({ kind: 'replace', p, uid: old.uid, card: old.card, slot });
     // 溜め中の行動: 元のカードの攻撃は消え、元のカードを狙っていた攻撃は空振り（かわされる）
+    dodged = [];
     for (const x of [...d.pending]) {
       if (x.kind !== 'attack') continue;
       if (x.p === p && x.uid === old.uid) cancelPending(d, x, 'attacker');
-      else if (x.p !== p && x.target.kind === 'unit' && x.target.uid === old.uid) cancelPending(d, x, 'dodge');
+      else if (x.p !== p && x.target.kind === 'unit' && x.target.uid === old.uid) dodged.push(x);
     }
   }
   const placed = place(d, p, card, slot, false);
+  // チェンジでかわした攻撃は妨害になる（新しいカードの妨害成功時の能力も起きる）
+  for (const x of dodged) cancelPending(d, x, 'dodge', placed.uid);
   if (old) {
     d.events.push({ kind: 'overwrite', p, uid: placed.uid, oldUid: old.uid, slot });
     // 生贄時: 入れ替わったカードの能力

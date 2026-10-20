@@ -165,7 +165,7 @@ describe('召喚', () => {
   it('デッキの枚数は保たれる（手札 + queue = 10）', () => {
     let s = withHand(['herald', 'herald', 'herald', 'herald']);
     s = step(s, { type: 'summon', p: 0, handIndex: 1, slot: 1 });
-    expect(s.players[0].hand.length + s.players[0].queue.length).toBe(10);
+    expect(s.players[0].hand.length + s.players[0].queue.length).toBe(8);
   });
 });
 
@@ -536,7 +536,7 @@ describe('能力: 召喚時・コイン・遺言', () => {
     expect(f[0]).toMatchObject({ card: 'apprentice', hp: 1 });
     expect(CARDS.apprentice).toMatchObject({ atk: 1, hp: 1, summon: 1, type: 'unit' });
     expect(s.events.some((e) => e.kind === 'summon' && e.token && e.card === 'apprentice')).toBe(true);
-    expect(s.players[0].hand.length + s.players[0].queue.length).toBe(10);
+    expect(s.players[0].hand.length + s.players[0].queue.length).toBe(8);
     expect(s.players[0].queue.includes('apprentice')).toBe(false);
   });
 

@@ -107,7 +107,11 @@ export type CardId =
   | 'titan'
   | 'overlord'
   | 'scout'
-  | 'oldguard';
+  | 'oldguard'
+  | 'immune1'
+  | 'wallguard'
+  | 'steadfast'
+  | 'tactician';
 
 export type CardType = 'unit' | 'building' | 'spell';
 
@@ -149,7 +153,9 @@ export type OnInterrupt =
   | { kind: 'strike'; amount: number }
   | { kind: 'stun'; ms: number }
   /** 自分のコインが増える。 */
-  | { kind: 'coin'; amount: number };
+  | { kind: 'coin'; amount: number }
+  /** 妨害に成功した自分が強くなる。 */
+  | { kind: 'buff'; atk: number; hp: number };
 
 /** 自分の攻撃が（割り込まれて・対象が消えて）中断されたときに起きること。 */
 export type OnCancelled =
@@ -235,6 +241,8 @@ export interface Abilities {
   rally?: number;
   /** 場にいる間、味方ユニットのクールタイム -割合 */
   cooldownCut?: number;
+  /** 妨害耐性: 妨害されても、クールタイムは増えない（足止めも受けない） */
+  interfereImmune?: true;
   /** 狙い撃ち: ブロッカー・壁を無視して、好きな相手（プレイヤー・ユニット）を攻撃できる */
   freeAim?: true;
   /** 連撃: 1 回のクールタイムで 2 回攻撃する */
@@ -352,6 +360,10 @@ const EPITHET: Partial<Record<CardId, string>> = {
   overlord: '血に濡れた覇王',
   scout: '捨て駒の斥候',
   oldguard: '古参の番兵',
+  immune1: '動じない武人',
+  wallguard: '鉄壁の盾持ち',
+  steadfast: '折れぬ突撃兵',
+  tactician: '入れ替えの軍師',
   wall: '石の防壁',
   exchange: '物資の集積地',
   tradingHouse: '翻る軍旗',
@@ -455,6 +467,10 @@ const FLAVOR: Partial<Record<CardId, string>> = {
   overlord: '倒した数だけ、俺の国は大きくなる。',
   scout: '先に行く。後は、頼んだぞ。',
   oldguard: '若いの、下がってな。ここは俺の持ち場だ。',
+  immune1: '止められた？ それがどうした。進むだけだ。',
+  wallguard: '止めるたびに、この盾は硬くなる。',
+  steadfast: '妨げられるほど、燃えるのさ！',
+  tactician: '駒を替える。これで詰みだ。',
   wall: '何百年も敵を阻んできた、石の壁。',
   exchange: '物資さえあれば、兵はいくらでも動く。',
   tradingHouse: '軍旗が翻る限り、兵の士気は落ちない。',
@@ -631,6 +647,10 @@ export const CARDS: Record<CardId, CardDef> = {
   overlord: unit('overlord', 'アシュ', 10, 9, 9, 17, { doubleStrike: true, onKill: { kind: 'coin', amount: 4 } }),
   scout: unit('scout', 'ティム', 1, 1, 1, 10, { onReplaced: { kind: 'coin', amount: 2 } }),
   oldguard: unit('oldguard', 'グスタフ', 3, 2, 4, 15, { blocker: true, onInterrupt: { kind: 'coin', amount: 1 }, onReplaced: { kind: 'coin', amount: 2 } }),
+  immune1: unit('immune1', 'ダリオ', 3, 3, 3, 14, { interfereImmune: true }),
+  wallguard: unit('wallguard', 'ブロム', 3, 1, 4, 15, { blocker: true, onInterrupt: { kind: 'buff', atk: 0, hp: 1 } }),
+  steadfast: unit('steadfast', 'エマ', 4, 3, 4, 15, { interfereImmune: true, onCancelled: { kind: 'buff', atk: 1, hp: 1 } }),
+  tactician: unit('tactician', 'ノエル', 3, 3, 3, 15, { onOverwrite: { kind: 'buff', atk: 2, hp: 2 }, onReplaced: { kind: 'buffNew', atk: 1, hp: 1 } }),
   slayer: unit('slayer', 'グリム', 5, 5, 4, 16, { onKill: { kind: 'buff', atk: 1, hp: 1 } }),
   avenger: unit('avenger', 'ヴェラ', 4, 3, 4, 15, { onCancelled: { kind: 'buff', atk: 2, hp: 0 } }),
   rain: spell('rain', '癒しの雨', 1, { kind: 'healAll', amount: 5 }),
@@ -639,45 +659,23 @@ export const CARDS: Record<CardId, CardDef> = {
   edict: spell('edict', '封印の儀', 5, { kind: 'sealAll' }),
 };
 
-/** 自分の最初のデッキ（10 枚固定）。 */
-export const STARTER_DECK: CardId[] = [
-  'herald',
-  'guard',
-  'craftsman',
-  'double',
-  'taxman',
-  'knight',
-  'fortress',
-  'quarry',
-  'veteran',
-  'executioner',
-];
+/** 自分の最初のデッキ（8 枚固定）。 */
+export const STARTER_DECK: CardId[] = ['herald', 'guard', 'double', 'taxman', 'knight', 'quarry', 'veteran', 'executioner'];
 
-/** CPU のデッキ（10 枚固定）。 */
-export const RIVAL_DECK: CardId[] = [
-  'herald',
-  'usurer',
-  'banker',
-  'inspector',
-  'blockader',
-  'architect',
-  'tradingHouse',
-  'roadblock',
-  'quake',
-  'strategist',
-];
+/** CPU のデッキ（8 枚固定）。 */
+export const RIVAL_DECK: CardId[] = ['herald', 'usurer', 'banker', 'inspector', 'blockader', 'architect', 'tradingHouse', 'strategist'];
 
-/** CPU のデッキ（テーマ別。試合ごとに 1 つ選ぶ。どれも 10 枚）。 */
+/** CPU のデッキ（テーマ別。試合ごとに 1 つ選ぶ。どれも 8 枚）。 */
 export const RIVAL_DECKS: { name: string; deck: CardId[] }[] = [
   { name: '商人', deck: RIVAL_DECK },
-  { name: '毒', deck: ['needle', 'creeper', 'medic', 'footman', 'poisoner', 'hexer', 'altar', 'miasma', 'knight', 'raider'] },
-  { name: '巨人', deck: ['recruit', 'bulwark', 'lancer', 'stalwart', 'captain', 'warlord', 'champion', 'ironwall', 'ogre', 'forge'] },
-  { name: '連撃', deck: ['herald', 'recruit', 'twin', 'bloody', 'drummer', 'duelist', 'bloodknight', 'warcry', 'raider', 'reaper'] },
-  { name: '狙撃', deck: ['guard', 'marksman', 'bard', 'lancer', 'sniper', 'priest', 'infirmary', 'rain', 'warden', 'banner'] },
-  { name: '割り込み', deck: ['recruit', 'shieldmaid', 'warder', 'diehard', 'ambusher', 'berserk', 'knight', 'gatekeeper', 'ambush', 'captain'] },
-  { name: '生贄', deck: ['offering', 'bomber', 'heir', 'footman', 'usurper', 'phoenix', 'conqueror', 'knight', 'captain', 'recruit'] },
-  { name: '討伐', deck: ['herald', 'hunter', 'avenger', 'knight', 'slayer', 'riposte', 'trickster', 'captain', 'monarch', 'recruit'] },
-  { name: '封印', deck: ['informer', 'spy', 'sealer', 'binder', 'blockader', 'knight', 'quarry', 'captain', 'poisoner', 'martyr'] },
+  { name: '毒', deck: ['needle', 'creeper', 'footman', 'poisoner', 'hexer', 'altar', 'knight', 'raider'] },
+  { name: '巨人', deck: ['recruit', 'bulwark', 'stalwart', 'captain', 'warlord', 'champion', 'ogre', 'forge'] },
+  { name: '連撃', deck: ['herald', 'twin', 'bloody', 'drummer', 'duelist', 'bloodknight', 'raider', 'reaper'] },
+  { name: '狙撃', deck: ['guard', 'marksman', 'bard', 'sniper', 'priest', 'infirmary', 'warden', 'banner'] },
+  { name: '割り込み', deck: ['recruit', 'shieldmaid', 'warder', 'diehard', 'ambusher', 'knight', 'gatekeeper', 'ambush'] },
+  { name: '生贄', deck: ['offering', 'bomber', 'heir', 'footman', 'usurper', 'phoenix', 'conqueror', 'knight'] },
+  { name: '討伐', deck: ['herald', 'hunter', 'avenger', 'knight', 'slayer', 'riposte', 'trickster', 'monarch'] },
+  { name: '封印', deck: ['informer', 'spy', 'sealer', 'binder', 'blockader', 'knight', 'quarry', 'poisoner'] },
 ];
 
 export function isBlocker(card: CardId): boolean {
@@ -719,9 +717,9 @@ function buffText(atk: number, hp: number): string {
 /** 状態の説明（説明シートの下に出す）。 */
 export const STATUS_NOTES: string[] = [
   '討伐: 自分の攻撃で敵ユニットを倒すこと（反撃や毒で倒したときは含まない）',
-  '割り込み: 攻撃の溜め中に相手のブロッカーが出ると、その攻撃は中断される（クールタイムは戻る）',
-  '上書き: 自分のカードの上に召喚すると入れ替わる。入れ替わったカードの「生贄時」の能力が起きる',
-  '生贄: 上書きされて場から消えること',
+  '妨害: 攻撃の溜め中に、相手のブロッカーが出る・壁ができる・狙われたカードがチェンジで入れ替わると、その攻撃は中断される。妨害された攻撃元は、クールタイムが 5 秒増える',
+  'チェンジ: 自分のカードの上に召喚すると入れ替わる。入れ替わって場を離れるカードの「生贄時」の能力が起きる',
+  '生贄: チェンジで入れ替わって場を離れること',
   '毒: 攻撃するたびに、その数だけダメージを受ける',
   '封印: 能力がすべて無効になる',
   '攻撃不能: しばらく、または能力で、攻撃できない',
@@ -763,25 +761,27 @@ export function abilityLines(card: CardId): string[] {
   if (a.onDeath?.kind === 'face') lines.push(`死亡時：敵プレイヤーに ${a.onDeath.amount} ダメージ`);
   if (a.onDeath?.kind === 'buffAllies') lines.push(`死亡時：味方ユニット全員の${buffText(a.onDeath.atk, a.onDeath.hp)}`);
   const oi = a.onInterrupt;
-  if (oi?.kind === 'strike') lines.push(`割り込み時：中断させた敵ユニットに ${oi.amount} ダメージ`);
-  if (oi?.kind === 'stun') lines.push(`割り込み時：中断させた敵ユニットのクールタイム +${oi.ms / 1000} 秒`);
-  if (oi?.kind === 'coin') lines.push(`割り込み時：コイン +${oi.amount}`);
+  if (oi?.kind === 'strike') lines.push(`妨害成功時：妨害した敵ユニットに ${oi.amount} ダメージ`);
+  if (oi?.kind === 'stun') lines.push(`妨害成功時：妨害した敵ユニットのクールタイム +${oi.ms / 1000} 秒`);
+  if (oi?.kind === 'coin') lines.push(`妨害成功時：コイン +${oi.amount}`);
+  if (oi?.kind === 'buff') lines.push(`妨害成功時：自分の${buffText(oi.atk, oi.hp)}`);
+  if (a.interfereImmune) lines.push('妨害耐性（妨害されても、クールタイムが増えない）');
   const oc = a.onCancelled;
-  if (oc?.kind === 'ready') lines.push('攻撃中断時：クールタイムがなくなる');
-  if (oc?.kind === 'buff') lines.push(`攻撃中断時：自分の${buffText(oc.atk, oc.hp)}`);
+  if (oc?.kind === 'ready') lines.push('妨害された時：クールタイムがなくなる');
+  if (oc?.kind === 'buff') lines.push(`妨害された時：自分の${buffText(oc.atk, oc.hp)}`);
   const or = a.onReplaced;
   if (or?.kind === 'coin') lines.push(`生贄時：コイン +${or.amount}`);
   if (or?.kind === 'face') lines.push(`生贄時：敵プレイヤーに ${or.amount} ダメージ`);
   if (or?.kind === 'heal') lines.push(`生贄時：自分の HP を ${or.amount} 回復`);
-  if (or?.kind === 'buffNew') lines.push(`生贄時：上書きしたカードの${buffText(or.atk, or.hp)}`);
+  if (or?.kind === 'buffNew') lines.push(`生贄時：チェンジで入れ替わったカードの${buffText(or.atk, or.hp)}`);
   const ok = a.onKill;
   if (ok?.kind === 'coin') lines.push(`討伐時：コイン +${ok.amount}`);
   if (ok?.kind === 'buff') lines.push(`討伐時：自分の${buffText(ok.atk, ok.hp)}`);
   if (ok?.kind === 'heal') lines.push(`討伐時：自分の HP を ${ok.amount} 回復`);
   const oo = a.onOverwrite;
-  if (oo?.kind === 'buff') lines.push(`上書き召喚時：自分の${buffText(oo.atk, oo.hp)}`);
-  if (oo?.kind === 'refund') lines.push('上書き召喚時：上書きされたカードのコストの半分のコインが戻る');
-  if (oo?.kind === 'haste') lines.push('上書き召喚時：すぐ攻撃できる');
+  if (oo?.kind === 'buff') lines.push(`チェンジ登場時：自分の${buffText(oo.atk, oo.hp)}`);
+  if (oo?.kind === 'refund') lines.push('チェンジ登場時：入れ替わったカードのコストの半分のコインが戻る');
+  if (oo?.kind === 'haste') lines.push('チェンジ登場時：すぐ攻撃できる');
   if (a.onDeath?.kind === 'poisonFoes') lines.push(`死亡時：敵ユニット全員に毒 ${a.onDeath.amount} を与える`);
   const p = a.pulse;
   if (p?.kind === 'token') lines.push(`${p.everyMs / 1000} 秒ごと：空いている枠に志願兵を出す`);

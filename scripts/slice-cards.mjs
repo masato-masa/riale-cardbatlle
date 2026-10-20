@@ -62,6 +62,12 @@ const SHEETS = {
   16: ['spells/ambush', 'cards/militia', null, null, null, null, null, null, null],
   17: [...['titan', 'overlord'].map((n) => `cards/${n}`), null, null, null, null, null, null, null],
   18: [...['scout', 'oldguard'].map((n) => `cards/${n}`), null, null, null, null, null, null, null],
+  // 4 列×3 行（縦長のマス）。左上の 4 枚だけ
+  19: {
+    cols: 4,
+    rows: 3,
+    cells: [...['immune1', 'wallguard', 'steadfast', 'tactician'].map((n) => `cards/${n}`), null, null, null, null, null, null, null, null],
+  },
   // 3 列×2 行（縦長のマス）。切り札ユニット 5 人と予備 1 枚
   4: {
     cols: 3,

@@ -12,7 +12,7 @@ import {
   type Target,
   type Unit,
 } from '../src/game/engine';
-import { COIN_MAX, PLAYER_HP, WINDUP_MS } from '../src/game/rules';
+import { COIN_MAX, INTERFERE_MS, PLAYER_HP, WINDUP_MS } from '../src/game/rules';
 
 const fresh = (): GameState => createGame([STARTER_DECK, STARTER_DECK], 1);
 const U = (uid: number): Target => ({ kind: 'unit', uid });
@@ -66,7 +66,8 @@ describe('割り込み（ブロッカーが溜め中の攻撃を中断させる�
     expect(c.length).toBe(1);
     expect(c[0]!.reason).toBe('blocked');
     expect(n.pending.length).toBe(0);
-    expect(unitOf(n, 0, a.uid)!.readyAt).toBe(readyBefore);
+    // 妨害された攻撃元は、選ぶ前に戻したうえで、クールタイムが 5 秒増える
+    expect(unitOf(n, 0, a.uid)!.readyAt).toBe(Math.max(readyBefore, n.time) + INTERFERE_MS);
   });
 
   it('ヴィゴ: 中断させた攻撃元に 2 ダメージ', () => {
@@ -84,7 +85,7 @@ describe('割り込み（ブロッカーが溜め中の攻撃を中断させる�
     const readyBefore = (s.pending[0] as Extract<GameState['pending'][number], { kind: 'attack' }>).readyBefore;
     let n = withHand(s, 1, ['shieldmaid']);
     n = step(n, { type: 'summon', p: 1, handIndex: 0, slot: 1 });
-    expect(unitOf(n, 0, a.uid)!.readyAt).toBe(Math.max(readyBefore, n.time) + 4000);
+    expect(unitOf(n, 0, a.uid)!.readyAt).toBe(Math.max(readyBefore, n.time) + INTERFERE_MS + 4000);
     expect(before).toBeGreaterThan(0);
   });
 
@@ -274,5 +275,46 @@ describe('待ち伏せ（呪文）', () => {
     for (let i = 0; i < 3; i++) [s] = place(s, 0, i, 'recruit');
     s = withHand(s, 0, ['ambush']);
     expect(summonBlock(s, 0, 0, -1)).toBe('slot');
+  });
+});
+
+describe('妨害（クールタイム +5 秒）と妨害耐性', () => {
+  it('チェンジでかわされた攻撃元も +5 秒', () => {
+    let s = fresh();
+    let a: Unit;
+    let t: Unit;
+    [s, a] = place(s, 1, 0, 'footman');
+    [s, t] = place(s, 0, 0, 'recruit');
+    s = step(s, { type: 'attack', p: 1, uid: a.uid, target: U(t.uid) });
+    const rb = (s.pending[0] as Extract<GameState['pending'][number], { kind: 'attack' }>).readyBefore;
+    s = withHand(s, 0, ['knight']);
+    s = step(s, { type: 'summon', p: 0, handIndex: 0, slot: 0 });
+    expect(unitOf(s, 1, a.uid)!.readyAt).toBe(Math.max(rb, s.time) + INTERFERE_MS);
+  });
+  it('チェンジで入った妨害成功時の能力持ちは、かわしたときに効く（ジーナ型でなくホルス）', () => {
+    let s = fresh();
+    let a: Unit;
+    let t: Unit;
+    [s, a] = place(s, 1, 0, 'lancer');
+    [s, t] = place(s, 0, 0, 'recruit');
+    s = step(s, { type: 'attack', p: 1, uid: a.uid, target: U(t.uid) });
+    s = withHand(s, 0, ['warder']);
+    s = step(s, { type: 'summon', p: 0, handIndex: 0, slot: 0 });
+    expect(unitOf(s, 1, a.uid)!.hp).toBe(CARDS.lancer.hp - 2);
+  });
+  it('妨害耐性: 妨害されてもクールタイムは増えない', () => {
+    const { s, a } = attacking('immune1', 'recruit');
+    const rb = (s.pending[0] as Extract<GameState['pending'][number], { kind: 'attack' }>).readyBefore;
+    let n = withHand(s, 1, ['guard']);
+    n = step(n, { type: 'summon', p: 1, handIndex: 0, slot: 1 });
+    expect(cancels(n).length).toBe(1);
+    expect(unitOf(n, 0, a.uid)!.readyAt).toBe(rb);
+  });
+  it('妨害成功時に強化（ウォール）', () => {
+    const { s } = attacking('lancer', 'recruit');
+    let n = withHand(s, 1, ['wallguard']);
+    n = step(n, { type: 'summon', p: 1, handIndex: 0, slot: 1 });
+    const w = n.players[1].field[1]!;
+    expect(w.hp).toBe(CARDS.wallguard.hp + 1);
   });
 });

@@ -1,10 +1,10 @@
-// 自分のデッキの保存。localStorage に 10 枚の id を入れる。
+// 自分のデッキの保存。localStorage に 8 枚の id を入れる。
 // 読めない・壊れている・知らない id が混ざっているときは最初のデッキに戻す。
 
 import { CARDS, STARTER_DECK, type CardId } from '@/game/cards';
 
 const KEY = 'riale-cardbatlle:deck';
-export const DECK_SIZE = 10;
+export const DECK_SIZE = 8;
 
 /** デッキに入れられるカード（能力で出てくる見習いは除く）。 */
 export const COLLECTION: CardId[] = (Object.keys(CARDS) as CardId[]).filter((id) => !CARDS[id].token);
@@ -24,6 +24,11 @@ export function loadDeck(): CardId[] {
     if (raw) {
       const deck: unknown = JSON.parse(raw);
       if (isValidDeck(deck)) return deck;
+      // 10 枚だった頃の保存は、先頭の 8 枚を引き継ぐ
+      if (Array.isArray(deck) && deck.length > DECK_SIZE) {
+        const cut = deck.slice(0, DECK_SIZE);
+        if (isValidDeck(cut)) return cut;
+      }
     }
   } catch {
     // 読めなければ最初のデッキ

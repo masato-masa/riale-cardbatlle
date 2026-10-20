@@ -1,13 +1,14 @@
 import { describe, expect, it } from 'vitest';
 
 import { cpuStep, createBrain } from '../src/ai/cpu';
-import { CARDS, STARTER_DECK, type CardId } from '../src/game/cards';
+import { CARDS, type CardId } from '../src/game/cards';
 import { createGame, isWalled, step, type GameState, type PlayerIndex, type Unit } from '../src/game/engine';
 import { COIN_MAX, FIELD_SLOTS } from '../src/game/rules';
 import { makeRng } from '../src/game/rng';
 
 function setup(hand: CardId[], mine: CardId[], foe: [CardId, number?][]): GameState {
-  const s = createGame([STARTER_DECK, STARTER_DECK], 1);
+  const OLD: CardId[] = ['herald','guard','craftsman','double','taxman','knight','fortress','quarry','veteran','executioner'];
+  const s = createGame([OLD, OLD], 1);
   let uid = 1;
   const mk = (card: CardId, hp?: number): Unit => ({
     uid: uid++,

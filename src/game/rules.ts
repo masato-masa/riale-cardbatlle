@@ -9,7 +9,7 @@ export const MATCH_MS = 180_000;
 /** この時刻（ms）からコインが 2 倍速になる。 */
 export const DOUBLE_COIN_FROM_MS = 120_000;
 /** コイン 1 枚がたまるまでの時間（ms）。 */
-export const COIN_MS = 4000;
+export const COIN_MS = 3000;
 export const COIN_MAX = 10;
 export const COIN_START = 5;
 /** 場の枠の数。 */
@@ -20,6 +20,9 @@ export const HAND_SIZE = 4;
 /** 溜め: 攻撃・呪文・召喚時の狙撃や足止は、選んでからこれだけたって効く（ms）。
  *  その間に攻撃元か対象が場から消えたら中断する。クールタイムとコインは選んだ時点で使う。 */
 export const WINDUP_MS = 1000;
+
+/** 妨害（ブロッカー・壁・チェンジで攻撃を中断させる）された側のユニットのクールタイムに足す時間（ms）。 */
+export const INTERFERE_MS = 5000;
 
 /** その時刻のコインのたまる速さ（枚/ms）。 */
 export function coinRate(timeMs: number): number {

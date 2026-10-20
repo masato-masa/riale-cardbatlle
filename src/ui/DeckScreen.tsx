@@ -31,9 +31,9 @@ function byCost(ids: CardId[]): CardId[] {
   );
 }
 
-/** デッキ編成（クラロワ方式）。上がデッキ 10 枚（横 4 列）、下が持っているカードの一覧（横 4 列）。
+/** デッキ編成（クラロワ方式）。上がデッキ 8 枚（横 4 列）、下が持っているカードの一覧（横 4 列）。
  *  カードをタップ → 説明と「デッキに入れる」→ 入れ替えるデッキのカードをタップ（長押しの操作は無い）。
- *  デッキはいつも 10 枚のまま（入れ替えだけ）。変えたらその場で保存する。 */
+ *  デッキはいつも 8 枚のまま（入れ替えだけ）。変えたらその場で保存する。 */
 export function DeckScreen({ deck, onChange, onBack }: { deck: CardId[]; onChange: (deck: CardId[]) => void; onBack: () => void }) {
   const [open, setOpen] = useState<{ card: CardId; inDeck: boolean; locked?: boolean } | null>(null);
   const unlocked = useMemo(() => loadUnlocked(), []);
