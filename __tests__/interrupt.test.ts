@@ -204,3 +204,33 @@ describe('パリィ（呪文）', () => {
     void FACE;
   });
 });
+
+describe('追加カード（ピエロ・ロデリク・セドリック・ヴェラ）', () => {
+  it('ピエロ: 上書き召喚するとすぐ攻撃できる', () => {
+    let s = fresh();
+    [s] = place(s, 0, 0, 'recruit');
+    s = withHand(s, 0, ['trickster']);
+    s = step(s, { type: 'summon', p: 0, handIndex: 0, slot: 0 });
+    expect(s.players[0].field[0]!.readyAt).toBe(s.time);
+  });
+  it('ロデリク: 生贄でコイン +5', () => {
+    let s = fresh();
+    [s] = place(s, 0, 0, 'monarch');
+    s = withHand(s, 0, ['recruit'], 2);
+    s = step(s, { type: 'summon', p: 0, handIndex: 0, slot: 0 });
+    expect(s.players[0].coins).toBe(2 - CARDS.recruit.summon + 5);
+  });
+  it('セドリック: 割り込みで 3 ダメージ', () => {
+    const { s, a } = attacking('knight', 'recruit');
+    let n = withHand(s, 1, ['riposte']);
+    n = step(n, { type: 'summon', p: 1, handIndex: 0, slot: 1 });
+    expect(unitOf(n, 0, a.uid)!.hp).toBe(CARDS.knight.hp - 3);
+  });
+  it('ヴェラ: 攻撃が中断されると攻撃力 +2', () => {
+    const { s, a } = attacking('avenger', 'recruit');
+    let n = withHand(s, 1, ['guard']);
+    n = step(n, { type: 'summon', p: 1, handIndex: 0, slot: 1 });
+    expect(cancels(n).length).toBe(1);
+    expect(unitOf(n, 0, a.uid)!.atkBuff).toBe(2);
+  });
+});

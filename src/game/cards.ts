@@ -91,7 +91,11 @@ export type CardId =
   | 'phoenix'
   | 'usurper'
   | 'conqueror'
-  | 'parry';
+  | 'parry'
+  | 'trickster'
+  | 'monarch'
+  | 'riposte'
+  | 'avenger';
 
 export type CardType = 'unit' | 'building' | 'spell';
 
@@ -343,6 +347,10 @@ const EPITHET: Partial<Record<CardId, string>> = {
   usurper: '玉座の簒奪者',
   conqueror: '踏み越える征服王',
   parry: '剣を弾く一閃',
+  trickster: '入れ替わりの道化',
+  monarch: '殉葬の王',
+  riposte: '返し刃の騎士',
+  avenger: '復讐の刃',
 };
 
 /** 一言（説明のシートの下に出す。ゲームの数値には関係しない）。 */
@@ -430,6 +438,10 @@ const FLAVOR: Partial<Record<CardId, string>> = {
   usurper: '玉座は、奪うものだ。',
   conqueror: '踏み越えるたび、俺は強くなる。',
   parry: 'そこだ！ 剣を弾き返せ！',
+  trickster: 'はい、入れ替わり！ さあ、もう一度だ。',
+  monarch: '我が身を捧げよう。国に、金貨の雨を。',
+  riposte: '受け止めたなら、返すまでだ。',
+  avenger: '止められるたび、刃は研がれる。',
 };
 
 /** cdSec はクールタイム（秒）。 */
@@ -559,6 +571,10 @@ export const CARDS: Record<CardId, CardDef> = {
   usurper: unit('usurper', 'クロウ', 3, 3, 3, 14, { onOverwrite: { kind: 'buff', atk: 2, hp: 2 } }),
   conqueror: unit('conqueror', 'レグ', 5, 4, 4, 16, { onOverwrite: { kind: 'refund' } }),
   parry: spell('parry', 'パリィ', 1, { kind: 'parry', ms: 5000 }),
+  trickster: unit('trickster', 'ピエロ', 3, 3, 2, 12, { stealth: true, onOverwrite: { kind: 'haste' } }),
+  monarch: unit('monarch', 'ロデリク', 6, 6, 6, 17, { onReplaced: { kind: 'coin', amount: 5 } }),
+  riposte: unit('riposte', 'セドリック', 5, 4, 5, 16, { blocker: true, onInterrupt: { kind: 'strike', amount: 3 }, onCancelled: { kind: 'ready' } }),
+  avenger: unit('avenger', 'ヴェラ', 4, 3, 4, 15, { onCancelled: { kind: 'buff', atk: 2, hp: 0 } }),
   rain: spell('rain', '癒しの雨', 1, { kind: 'healAll', amount: 5 }),
   warcry: spell('warcry', '戦の号令', 2, { kind: 'buffAll', atk: 1, hp: 1 }),
   miasma: spell('miasma', '毒霧', 3, { kind: 'poisonAll', amount: 2 }),
