@@ -103,7 +103,9 @@ export type CardId =
   | 'sentinel'
   | 'swindler'
   | 'ambush'
-  | 'militia';
+  | 'militia'
+  | 'titan'
+  | 'overlord';
 
 export type CardType = 'unit' | 'building' | 'spell';
 
@@ -344,6 +346,8 @@ const EPITHET: Partial<Record<CardId, string>> = {
   apprentice: '駆けつけた若者',
   ambush: '待ち伏せの号令',
   militia: '伏せていた民兵',
+  titan: '城門を背負う巨神兵',
+  overlord: '血に濡れた覇王',
   wall: '石の防壁',
   exchange: '物資の集積地',
   tradingHouse: '翻る軍旗',
@@ -443,6 +447,8 @@ const FLAVOR: Partial<Record<CardId, string>> = {
   apprentice: '俺だって戦える！ 戦わせてくれ！',
   ambush: '今だ！ 伏せていた者たち、立ち上がれ！',
   militia: '通さんぞ！ ここは俺たちの場所だ！',
+  titan: '一歩も引かぬ。この門が、我が墓標だ。',
+  overlord: '倒した数だけ、俺の国は大きくなる。',
   wall: '何百年も敵を阻んできた、石の壁。',
   exchange: '物資さえあれば、兵はいくらでも動く。',
   tradingHouse: '軍旗が翻る限り、兵の士気は落ちない。',
@@ -615,6 +621,8 @@ export const CARDS: Record<CardId, CardDef> = {
   plunderer: unit('plunderer', 'ガルド', 6, 6, 6, 17, { onKill: { kind: 'coin', amount: 3 } }),
   sentinel: unit('sentinel', 'ホルス', 4, 2, 5, 16, { blocker: true, onInterrupt: { kind: 'stun', ms: 7000 } }),
   swindler: unit('swindler', 'レイヴ', 2, 2, 2, 12, { stealth: true, onReplaced: { kind: 'face', amount: 3 } }),
+  titan: unit('titan', 'ゴルゴン', 9, 8, 10, 16, { blocker: true, onInterrupt: { kind: 'strike', amount: 6 } }),
+  overlord: unit('overlord', 'アシュ', 10, 9, 9, 17, { doubleStrike: true, onKill: { kind: 'coin', amount: 4 } }),
   slayer: unit('slayer', 'グリム', 5, 5, 4, 16, { onKill: { kind: 'buff', atk: 1, hp: 1 } }),
   avenger: unit('avenger', 'ヴェラ', 4, 3, 4, 15, { onCancelled: { kind: 'buff', atk: 2, hp: 0 } }),
   rain: spell('rain', '癒しの雨', 1, { kind: 'healAll', amount: 5 }),
