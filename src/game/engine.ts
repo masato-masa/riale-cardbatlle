@@ -12,6 +12,7 @@ import {
   FIELD_SLOTS,
   HAND_SIZE,
   INTERFERE_MS,
+  SUMMON_WINDUP_MS,
   MATCH_MS,
   PLAYER_ATK,
   PLAYER_HP,
@@ -72,6 +73,8 @@ export type Pending =
   /** readyBefore/readyAfter: 選ぶ前と選んだ直後のクールタイム明け時刻。中断したら、選ぶ前に戻す（やり直しにしない）。 */
   | { id: number; kind: 'attack'; p: PlayerIndex; uid: number; target: Target; at: number; readyBefore: number; readyAfter: number; secondBefore: boolean }
   | { id: number; kind: 'spell'; p: PlayerIndex; card: CardId; target: number | null; at: number }
+  /** 配置したカードの登場待ち（SUMMON_WINDUP_MS）。slot は予約済みで、ほかのカードは置けない。 */
+  | { id: number; kind: 'summon'; p: PlayerIndex; card: CardId; slot: number; target: number | undefined; at: number }
   | { id: number; kind: 'ability'; p: PlayerIndex; uid: number; card: CardId; target: number; at: number };
 
 export type GameEvent =
@@ -335,12 +338,14 @@ export function summonBlock(
   if (pl.coins < CARDS[card].summon) return 'coins';
   if (CARDS[card].type === 'spell') {
     // パリィ: 相手の溜め中の攻撃が無ければ使えない
-    if (CARDS[card].ab.spell?.kind === 'ambush' && !state.players[p].field.some((u) => !u)) return 'slot';
+    if (CARDS[card].ab.spell?.kind === 'ambush' && freeSlot(state, p) < 0) return 'slot';
     if (CARDS[card].ab.spell?.kind === 'parry' && !state.pending.some((x) => x.kind === 'attack' && x.p === other(p))) return 'noattack';
     if (requiresTarget(card) && (target === undefined || !pickable(state.players[other(p)], target))) return 'target';
     return null;
   }
   if (slot < 0 || slot >= FIELD_SLOTS) return 'slot';
+  // 登場待ちのカードがある枠には、ほかのカードを置けない
+  if (state.pending.some((x) => x.kind === 'summon' && x.p === p && x.slot === slot)) return 'slot';
   // 登場時に敵を選ぶカード: 選べる敵がいるのに選ばなければ、置けない（配置失敗）
   if (needsTarget(card)) {
     const choices = summonTargets(summonSidePlayer(state, p, card), card);
@@ -909,7 +914,9 @@ function resolvePending(state: GameState): GameState {
         ? applyAttack(d, x.p, x.uid, x.target)
         : x.kind === 'spell'
           ? applySpell(d, x.p, x.card, x.target)
-          : applyAbility(d, x.p, x.uid, x.card, x.target);
+          : x.kind === 'summon'
+            ? landSummon(d, x.p, x.card, x.slot, x.target)
+            : applyAbility(d, x.p, x.uid, x.card, x.target);
     if (!ok) {
       const f = x.kind === 'attack' ? attackFail(d, x) : null;
       cancelPending(d, x, f?.reason ?? 'target', f?.by);
@@ -929,6 +936,18 @@ function summon(state: GameState, p: PlayerIndex, handIndex: number, slot: numbe
   pl.hand[handIndex] = drawn!;
   pl.queue = [...rest, card];
   pl.coins -= CARDS[card].summon;
+  if (SUMMON_WINDUP_MS > 0) {
+    // 配置したあと、SUMMON_WINDUP_MS たってから登場する（枠は予約済み）
+    windup(d, { id: d.nextUid++, kind: 'summon', p, card, slot, target, at: d.time + SUMMON_WINDUP_MS });
+    return finish(state, d);
+  }
+  landSummon(d, p, card, slot, target);
+  return finish(state, d);
+}
+
+/** カードが場に登場する（溜めのあと、または即時）。チェンジ・登場時の能力もここで起きる。 */
+function landSummon(d: Draft, p: PlayerIndex, card: CardId, slot: number, target?: number): boolean {
+  const pl = d.players[p];
   const old = pl.field[slot];
   let dodged: Extract<Pending, { kind: 'attack' }>[] = [];
   if (old) {
@@ -967,7 +986,7 @@ function summon(state: GameState, p: PlayerIndex, handIndex: number, slot: numbe
   const os = CARDS[card].ab.onSummon;
   const q = other(p);
   if (os?.kind === 'token') {
-    const empty = pl.field.findIndex((u) => !u);
+    const empty = freeSlot(d, p, pl);
     if (empty >= 0) place(d, p, 'apprentice', empty, true);
   } else if (os?.kind === 'heal') {
     const healed = Math.min(PLAYER_HP - pl.hp, os.amount);
@@ -999,10 +1018,12 @@ function summon(state: GameState, p: PlayerIndex, handIndex: number, slot: numbe
       }
     }
   } else if (needsTarget(card) && target !== undefined && (summonSide(card) === 'ally' ? !!findUnit(d.players[p], target) : pickable(d.players[q], target))) {
-    windup(d, { id: d.nextUid++, kind: 'ability', p, uid: placed.uid, card, target, at: d.time + WINDUP_MS });
+    // 登場の溜めがあるときは、登場した瞬間に効く（さらに溜めない）
+    if (SUMMON_WINDUP_MS > 0) applyAbility(d, p, placed.uid, card, target);
+    else windup(d, { id: d.nextUid++, kind: 'ability', p, uid: placed.uid, card, target, at: d.time + WINDUP_MS });
   }
   sweepDead(d);
-  return finish(state, d);
+  return true;
 }
 
 function attack(state: GameState, p: PlayerIndex, uid: number, target: Target): GameState {
@@ -1033,6 +1054,12 @@ export function step(state: GameState, action: Action): GameState {
 }
 
 /** 最初の空き枠。無ければ -1。 */
+/** 空いていて、登場待ちの予約も無い枠（なければ -1）。 */
+export function freeSlot(state: Pick<GameState, 'pending'>, p: PlayerIndex, pl?: PlayerState): number {
+  const field = (pl ?? (state as GameState).players[p]).field;
+  return field.findIndex((u, i) => !u && !state.pending.some((x) => x.kind === 'summon' && x.p === p && x.slot === i));
+}
+
 export function firstEmptySlot(pl: PlayerState): number {
   return pl.field.findIndex((u) => !u);
 }

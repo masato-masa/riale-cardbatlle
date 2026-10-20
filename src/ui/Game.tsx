@@ -18,7 +18,7 @@ import {
   attackOf,
   createGame,
   findUnit,
-  firstEmptySlot,
+  freeSlot,
   isWalled,
   legalTargetsFor,
   abOf,
@@ -35,7 +35,7 @@ import {
 import { makeRng } from '@/game/rng';
 import { awardMatch, CHEST_POINTS, type MatchReward } from '@/storage/collection';
 import { addResult, isTutorialDone, setTutorialDone } from '@/storage/profile';
-import { COIN_MAX, DOUBLE_COIN_FROM_MS, FIELD_SLOTS, MATCH_MS, PLAYER_HP, WINDUP_MS } from '@/game/rules';
+import { COIN_MAX, DOUBLE_COIN_FROM_MS, FIELD_SLOTS, MATCH_MS, PLAYER_HP, SUMMON_WINDUP_MS, WINDUP_MS } from '@/game/rules';
 
 import { COIN_URL, FIELD_URL, HERO_FOE_URL, HERO_ME_URL, preloadFx } from './art';
 import { setBgmTension, startBgm, stopBgm } from './bgm';
@@ -446,12 +446,13 @@ export function Game({ level, deck, onExit }: { level: CpuLevel; deck: CardId[];
       if (e.kind === 'windup') {
         const x = e.pending;
         if (x.kind === 'spell') playSpellCast();
-        else if (x.kind === 'attack') playSelect();
+        else if (x.kind === 'attack' || x.kind === 'summon') playSelect();
         if (e.p === 0) hapticUseCard();
       }
       if (e.kind === 'reserve' && e.p === 0) playSelect();
       if (e.kind === 'cancel') {
         const x = e.pending;
+        if (x.kind === 'summon') return;
         const at = x.kind === 'spell' ? heroEl(x.p) : (unitEl(x.uid) ?? heroEl(x.p));
         if (x.kind === 'attack' && e.reason === 'blocked') {
           // 割り込み: 阻んだブロッカー（壁なら相手の場）で盾が弾き、攻撃元は押し戻される
@@ -916,7 +917,7 @@ export function Game({ level, deck, onExit }: { level: CpuLevel; deck: CardId[];
       if (d.slot === null) {
         const r = fieldRef.current?.getBoundingClientRect();
         const nearField = r && d.y > r.top - 40 && d.y < r.bottom + 40;
-        if (nearField && firstEmptySlot(s.players[0]) < 0) reject(SUMMON_REASON.slot);
+        if (nearField && freeSlot(s, 0) < 0) reject(SUMMON_REASON.slot);
         return;
       }
       // 登場時に敵を選ぶカード（狙撃・足止・破壊）: 場に置く操作のあと、効かせる敵をタップして選ぶ。
@@ -1131,6 +1132,19 @@ export function Game({ level, deck, onExit }: { level: CpuLevel; deck: CardId[];
             <CardFace card={pick.card} />
           </div>
         ) : null}
+        {game.pending.map((x) =>
+          x.kind === 'summon' && x.p === side && x.slot === i ? (
+            <div
+              key={x.id}
+              className="slot-arriving"
+              style={{ opacity: 0.35 + 0.5 * Math.max(0, Math.min(1, 1 - (x.at - game.time) / SUMMON_WINDUP_MS)), scale: String(0.88 + 0.12 * Math.max(0, Math.min(1, 1 - (x.at - game.time) / SUMMON_WINDUP_MS))) }}
+              aria-hidden="true"
+            >
+              <CardFace card={x.card} />
+              <span className="arrive-ring" />
+            </div>
+          ) : null,
+        )}
       </div>
     ));
 
@@ -1669,6 +1683,7 @@ function PendingMarks({ game, fieldMe, fieldFoe }: { game: GameState; fieldMe: H
   /** 溜めている呪文の魔法陣（対象の足元・場の真ん中）。 */
   const circles: { key: number; x: number; y: number; size: number; mine: boolean; t: number }[] = [];
   for (const x of game.pending) {
+    if (x.kind === 'summon') continue; // 登場待ちは、枠の中の半透明のカードで見せる
     const t = Math.max(0, Math.min(1, 1 - (x.at - game.time) / WINDUP_MS));
     const mine = x.p === 0;
     const foe: 0 | 1 = x.p === 0 ? 1 : 0;

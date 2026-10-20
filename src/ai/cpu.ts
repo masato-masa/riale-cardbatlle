@@ -6,7 +6,7 @@ import {
   attackBlock,
   attackOf,
   findUnit,
-  firstEmptySlot,
+  freeSlot,
   isWalled,
   other,
   step,
@@ -398,13 +398,13 @@ function spellCandidates(state: GameState, p: PlayerIndex, handIndex: number, ca
 function summonCandidates(state: GameState, p: PlayerIndex, t: Tuning): Candidate[] {
   const me = state.players[p];
   const foe = state.players[other(p)];
-  let slot = firstEmptySlot(me);
+  let slot = freeSlot(state, p);
   // 場がいっぱいなら、いちばん手放してよい自分のカードを上書きする候補にする（生贄の能力があれば得）
   let replaceOld: Unit | null = null;
   if (slot < 0) {
     let bestKeep = Infinity;
     me.field.forEach((u, i) => {
-      if (!u) return;
+      if (!u || state.pending.some((x) => x.kind === 'summon' && x.p === p && x.slot === i)) return;
       const keep = unitWorth(me, u) - sacrificeValue(me, u);
       if (keep < bestKeep) {
         bestKeep = keep;
@@ -421,7 +421,7 @@ function summonCandidates(state: GameState, p: PlayerIndex, t: Tuning): Candidat
   const press = pressure(me, foe);
   const myBlockers = me.field.filter((u) => u && isBlocker(u.card)).length;
   const foeBlockers = foeUnits.filter((u) => isBlocker(u.card)).length;
-  const filled = units(me).length;
+  const filled = units(me).length + state.pending.filter((x) => x.kind === 'summon' && x.p === p).length;
   const foeAtk = foeUnits.reduce((n, u) => n + attackOf(foe, u), 0);
   const early = Math.max(0, 1 - state.time / (MATCH_MS * 0.7));
   const out: Candidate[] = [];

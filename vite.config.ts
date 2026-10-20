@@ -15,5 +15,7 @@ export default defineConfig({
     environment: 'jsdom',
     include: ['__tests__/**/*.test.ts'],
     testTimeout: 60000,
+    // 既存のテストは「置いたらすぐ登場する」前提。登場の溜めは summon-windup.test.ts だけで有効にする
+    setupFiles: ['./__tests__/setup.ts'],
   },
 });

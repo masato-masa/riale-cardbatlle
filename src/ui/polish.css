@@ -2444,3 +2444,26 @@
   color: #e8e8f4;
   -webkit-text-stroke-color: #2a2a48;
 }
+
+/* 登場待ち: 枠の中に半透明のカード。登場の瞬間に向けて濃く・大きくなる */
+.slot-arriving {
+  position: absolute;
+  inset: 0;
+  container-type: inline-size;
+  pointer-events: none;
+  filter: saturate(0.8) drop-shadow(0 0 10px rgb(255 216 74 / 0.8));
+}
+
+.arrive-ring {
+  position: absolute;
+  inset: -4px;
+  border: 3px solid rgb(255 236 150 / 0.9);
+  border-radius: 12px;
+  animation: arrive-pulse 0.5s ease-in-out infinite alternate;
+}
+
+@keyframes arrive-pulse {
+  to {
+    opacity: 0.35;
+  }
+}

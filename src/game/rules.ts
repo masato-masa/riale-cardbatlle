@@ -21,6 +21,15 @@ export const HAND_SIZE = 4;
  *  その間に攻撃元か対象が場から消えたら中断する。クールタイムとコインは選んだ時点で使う。 */
 export const WINDUP_MS = 1000;
 
+/** 登場の溜め: カードを配置してから、実際に登場するまでの時間（ms）。攻撃の溜め（WINDUP_MS）と同じ。
+ *  相手の攻撃を見てから妨害のブロッカーを出しても間に合わないので、先読みが要る。0 にすると即時登場（テスト用）。 */
+export let SUMMON_WINDUP_MS = 1000;
+
+/** テスト用: 登場の溜めを変える（0 で即時）。ゲームからは呼ばない。 */
+export function overrideSummonWindupForTests(ms: number): void {
+  SUMMON_WINDUP_MS = ms;
+}
+
 /** 妨害（ブロッカー・壁・チェンジで攻撃を中断させる）された側のユニットのクールタイムに足す時間（ms）。 */
 export const INTERFERE_MS = 5000;
 
