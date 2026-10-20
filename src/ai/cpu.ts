@@ -128,17 +128,22 @@ function deathCost(u: Unit): number {
   return od?.kind === 'face' ? od.amount * 0.45 : 0;
 }
 
-/** 手札に高いカード（コスト 5 以上）があって、あと少しで払えるとき、ほかの操作に使うコインへの罰。 */
-function savePenalty(me: PlayerState, cost: number, self: CardId | null, t: Tuning): number {
+/** 手札に高いカード（コスト 5 以上）があって、まだ払えないが待てば届くとき、ほかの操作に使うコインへの罰。
+ *  安いカードを出し続けると、大きなカードがいつまでも出せない。押されていない間は、あえて我慢して貯める。
+ *  届くまでが遠い（最大 6 枚ぶん = 約 24 秒）ほど弱く、押されている（press が高い）ほど弱い。 */
+function savePenalty(me: PlayerState, cost: number, self: CardId | null, t: Tuning, press = 0): number {
   if (t.save <= 0) return 0;
   let big = 0;
   for (const c of me.hand) {
     const sc = CARDS[c].summon;
-    if (c === self || sc < 5 || sc <= me.coins || sc > me.coins + 3) continue;
+    if (c === self || sc < 5 || sc <= me.coins || sc > me.coins + 6) continue;
     big = Math.max(big, sc);
   }
   if (big === 0 || me.coins - cost >= big) return 0;
-  return Math.min(1.6, cost * 0.5) * t.save;
+  // 目標が大きいほど、使うコインが多いほど強く我慢する
+  const wait = Math.min(1, 1.2 - (big - me.coins) / 8);
+  const calm = Math.max(0, 1 - press);
+  return Math.min(3, cost * 0.7) * (0.4 + big * 0.08) * wait * calm * t.save;
 }
 
 interface Candidate {
@@ -241,7 +246,7 @@ function spellCandidates(state: GameState, p: PlayerIndex, handIndex: number, ca
   if (summonBlock(state, p, handIndex, -1, sp.kind === 'bolt' ? (foeUnits[0]?.uid ?? -1) : undefined)) return [];
   const foeFighters = foeAll.filter((u) => CARDS[u.card].type === 'unit');
   // 使うコインのぶんの基本の損（安いほど気軽に使う）。コインが余っているときは緩める。
-  let base = -cost * 0.25 - savePenalty(me, cost, card, t) + t.spellBias;
+  let base = -cost * 0.25 - savePenalty(me, cost, card, t, pressure(me, state.players[other(p)])) + t.spellBias;
   if (me.coins >= COIN_MAX - 0.5) base += 1.2;
   const out: Candidate[] = [];
   if (sp.kind === 'bolt') {
@@ -360,7 +365,7 @@ function summonCandidates(state: GameState, p: PlayerIndex, t: Tuning): Candidat
     // 安いカードで高いカードの召喚を邪魔しない（もう少しで払えるなら貯める）
     const bigger = me.hand.some((c) => CARDS[c].summon > d.summon + 1 && CARDS[c].summon <= me.coins + 2.2 && CARDS[c].summon > me.coins);
     if (bigger && d.summon <= 2) s -= 1.2;
-    s -= savePenalty(me, d.summon, card, t);
+    s -= savePenalty(me, d.summon, card, t, press);
 
     // 増収: 早く出すほど元が取れる
     if (ab.coinBoost) s += ab.coinBoost * 14 * early * t.skill;
