@@ -2128,3 +2128,143 @@
   font-weight: 800;
   text-shadow: 0 1px 3px #000;
 }
+
+/* ---- 割り込み・上書きの演出 ---- */
+.callouts {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 40;
+}
+
+.callout {
+  position: absolute;
+  translate: -50% -50%;
+  padding: 2px 14px;
+  font-size: 28px;
+  font-weight: 900;
+  letter-spacing: 0.06em;
+  white-space: nowrap;
+  color: #fff;
+  -webkit-text-stroke: 6px #3a2208;
+  paint-order: stroke fill;
+  text-shadow: 0 0 14px rgb(255 216 74 / 0.9);
+}
+
+.callout-block {
+  color: #fff3b0;
+  -webkit-text-stroke-color: #5a3a00;
+}
+
+.callout-parry {
+  color: #d6f1ff;
+  -webkit-text-stroke-color: #12406e;
+  text-shadow: 0 0 16px rgb(110 200 255 / 0.95);
+  font-size: 32px;
+}
+
+.callout-overwrite {
+  color: #fff;
+  -webkit-text-stroke-color: #4a3a8a;
+}
+
+.callout-sacrifice {
+  color: #ffd2c2;
+  -webkit-text-stroke-color: #6e0f0f;
+  text-shadow: 0 0 16px rgb(255 90 60 / 0.95);
+}
+
+.callout-dodge {
+  color: #cfe8ff;
+  -webkit-text-stroke-color: #1c3c66;
+  font-size: 24px;
+}
+
+.ghost {
+  position: absolute;
+  translate: -50% -50%;
+  aspect-ratio: 68 / 84;
+  container-type: inline-size;
+  filter: drop-shadow(0 0 12px rgb(255 216 74 / 0.9)) brightness(1.4);
+}
+
+.popup-coin {
+  color: #fff3b0;
+  font-size: 20px;
+  -webkit-text-stroke: 4px #6b3f00;
+}
+
+.popup-dodge {
+  color: #cfe8ff;
+  -webkit-text-stroke: 4px #1c3c66;
+}
+
+/* 相手の攻撃の溜め中: 線の真ん中に「！」（ブロッカーを出せば割り込める） */
+.pending-warn circle {
+  fill: #e5484d;
+  stroke: #fff;
+  stroke-width: 2.5;
+  animation: warn-pulse 0.5s ease-in-out infinite alternate;
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+.pending-warn text {
+  fill: #fff;
+  font-size: 17px;
+  font-weight: 900;
+}
+
+@keyframes warn-pulse {
+  to {
+    scale: 1.25;
+  }
+}
+
+/* 割り込み・上書きの素材（effects-sheet-3） */
+.burst-clash,
+.burst-dodge,
+.burst-sacrifice,
+.burst-overwrite,
+.burst-parry,
+.burst-snap {
+  width: 150px;
+  height: 150px;
+  animation-name: burst-hit;
+  animation-duration: 0.6s;
+  --r: 0deg !important;
+}
+
+.burst-clash {
+  background-image: url('../assets/art/fx/clash.webp');
+  width: 190px;
+  height: 190px;
+}
+
+.burst-dodge {
+  background-image: url('../assets/art/fx/dodge.webp');
+}
+
+.burst-sacrifice {
+  background-image: url('../assets/art/fx/sacrifice.webp');
+  animation-name: burst-rise;
+  animation-duration: 0.9s;
+}
+
+.burst-overwrite {
+  background-image: url('../assets/art/fx/overwrite.webp');
+  animation-name: burst-circle;
+  animation-duration: 0.8s;
+}
+
+.burst-parry {
+  background-image: url('../assets/art/fx/parry.webp');
+  width: 190px;
+  height: 190px;
+}
+
+.burst-snap {
+  background-image: url('../assets/art/fx/snap.webp');
+  width: 130px;
+  height: 130px;
+}

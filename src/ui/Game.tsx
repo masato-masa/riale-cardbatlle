@@ -91,7 +91,25 @@ interface Popup {
   x: number;
   y: number;
   text: string;
-  tone: 'dmg' | 'face' | 'heal' | 'guard' | 'stun' | 'poison' | 'buff';
+  tone: 'dmg' | 'face' | 'heal' | 'guard' | 'stun' | 'poison' | 'buff' | 'coin' | 'dodge';
+}
+
+/** 画面の真ん中に大きく出す一言（割り込み！・パリィ！・上書き！）。 */
+interface Callout {
+  id: number;
+  x: number;
+  y: number;
+  text: string;
+  tone: 'block' | 'parry' | 'overwrite' | 'sacrifice' | 'dodge';
+}
+
+/** 上書きで入れ替わって消えるカードの残像。 */
+interface Ghost {
+  id: number;
+  x: number;
+  y: number;
+  card: CardId;
+  w: number;
 }
 
 /** 着弾の火花・倒れた煙。位置に置いて、CSS のアニメーションが終わったら消す。 */
@@ -99,7 +117,7 @@ interface Burst {
   id: number;
   x: number;
   y: number;
-  tone: 'hit' | 'face' | 'puff' | 'summon' | 'wave' | 'blast' | 'ice' | 'poison' | 'heal' | 'buff' | 'seal' | 'drain' | 'pierce' | 'cross' | 'coin' | 'guard';
+  tone: 'hit' | 'face' | 'puff' | 'summon' | 'wave' | 'blast' | 'ice' | 'poison' | 'heal' | 'buff' | 'seal' | 'drain' | 'pierce' | 'cross' | 'coin' | 'guard' | 'clash' | 'dodge' | 'sacrifice' | 'overwrite' | 'parry' | 'snap';
   /** 素材の向き（度）。斬撃が毎回同じ向きにならないようにする。 */
   r: number;
 }
@@ -128,6 +146,7 @@ const SUMMON_REASON = {
   coins: 'コインが足りません',
   slot: '場がいっぱいです',
   target: '相手のカードの上で使ってください',
+  noattack: '止められる攻撃がありません',
   over: '',
 } as const;
 const ATTACK_REASON = {
@@ -283,6 +302,29 @@ export function Game({ level, deck, onExit }: { level: CpuLevel; deck: CardId[];
     window.setTimeout(() => setPopups((ps) => ps.filter((p) => p.id !== id)), 1400);
   }, []);
 
+  const [callouts, setCallouts] = useState<Callout[]>([]);
+  const addCallout = useCallback((el: Element | null, text: string, tone: Callout['tone']) => {
+    const c = centerOf(el);
+    if (!c) return;
+    const id = fxId.current++;
+    setCallouts((cs) => [...cs, { id, x: c.x, y: c.y, text, tone }]);
+    window.setTimeout(() => setCallouts((cs) => cs.filter((x) => x.id !== id)), 1300);
+  }, []);
+  const [ghosts, setGhosts] = useState<Ghost[]>([]);
+  const addGhost = useCallback((el: Element | null, card: CardId) => {
+    const c = centerOf(el);
+    if (!c) return;
+    const id = fxId.current++;
+    const w = (el as HTMLElement | null)?.getBoundingClientRect().width ?? 80;
+    setGhosts((gs) => [...gs, { id, x: c.x, y: c.y, card, w }]);
+    window.setTimeout(() => setGhosts((gs) => gs.filter((x) => x.id !== id)), 900);
+  }, []);
+  /** 場のスロット（side 側の slot 番目）の要素。 */
+  const slotEl = useCallback((side: 0 | 1, slot: number): Element | null => {
+    const row = side === 0 ? fieldRef.current : foeFieldRef.current;
+    return row?.querySelectorAll('.slot')[slot] ?? null;
+  }, []);
+
   // 床の絵の金の帯（縦 45%）を、盤面の仕切りの位置に合わせる。絵は寸法が違う画面でも帯がずれないよう拡大して動かす。
   const [floorBg, setFloorBg] = useState<{ size: string; pos: string } | null>(null);
   useLayoutEffect(() => {
@@ -403,8 +445,63 @@ export function Game({ level, deck, onExit }: { level: CpuLevel; deck: CardId[];
       if (e.kind === 'cancel') {
         const x = e.pending;
         const at = x.kind === 'spell' ? heroEl(x.p) : (unitEl(x.uid) ?? heroEl(x.p));
-        addPopup(at, '中断', 'stun');
-        if (e.p === 0) playReject();
+        if (x.kind === 'attack' && e.reason === 'blocked') {
+          // 割り込み: 阻んだブロッカー（壁なら相手の場）で盾が弾き、攻撃元は押し戻される
+          const blocker = e.by !== undefined ? unitEl(e.by) : null;
+          const where = blocker ?? (x.p === 0 ? foeFieldRef.current : fieldRef.current);
+          addCallout(where, '割り込み！', 'block');
+          addBurst(blocker ?? at, 'clash');
+          addBurst(at, 'snap');
+          addPopup(at, '中断', 'stun');
+          if (at) animate(at, { x: [0, 0, 0], y: [0, x.p === 0 ? 14 : -14, 0] }, { duration: 0.35 });
+          shake(4);
+          if (e.p === 0) playReject();
+          else playBarrier();
+        } else if (x.kind === 'attack' && e.reason === 'dodge') {
+          addCallout(at, 'かわされた！', 'dodge');
+          addBurst(at, 'snap');
+          addPopup(at, '空振り', 'stun');
+          if (e.p === 0) playReject();
+        } else if (x.kind === 'attack' && e.reason === 'parry') {
+          addBurst(at, 'parry');
+          addBurst(at, 'snap');
+          addPopup(at, '弾かれた', 'stun');
+          if (e.p === 0) playReject();
+        } else if (x.kind === 'attack' && e.reason === 'target') {
+          addBurst(at, 'snap');
+          addPopup(at, '中断', 'stun');
+          if (e.p === 0) playReject();
+        }
+        // 攻撃元が倒れた・入れ替わった（reason: attacker）は、倒れた演出だけで十分
+        else if (x.kind !== 'attack') {
+          addPopup(at, '中断', 'stun');
+          if (e.p === 0) playReject();
+        }
+      }
+      if (e.kind === 'replace') {
+        // 上書き: 入れ替わったカードの残像が舞い上がる
+        const slot = slotEl(e.p, e.slot);
+        addGhost(slot, e.card);
+        addBurst(slot, 'overwrite');
+        addPopup(slot, '上書き', 'buff');
+        playSelect();
+      }
+      if (e.kind === 'overwrite') {
+        const el = unitEl(e.uid);
+        window.setTimeout(() => addBurst(unitEl(e.uid) ?? el, 'overwrite'), 40);
+        shake(3);
+      }
+      if (e.kind === 'sacrifice') {
+        const slot = slotEl(e.p, e.slot);
+        addCallout(slot, '生贄！', 'sacrifice');
+        addBurst(slot, 'sacrifice');
+        playUiTap();
+      }
+      if (e.kind === 'coin') {
+        const hud = document.querySelector(e.p === 0 ? '.coin-count' : '.hero-coins');
+        addPopup(unitEl(e.uid) ?? hud, `コイン +${e.amount}`, 'coin');
+        addBurst(hud, 'coin');
+        playReady();
       }
       if (e.kind === 'attack') lunge(e);
       if (e.kind === 'ability') {
@@ -414,7 +511,8 @@ export function Game({ level, deck, onExit }: { level: CpuLevel; deck: CardId[];
       if (e.kind === 'spell') {
         const eff = CARDS[e.card].ab.spell!;
         // 全体・遅延は相手の場ごと、再動は自分の場ごと光らせる。単体は使った側から弾を飛ばす。
-        if (eff.kind === 'bolt' && e.target !== null) shoot(heroEl(e.p), unitEl(e.target), 'rock');
+        if (eff.kind === 'parry') addCallout(heroEl(e.p), 'パリィ！', 'parry');
+        else if (eff.kind === 'bolt' && e.target !== null) shoot(heroEl(e.p), unitEl(e.target), 'rock');
         else {
           const foeSide = eff.kind === 'blast' || eff.kind === 'freeze' || eff.kind === 'poisonAll' || eff.kind === 'sealAll';
           const row = (e.p === 0) === foeSide ? foeFieldRef.current : fieldRef.current;
@@ -1319,6 +1417,31 @@ export function Game({ level, deck, onExit }: { level: CpuLevel; deck: CardId[];
         ) : null}
       </AnimatePresence>
 
+      <div className="callouts" aria-hidden="true">
+        {callouts.map((c) => (
+          <motion.span
+            key={c.id}
+            className={`callout callout-${c.tone}`}
+            style={{ left: c.x, top: c.y }}
+            initial={{ opacity: 0, scale: 2.4, rotate: -8 }}
+            animate={{ opacity: [0, 1, 1, 0], scale: [2.4, 1, 1.08, 1], rotate: [-8, -3, -3, -3], y: [0, 0, -10, -22], transition: { duration: 1.25, times: [0, 0.18, 0.7, 1] } }}
+          >
+            {c.text}
+          </motion.span>
+        ))}
+        {ghosts.map((g) => (
+          <motion.div
+            key={g.id}
+            className="ghost"
+            style={{ left: g.x, top: g.y, width: g.w }}
+            initial={{ opacity: 0.95, scale: 1, y: 0, rotate: 0 }}
+            animate={{ opacity: 0, scale: 0.6, y: -60, rotate: -10, transition: { duration: 0.8, ease: 'easeOut' } }}
+          >
+            <CardFace card={g.card} />
+          </motion.div>
+        ))}
+      </div>
+
       <div className="popups" aria-hidden="true">
         <AnimatePresence>
           {popups.map((p) => (
@@ -1560,6 +1683,14 @@ function PendingMarks({ game, fieldMe, fieldFoe }: { game: GameState; fieldMe: H
           <g key={m.key} className={`pending${m.mine ? ' is-mine' : ''}`}>
             <CrossMask id={`xm-p${m.key}`} x0={m.x0} y0={m.y0} x1={m.x1} y1={m.y1} />
             <line mask={`url(#xm-p${m.key})`} x1={m.x0} y1={m.y0} x2={m.x0 + (m.x1 - m.x0) * Math.min(1, m.t * 1.6)} y2={m.y0 + (m.y1 - m.y0) * Math.min(1, m.t * 1.6)} className="pending-line" />
+            {!m.mine ? (
+              <g className="pending-warn" transform={`translate(${m.x0 + (m.x1 - m.x0) * 0.5} ${m.y0 + (m.y1 - m.y0) * 0.5})`}>
+                <circle r={12} />
+                <text textAnchor="middle" dy="5">
+                  !
+                </text>
+              </g>
+            ) : null}
             <circle cx={m.x1} cy={m.y1} r={30 - m.t * 16} className="pending-ring" />
             <circle cx={m.x1} cy={m.y1} r={4} className="pending-dot" />
           </g>

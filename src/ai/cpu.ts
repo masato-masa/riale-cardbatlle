@@ -5,6 +5,7 @@ import { CARDS, isBlocker, needsTarget, summonSide, type CardId } from '../game/
 import {
   attackBlock,
   attackOf,
+  findUnit,
   firstEmptySlot,
   isWalled,
   other,
@@ -105,6 +106,13 @@ function worth(card: CardId, hp: number, atk: number, allies: number, barrier: b
   if (ab.endure) v += 1.0;
   if (ab.venom) v += ab.venom * 0.6;
   if (ab.cannotAttack) v -= atk * 1.1 * rate; // 攻撃しない代わりに頑丈（スタッツに織り込み済み）
+  // 割り込み・攻撃中断・生贄・上書きの能力
+  if (ab.onInterrupt?.kind === 'strike') v += ab.onInterrupt.amount * 0.45;
+  if (ab.onInterrupt?.kind === 'stun') v += (ab.onInterrupt.ms / 1000) * 0.18;
+  if (ab.onInterrupt?.kind === 'coin') v += ab.onInterrupt.amount * 0.5;
+  if (ab.onCancelled) v += 0.7;
+  if (ab.onReplaced) v += 0.5;
+  if (ab.onOverwrite) v += 0.6;
   // 建築物の能力（壊せば止まる）
   if (ab.pulse?.kind === 'token') v += 1.2;
   if (ab.pulse?.kind === 'snipe') v += 1.6;
@@ -115,6 +123,25 @@ function worth(card: CardId, hp: number, atk: number, allies: number, barrier: b
 function unitWorth(owner: PlayerState, u: Unit): number {
   const allies = units(owner).length - 1;
   return worth(u.card, u.hp, attackOf(owner, u), allies, u.barrier);
+}
+
+/** 上書きされて場から消えるときに得る価値（生贄時の能力）。 */
+function sacrificeValue(me: PlayerState, u: Unit): number {
+  const od = u.sealed ? undefined : CARDS[u.card].ab.onReplaced;
+  if (!od) return 0;
+  if (od.kind === 'coin') return od.amount * 0.9;
+  if (od.kind === 'face') return od.amount * 0.7;
+  if (od.kind === 'heal') return Math.min(PLAYER_HP - me.hp, od.amount) * 0.4;
+  return (od.atk + od.hp) * 0.8;
+}
+
+/** そのカードを自分のカード old の上に召喚したときの得（上書き召喚時の能力）。 */
+function overwriteValue(card: CardId, old: Unit): number {
+  const oo = CARDS[card].ab.onOverwrite;
+  if (!oo) return 0;
+  if (oo.kind === 'buff') return (oo.atk + oo.hp) * 0.8;
+  if (oo.kind === 'refund') return Math.floor(CARDS[old.card].summon / 2) * 0.9;
+  return 1.0;
 }
 
 function cardWorth(card: CardId, allies: number): number {
@@ -315,6 +342,16 @@ function spellCandidates(state: GameState, p: PlayerIndex, handIndex: number, ca
     }
     if (v < 3) v -= 3;
     v *= t.skill;
+  } else if (sp.kind === 'parry') {
+    // 相手の溜め中の攻撃を弾く: 弾く攻撃の威力と、足止めのぶんが得
+    for (const x of state.pending) {
+      if (x.kind !== 'attack' || x.p === p) continue;
+      const att = findUnit(foe, x.uid)?.unit;
+      if (!att) continue;
+      const power = attackOf(foe, att) * (x.target.kind === 'player' ? 0.8 : 0.5);
+      v += power + (sp.ms / 1000) * 0.2 + (isBlocker(att.card) ? 0.3 : 0);
+    }
+    v *= 0.5 + 0.5 * t.skill;
   } else if (sp.kind === 'freeze') {
     // 攻撃が明けそうなユニットが多いほど効く
     let soon = 0;
@@ -346,7 +383,25 @@ function spellCandidates(state: GameState, p: PlayerIndex, handIndex: number, ca
 function summonCandidates(state: GameState, p: PlayerIndex, t: Tuning): Candidate[] {
   const me = state.players[p];
   const foe = state.players[other(p)];
-  const slot = firstEmptySlot(me);
+  let slot = firstEmptySlot(me);
+  // 場がいっぱいなら、いちばん手放してよい自分のカードを上書きする候補にする（生贄の能力があれば得）
+  let replaceOld: Unit | null = null;
+  if (slot < 0) {
+    let bestKeep = Infinity;
+    me.field.forEach((u, i) => {
+      if (!u) return;
+      const keep = unitWorth(me, u) - sacrificeValue(me, u);
+      if (keep < bestKeep) {
+        bestKeep = keep;
+        replaceOld = u;
+        slot = i;
+      }
+    });
+    if (bestKeep > 5.5) {
+      replaceOld = null;
+      slot = -1;
+    }
+  }
   const foeUnits = units(foe).filter((u) => !u.stealth);
   const press = pressure(me, foe);
   const myBlockers = me.field.filter((u) => u && isBlocker(u.card)).length;
@@ -366,6 +421,18 @@ function summonCandidates(state: GameState, p: PlayerIndex, t: Tuning): Candidat
     const choices = needsTarget(card) ? summonTargets(summonSidePlayer(state, p, card), card) : [];
     if (slot < 0 || summonBlock(state, p, handIndex, slot, choices[0]?.uid)) return;
     let s = cardWorth(card, filled) * 0.55 + d.summon * 0.15;
+    if (replaceOld) {
+      const old: Unit = replaceOld;
+      // 上書き: 元のカードを失うぶんの損、生贄・上書きの得、狙われていたならかわせる得
+      s -= unitWorth(me, old) * 0.6 + 0.8;
+      s += sacrificeValue(me, old) + overwriteValue(card, old);
+      for (const x of state.pending) {
+        if (x.kind === 'attack' && x.p !== p && x.target.kind === 'unit' && x.target.uid === old.uid) {
+          const att = findUnit(foe, x.uid)?.unit;
+          if (att) s += attackOf(foe, att) * 0.6 + 1;
+        }
+      }
+    }
     // コインが余っているほど急いで出す、枠が空いているほど出す
     s += (me.coins - d.summon) * 0.05 + (FIELD_SLOTS - filled) * 0.25;
     if (me.coins >= COIN_MAX - 0.5) s += 1.5; // 上限で腐らせない

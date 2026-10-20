@@ -42,3 +42,17 @@ const h2 = Math.floor(m2.height / 3);
     .toFile(`${out}/${name}.webp`);
   console.log(`${name}.webp`);
 });
+
+// 3 枚目（art-src/effects-sheet-3.png、3×2）: 割り込み・かわされた・生贄・上書き・パリィ・中断。
+const src3 = `${root}art-src/effects-sheet-3.png`;
+const m3 = await sharp(src3).metadata();
+const w3 = Math.floor(m3.width / 3);
+const h3 = Math.floor(m3.height / 2);
+['clash', 'dodge', 'sacrifice', 'overwrite', 'parry', 'snap'].forEach(async (name, i) => {
+  await sharp(src3)
+    .extract({ left: (i % 3) * w3, top: Math.floor(i / 3) * h3, width: w3, height: h3 })
+    .resize(384, 384, { fit: 'cover' })
+    .webp({ quality: 85 })
+    .toFile(`${out}/${name}.webp`);
+  console.log(`${name}.webp`);
+});

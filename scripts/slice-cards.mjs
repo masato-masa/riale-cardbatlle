@@ -53,6 +53,8 @@ const SHEETS = {
     ...['infirmary', 'altar', 'forge'].map((n) => `buildings/${n}`),
   ],
   9: [...['rain', 'warcry', 'miasma', 'edict'].map((n) => `spells/${n}`), null, null, null, null, null],
+  10: ['warder', 'shieldmaid', 'ambusher', 'gatekeeper', 'diehard', 'berserk', 'offering', 'bomber', 'heir'].map((n) => `cards/${n}`),
+  11: [...['phoenix', 'usurper', 'conqueror'].map((n) => `cards/${n}`), 'spells/parry', null, null, null, null, null],
   // 3 列×2 行（縦長のマス）。切り札ユニット 5 人と予備 1 枚
   4: {
     cols: 3,

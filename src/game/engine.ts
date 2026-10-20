@@ -61,6 +61,8 @@ export interface PlayerState {
   field: (Unit | null)[];
 }
 
+export type CancelReason = 'blocked' | 'target' | 'dodge' | 'attacker' | 'parry';
+
 export type Target = { kind: 'player' } | { kind: 'unit'; uid: number };
 
 /** 溜め中の行動。at になったら効く（WINDUP_MS）。
@@ -85,8 +87,15 @@ export type GameEvent =
   | { id: number; kind: 'unreserve'; p: PlayerIndex; uid: number }
   /** 自分のカードの上に召喚して、元のカードを場から除いた（死亡時は起きない）。 */
   | { id: number; kind: 'replace'; p: PlayerIndex; uid: number; card: CardId; slot: number }
-  /** 溜めの間に攻撃元か対象が消えて、中断した。 */
-  | { id: number; kind: 'cancel'; p: PlayerIndex; pending: Pending }
+  /** 溜めの途中で中断した。reason: blocked=ブロッカーが割り込んだ（by がそのブロッカー。壁なら by なし）/ target=対象が倒れた /
+   *  dodge=対象が上書きで入れ替わってかわされた / attacker=攻撃元が倒れた・入れ替わった / parry=呪文で弾かれた。 */
+  | { id: number; kind: 'cancel'; p: PlayerIndex; pending: Pending; reason: CancelReason; by?: number }
+  /** コインが増えた（割り込み・生贄の効果）。uid はその効果を起こしたカード。 */
+  | { id: number; kind: 'coin'; p: PlayerIndex; amount: number; uid: number }
+  /** 自分のカードの上に召喚した（uid は新しいカード、oldUid は入れ替わったカード）。 */
+  | { id: number; kind: 'overwrite'; p: PlayerIndex; uid: number; oldUid: number; slot: number }
+  /** 入れ替わったカードの「生贄時」の能力が起きた。 */
+  | { id: number; kind: 'sacrifice'; p: PlayerIndex; uid: number; card: CardId; slot: number; effect: string }
   /** p は受けた側。amount は実際に減った HP。guard は防いだ理由。 */
   | { id: number; kind: 'damage'; p: PlayerIndex; target: Target; amount: number; guard: 'barrier' | 'armor' | null }
   | { id: number; kind: 'heal'; p: PlayerIndex; amount: number }
@@ -295,7 +304,7 @@ export function summonSidePlayer(state: GameState, p: PlayerIndex, card: CardId)
   return summonSide(card) === 'ally' ? state.players[p] : state.players[other(p)];
 }
 
-export type SummonBlock = 'coins' | 'slot' | 'target' | 'over' | null;
+export type SummonBlock = 'coins' | 'slot' | 'target' | 'noattack' | 'over' | null;
 
 export function summonBlock(
   state: GameState,
@@ -310,6 +319,8 @@ export function summonBlock(
   if (!card) return 'over';
   if (pl.coins < CARDS[card].summon) return 'coins';
   if (CARDS[card].type === 'spell') {
+    // パリィ: 相手の溜め中の攻撃が無ければ使えない
+    if (CARDS[card].ab.spell?.kind === 'parry' && !state.pending.some((x) => x.kind === 'attack' && x.p === other(p))) return 'noattack';
     if (requiresTarget(card) && (target === undefined || !pickable(state.players[other(p)], target))) return 'target';
     return null;
   }
@@ -346,6 +357,8 @@ interface Draft {
   nextUid: number;
   events: NewEvent[];
   pending: Pending[];
+  /** 溜め中の攻撃の見直しの最中（入れ子にしない）。 */
+  rechecking?: boolean;
 }
 
 function draftOf(state: GameState): Draft {
@@ -442,7 +455,82 @@ function disarmUnit(d: Draft, p: PlayerIndex, unit: Unit, ms: number): void {
 }
 
 /** HP が 0 になったカードを場から除き、遺言を起こす。遺言で倒れるカードは無いので 1 回で済む。 */
+function addCoins(d: Draft, p: PlayerIndex, amount: number, uid: number): void {
+  const pl = d.players[p];
+  pl.coins = Math.min(COIN_MAX, pl.coins + amount);
+  d.events.push({ kind: 'coin', p, amount, uid });
+}
+
+/** 溜め中の攻撃が、いま通らない理由（通るなら null）。ブロッカーに阻まれたときは、その uid（壁なら無し）も返す。 */
+function attackFail(d: Draft, x: Extract<Pending, { kind: 'attack' }>): { reason: CancelReason; by?: number } | null {
+  const me = d.players[x.p];
+  const foe = d.players[other(x.p)];
+  const unit = findUnit(me, x.uid)?.unit;
+  if (!unit) return { reason: 'attacker' };
+  if (x.target.kind === 'unit' && !findUnit(foe, x.target.uid)) return { reason: 'target' };
+  if (!legalAgainst(foe, x.target, unit)) {
+    const b = units(foe).find((u) => !u.stealth && isBlockerUnit(u));
+    return { reason: 'blocked', by: b?.uid };
+  }
+  return null;
+}
+
+/** 溜め中の行動を中断する。攻撃ならクールタイムを選ぶ前に戻し、割り込み・攻撃中断の能力を起こす。 */
+function cancelPending(d: Draft, x: Pending, reason: CancelReason, by?: number): void {
+  d.pending = d.pending.filter((y) => y.id !== x.id);
+  d.events.push({ kind: 'cancel', p: x.p, pending: x, reason, by });
+  if (x.kind !== 'attack') return;
+  const u = findUnit(d.players[x.p], x.uid)?.unit;
+  if (!u) return;
+  // 攻撃が中断されても、クールタイムはやり直しにしない（選ぶ前に戻す。足止などで延びたぶんは残す）
+  u.readyAt = x.readyBefore + Math.max(0, u.readyAt - x.readyAfter);
+  u.second = x.secondBefore ? true : undefined;
+  const q = other(x.p);
+  // 割り込み: 阻んだブロッカーの能力
+  if (reason === 'blocked' && by !== undefined) {
+    const b = findUnit(d.players[q], by)?.unit;
+    const oi = b ? abOf(b).onInterrupt : undefined;
+    if (b && oi) {
+      if (oi.kind === 'strike') hurtUnit(d, x.p, u, oi.amount);
+      else if (oi.kind === 'stun') {
+        u.readyAt = Math.max(u.readyAt, d.time) + oi.ms;
+        d.events.push({ kind: 'stun', p: x.p, uid: u.uid });
+      } else addCoins(d, q, oi.amount, b.uid);
+    }
+  }
+  // 攻撃中断: 中断された側の能力
+  const oc = u.hp > 0 ? abOf(u).onCancelled : undefined;
+  if (oc?.kind === 'ready') {
+    u.readyAt = d.time;
+    d.events.push({ kind: 'ready', p: x.p, uid: u.uid });
+  } else if (oc?.kind === 'buff') buffUnit(d, x.p, u, oc.atk, oc.hp);
+}
+
+/** 溜め中の攻撃のうち、もう通らなくなったものを、その場で中断する（ブロッカーの登場・対象の死亡・壁の完成など）。 */
+function recheckAttacks(d: Draft): void {
+  if (d.rechecking) return;
+  d.rechecking = true;
+  for (let guard = 0; guard < 8; guard++) {
+    let changed = false;
+    for (const x of [...d.pending]) {
+      if (x.kind !== 'attack') continue;
+      const f = attackFail(d, x);
+      if (!f) continue;
+      cancelPending(d, x, f.reason, f.by);
+      changed = true;
+    }
+    if (!changed) break;
+    sweepCore(d);
+  }
+  d.rechecking = false;
+}
+
 function sweepDead(d: Draft): void {
+  sweepCore(d);
+  recheckAttacks(d);
+}
+
+function sweepCore(d: Draft): void {
   for (const p of [0, 1] as const) {
     const pl = d.players[p];
     pl.field.forEach((u, slot) => {
@@ -639,6 +727,21 @@ function castSpell(state: GameState, p: PlayerIndex, handIndex: number, target?:
   pl.queue = [...rest, card];
   pl.coins -= CARDS[card].summon;
   const effect = CARDS[card].ab.spell!;
+  if (effect.kind === 'parry') {
+    // パリィ: 溜めなしですぐ効く。相手の溜め中の攻撃をすべて弾いて、攻撃元を足止めする
+    d.events.push({ kind: 'spell', p, card, target: null });
+    for (const x of [...d.pending]) {
+      if (x.kind !== 'attack' || x.p === p) continue;
+      cancelPending(d, x, 'parry');
+      const u = findUnit(d.players[x.p], x.uid)?.unit;
+      if (u) {
+        u.readyAt = Math.max(u.readyAt, d.time) + effect.ms;
+        d.events.push({ kind: 'stun', p: x.p, uid: u.uid });
+      }
+    }
+    sweepDead(d);
+    return finish(state, d);
+  }
   windup(d, { id: d.nextUid++, kind: 'spell', p, card, target: effect.kind === 'bolt' ? (target ?? null) : null, at: d.time + WINDUP_MS });
   return finish(state, d);
 }
@@ -766,15 +869,8 @@ function resolvePending(state: GameState): GameState {
           ? applySpell(d, x.p, x.card, x.target)
           : applyAbility(d, x.p, x.uid, x.card, x.target);
     if (!ok) {
-      d.events.push({ kind: 'cancel', p: x.p, pending: x });
-      // 攻撃が中断されても、クールタイムはやり直しにしない（選ぶ前に戻す。足止などで延びたぶんは残す）
-      if (x.kind === 'attack') {
-        const u = findUnit(d.players[x.p], x.uid)?.unit;
-        if (u) {
-          u.readyAt = x.readyBefore + Math.max(0, u.readyAt - x.readyAfter);
-          u.second = x.secondBefore ? true : undefined;
-        }
-      }
+      const f = x.kind === 'attack' ? attackFail(d, x) : null;
+      cancelPending(d, x, f?.reason ?? 'target', f?.by);
     }
     sweepDead(d);
   }
@@ -796,8 +892,31 @@ function summon(state: GameState, p: PlayerIndex, handIndex: number, slot: numbe
     // 自分のカードの上に召喚した: 元のカードは除くだけ（倒れたのではないので死亡時は起きない）
     pl.field[slot] = null;
     d.events.push({ kind: 'replace', p, uid: old.uid, card: old.card, slot });
+    // 溜め中の行動: 元のカードの攻撃は消え、元のカードを狙っていた攻撃は空振り（かわされる）
+    for (const x of [...d.pending]) {
+      if (x.kind !== 'attack') continue;
+      if (x.p === p && x.uid === old.uid) cancelPending(d, x, 'attacker');
+      else if (x.p !== p && x.target.kind === 'unit' && x.target.uid === old.uid) cancelPending(d, x, 'dodge');
+    }
   }
   const placed = place(d, p, card, slot, false);
+  if (old) {
+    d.events.push({ kind: 'overwrite', p, uid: placed.uid, oldUid: old.uid, slot });
+    // 生贄時: 入れ替わったカードの能力
+    const orp = abOf(old).onReplaced;
+    if (orp) {
+      d.events.push({ kind: 'sacrifice', p, uid: old.uid, card: old.card, slot, effect: orp.kind });
+      if (orp.kind === 'coin') addCoins(d, p, orp.amount, old.uid);
+      else if (orp.kind === 'face') hurtPlayer(d, other(p), orp.amount);
+      else if (orp.kind === 'heal') healPlayer(d, p, orp.amount);
+      else buffUnit(d, p, placed, orp.atk, orp.hp);
+    }
+    // 上書き召喚時: 新しいカードの能力
+    const oo = abOf(placed).onOverwrite;
+    if (oo?.kind === 'buff') buffUnit(d, p, placed, oo.atk, oo.hp);
+    else if (oo?.kind === 'refund') addCoins(d, p, Math.floor(CARDS[old.card].summon / 2), placed.uid);
+    else if (oo?.kind === 'haste') placed.readyAt = d.time;
+  }
 
   const os = CARDS[card].ab.onSummon;
   const q = other(p);

@@ -77,7 +77,21 @@ export type CardId =
   | 'warcry'
   | 'miasma'
   | 'edict'
-  | 'festival';
+  | 'festival'
+  // 割り込み・上書きの能力
+  | 'warder'
+  | 'shieldmaid'
+  | 'ambusher'
+  | 'gatekeeper'
+  | 'diehard'
+  | 'berserk'
+  | 'offering'
+  | 'bomber'
+  | 'heir'
+  | 'phoenix'
+  | 'usurper'
+  | 'conqueror'
+  | 'parry';
 
 export type CardType = 'unit' | 'building' | 'spell';
 
@@ -114,6 +128,35 @@ export type OnDeath =
   /** 敵ユニット全員に毒を与える。 */
   | { kind: 'poisonFoes'; amount: number };
 
+/** 割り込み: このブロッカーのせいで、相手の攻撃が中断されたときに起きること（攻撃元に効く）。 */
+export type OnInterrupt =
+  | { kind: 'strike'; amount: number }
+  | { kind: 'stun'; ms: number }
+  /** 自分のコインが増える。 */
+  | { kind: 'coin'; amount: number };
+
+/** 自分の攻撃が（割り込まれて・対象が消えて）中断されたときに起きること。 */
+export type OnCancelled =
+  /** クールタイムがなくなる（すぐ攻撃し直せる）。 */
+  | { kind: 'ready' }
+  | { kind: 'buff'; atk: number; hp: number };
+
+/** 生贄時: 自分のカードの上に別のカードを召喚されて、場から除かれたときに起きること。 */
+export type OnReplaced =
+  | { kind: 'coin'; amount: number }
+  | { kind: 'face'; amount: number }
+  | { kind: 'heal'; amount: number }
+  /** 上書きした新しいカードの攻撃力と HP を上げる。 */
+  | { kind: 'buffNew'; atk: number; hp: number };
+
+/** 上書き召喚時: 自分のカードの上に召喚したときに起きること。 */
+export type OnOverwrite =
+  | { kind: 'buff'; atk: number; hp: number }
+  /** 上書きされたカードのコストの半分（切り捨て）のコインが戻る。 */
+  | { kind: 'refund' }
+  /** すぐ攻撃できる。 */
+  | { kind: 'haste' };
+
 /** 建築物が一定時間ごとに起こすこと。 */
 export type Pulse =
   | { everyMs: number; kind: 'token' }
@@ -139,7 +182,9 @@ export type SpellEffect =
   /** 敵ユニット全員に毒 */
   | { kind: 'poisonAll'; amount: number }
   /** 敵ユニット全員を封印 */
-  | { kind: 'sealAll' };
+  | { kind: 'sealAll' }
+  /** 相手の溜め中の攻撃をすべて中断させ、その攻撃元のクールタイムを延ばす（溜めなしですぐ効く）。 */
+  | { kind: 'parry'; ms: number };
 
 export interface Abilities {
   /** ブロッカー: 相手はブロッカーしか攻撃できない */
@@ -180,6 +225,14 @@ export interface Abilities {
   venom?: number;
   onSummon?: OnSummon;
   onDeath?: OnDeath;
+  /** 割り込み時（ブロッカーが、相手の攻撃を中断させたとき） */
+  onInterrupt?: OnInterrupt;
+  /** 攻撃中断時（自分の攻撃が中断されたとき） */
+  onCancelled?: OnCancelled;
+  /** 生贄時（自分のカードの上に召喚されて場から除かれたとき） */
+  onReplaced?: OnReplaced;
+  /** 上書き召喚時（自分のカードの上に召喚したとき） */
+  onOverwrite?: OnOverwrite;
   pulse?: Pulse;
   spell?: SpellEffect;
 }
@@ -277,6 +330,19 @@ const EPITHET: Partial<Record<CardId, string>> = {
   quake: '地を砕く一撃',
   roadblock: '進軍を阻む柵',
   festival: '全軍の雄叫び',
+  warder: '割り込みの番人',
+  shieldmaid: '盾の少女',
+  ambusher: '待ち伏せの傭兵',
+  gatekeeper: '不落の門番',
+  diehard: '不屈の兵',
+  berserk: '怒れる女戦士',
+  offering: '供物の巫女',
+  bomber: '自爆の狂信者',
+  heir: '継承の姫',
+  phoenix: '灰からよみがえる者',
+  usurper: '玉座の簒奪者',
+  conqueror: '踏み越える征服王',
+  parry: '剣を弾く一閃',
 };
 
 /** 一言（説明のシートの下に出す。ゲームの数値には関係しない）。 */
@@ -351,6 +417,19 @@ const FLAVOR: Partial<Record<CardId, string>> = {
   quake: '大地ごと砕け。敵に逃げ場はない。',
   roadblock: 'この杭の森を、越えられるものか。',
   festival: '鬨の声を上げよ！ 全軍、疲れを忘れろ！',
+  warder: '通さん。ここから先へは、一歩もな。',
+  shieldmaid: 'えいっ！ ……あれ、止まった？',
+  ambusher: '飛び出した先に、金貨が落ちてる。',
+  gatekeeper: '閉ざされた門は、誰にも破れない。',
+  diehard: '止められた？ 何度でも、行くさ。',
+  berserk: '邪魔をするな。その怒り、返してやる！',
+  offering: '私を捧げます。どうか、力を。',
+  bomber: '見て！ きれいな花火が上がるよ！',
+  heir: '私が倒れても、王冠は次へ継がれる。',
+  phoenix: '灰の中から、また立ち上がる。',
+  usurper: '玉座は、奪うものだ。',
+  conqueror: '踏み越えるたび、俺は強くなる。',
+  parry: 'そこだ！ 剣を弾き返せ！',
 };
 
 /** cdSec はクールタイム（秒）。 */
@@ -465,6 +544,21 @@ export const CARDS: Record<CardId, CardDef> = {
   quake: spell('quake', '大地割り', 4, { kind: 'blast', amount: 2 }),
   roadblock: spell('roadblock', 'バリケード', 2, { kind: 'freeze', ms: 10000 }),
   festival: spell('festival', '鬨の声', 2, { kind: 'ready' }),
+
+  // ---- 割り込み（ブロッカーが攻撃を中断させる）・攻撃中断・生贄（上書き）・上書き召喚の能力 ----
+  warder: unit('warder', 'ヴィゴ', 3, 2, 4, 15, { blocker: true, onInterrupt: { kind: 'strike', amount: 2 } }),
+  shieldmaid: unit('shieldmaid', 'ミーア', 2, 1, 4, 14, { blocker: true, onInterrupt: { kind: 'stun', ms: 4000 } }),
+  ambusher: unit('ambusher', 'ザック', 4, 3, 4, 15, { blocker: true, onInterrupt: { kind: 'coin', amount: 2 } }),
+  gatekeeper: unit('gatekeeper', 'ドミニク', 6, 5, 8, 17, { blocker: true, onInterrupt: { kind: 'strike', amount: 4 } }),
+  diehard: unit('diehard', 'ボルク', 3, 3, 3, 14, { onCancelled: { kind: 'ready' } }),
+  berserk: unit('berserk', 'ジーナ', 4, 3, 4, 15, { onCancelled: { kind: 'buff', atk: 1, hp: 1 } }),
+  offering: unit('offering', 'ユラ', 2, 2, 2, 12, { onReplaced: { kind: 'coin', amount: 3 } }),
+  bomber: unit('bomber', 'ガイ', 3, 3, 2, 14, { onReplaced: { kind: 'face', amount: 4 } }),
+  heir: unit('heir', 'リーゼ', 4, 3, 3, 15, { onReplaced: { kind: 'buffNew', atk: 3, hp: 3 } }),
+  phoenix: unit('phoenix', 'フェン', 5, 4, 4, 16, { onReplaced: { kind: 'heal', amount: 6 } }),
+  usurper: unit('usurper', 'クロウ', 4, 3, 3, 15, { onOverwrite: { kind: 'buff', atk: 2, hp: 2 } }),
+  conqueror: unit('conqueror', 'レグ', 5, 4, 4, 16, { onOverwrite: { kind: 'refund' } }),
+  parry: spell('parry', 'パリィ', 2, { kind: 'parry', ms: 3000 }),
   rain: spell('rain', '癒しの雨', 1, { kind: 'healAll', amount: 5 }),
   warcry: spell('warcry', '戦の号令', 2, { kind: 'buffAll', atk: 1, hp: 1 }),
   miasma: spell('miasma', '毒霧', 3, { kind: 'poisonAll', amount: 2 }),
@@ -506,6 +600,8 @@ export const RIVAL_DECKS: { name: string; deck: CardId[] }[] = [
   { name: '巨人', deck: ['recruit', 'bulwark', 'lancer', 'stalwart', 'captain', 'warlord', 'champion', 'ironwall', 'ogre', 'forge'] },
   { name: '連撃', deck: ['herald', 'recruit', 'twin', 'bloody', 'drummer', 'duelist', 'bloodknight', 'warcry', 'raider', 'reaper'] },
   { name: '狙撃', deck: ['guard', 'marksman', 'bard', 'lancer', 'sniper', 'priest', 'infirmary', 'rain', 'warden', 'banner'] },
+  { name: '割り込み', deck: ['recruit', 'shieldmaid', 'warder', 'diehard', 'ambusher', 'berserk', 'knight', 'gatekeeper', 'parry', 'lancer'] },
+  { name: '生贄', deck: ['offering', 'bomber', 'heir', 'footman', 'usurper', 'phoenix', 'conqueror', 'knight', 'captain', 'recruit'] },
   { name: '封印', deck: ['informer', 'spy', 'sealer', 'binder', 'blockader', 'roadblock', 'quarry', 'edict', 'quake', 'martyr'] },
 ];
 
@@ -547,6 +643,8 @@ function buffText(atk: number, hp: number): string {
 
 /** 状態の説明（説明シートの下に出す）。 */
 export const STATUS_NOTES: string[] = [
+  '割り込み: 攻撃の溜め中に相手のブロッカーが出ると、その攻撃は中断される（クールタイムは戻る）',
+  '上書き: 自分のカードの上に召喚すると入れ替わる。入れ替わったカードの「生贄時」の能力が起きる',
   '毒: 攻撃するたびに、その数だけダメージを受ける',
   '封印: 能力がすべて無効になる',
   '攻撃不能: しばらく、または能力で、攻撃できない',
@@ -587,6 +685,22 @@ export function abilityLines(card: CardId): string[] {
   if (a.splash) lines.push(`攻撃時：ほかの敵カード全員に ${a.splash} ダメージ`);
   if (a.onDeath?.kind === 'face') lines.push(`死亡時：敵プレイヤーに ${a.onDeath.amount} ダメージ`);
   if (a.onDeath?.kind === 'buffAllies') lines.push(`死亡時：味方ユニット全員の${buffText(a.onDeath.atk, a.onDeath.hp)}`);
+  const oi = a.onInterrupt;
+  if (oi?.kind === 'strike') lines.push(`割り込み時：中断させた敵ユニットに ${oi.amount} ダメージ`);
+  if (oi?.kind === 'stun') lines.push(`割り込み時：中断させた敵ユニットのクールタイム +${oi.ms / 1000} 秒`);
+  if (oi?.kind === 'coin') lines.push(`割り込み時：コイン +${oi.amount}`);
+  const oc = a.onCancelled;
+  if (oc?.kind === 'ready') lines.push('攻撃中断時：クールタイムがなくなる');
+  if (oc?.kind === 'buff') lines.push(`攻撃中断時：自分の${buffText(oc.atk, oc.hp)}`);
+  const or = a.onReplaced;
+  if (or?.kind === 'coin') lines.push(`生贄時：コイン +${or.amount}`);
+  if (or?.kind === 'face') lines.push(`生贄時：敵プレイヤーに ${or.amount} ダメージ`);
+  if (or?.kind === 'heal') lines.push(`生贄時：自分の HP を ${or.amount} 回復`);
+  if (or?.kind === 'buffNew') lines.push(`生贄時：上書きしたカードの${buffText(or.atk, or.hp)}`);
+  const oo = a.onOverwrite;
+  if (oo?.kind === 'buff') lines.push(`上書き召喚時：自分の${buffText(oo.atk, oo.hp)}`);
+  if (oo?.kind === 'refund') lines.push('上書き召喚時：上書きされたカードのコストの半分のコインが戻る');
+  if (oo?.kind === 'haste') lines.push('上書き召喚時：すぐ攻撃できる');
   if (a.onDeath?.kind === 'poisonFoes') lines.push(`死亡時：敵ユニット全員に毒 ${a.onDeath.amount} を与える`);
   const p = a.pulse;
   if (p?.kind === 'token') lines.push(`${p.everyMs / 1000} 秒ごと：空いている枠に志願兵を出す`);
@@ -609,6 +723,7 @@ export function abilityLines(card: CardId): string[] {
   if (sp?.kind === 'buffAll') lines.push(`味方ユニット全員の${buffText(sp.atk, sp.hp)}`);
   if (sp?.kind === 'poisonAll') lines.push(`敵ユニット全員に毒 ${sp.amount} を与える`);
   if (sp?.kind === 'sealAll') lines.push('敵ユニット全員を封印する（能力を無効にする）');
+  if (sp?.kind === 'parry') lines.push(`溜め中の敵の攻撃をすべて中断させ、攻撃元のクールタイム +${sp.ms / 1000} 秒（すぐ効く）`);
   return lines;
 }
 
