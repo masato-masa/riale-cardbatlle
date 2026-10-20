@@ -1883,3 +1883,13 @@
   gap: 12px 12px;
   padding: 6px 8px 4px;
 }
+
+/* 一時停止・遊びかた・設定のシートは、予約の矢印や範囲の光より前に出す */
+.overlay {
+  z-index: 60;
+}
+
+.sheet-btn.quiet {
+  color: #fff;
+  -webkit-text-stroke: 0;
+}
