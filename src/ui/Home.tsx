@@ -68,7 +68,7 @@ export function Home({ deck, onStart, onDeck }: { deck: CardId[]; onStart: (leve
           </div>
         </div>
         <h1 className="ts-logo">リアルカードバトル</h1>
-        <p className="ts-sub">時間でたまるコインでカードを出し、相手の HP を 0 に</p>
+        <p className="ts-sub">コインでカードを出して、相手の HP を 0 に</p>
 
         <button
           className="ts-deck"

@@ -173,7 +173,8 @@ body {
 
 .ts-sub {
   margin: 0 0 6px;
-  font-size: 13px;
+  font-size: 12.5px;
+  white-space: nowrap;
   font-weight: 600;
   color: #e8e0ff;
   text-shadow: 0 1px 3px rgb(0 0 0 / 0.8);

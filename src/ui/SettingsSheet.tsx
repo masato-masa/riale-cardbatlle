@@ -10,7 +10,8 @@ import {
   setSoundEnabled,
 } from './settings';
 import { Sheet } from './Sheets';
-import { playUiTap } from './sound';
+import { getKit, setKit } from './samples';
+import { playVoice, playUiTap } from './sound';
 
 function Row({ label, on, onToggle }: { label: string; on: boolean; onToggle: () => void }) {
   return (
@@ -25,6 +26,7 @@ export function SettingsSheet({ onClose }: { onClose: () => void }) {
   const [sound, setSound] = useState(isSoundEnabled());
   const [bgm, setBgm] = useState(isBgmEnabled());
   const [haptics, setHaptics] = useState(isHapticsEnabled());
+  const [kit, setKitState] = useState(getKit());
   return (
     <Sheet title="設定" onClose={onClose}>
       <div className="sheet-list">
@@ -57,6 +59,25 @@ export function SettingsSheet({ onClose }: { onClose: () => void }) {
             playUiTap();
           }}
         />
+        <div className="sheet-row static">
+          <span>効果音の種類</span>
+          <span className="kit-pick">
+            {[1, 2, 3, 4].map((n) => (
+              <button
+                key={n}
+                className={`kit-btn${kit === n ? ' is-on' : ''}`}
+                aria-pressed={kit === n}
+                onClick={() => {
+                  setKit(n);
+                  setKitState(n);
+                  playVoice('summonSmall');
+                }}
+              >
+                {'ABCD'[n - 1]}
+              </button>
+            ))}
+          </span>
+        </div>
       </div>
       <button className="sheet-btn" onClick={onClose}>
         とじる

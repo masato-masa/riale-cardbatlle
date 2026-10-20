@@ -75,7 +75,7 @@ function Item({ name, label, note }: { name: VoiceName; label: string; note: str
           </button>
         ))}
         <button className={`lab-cand lab-auto${pick === null ? ' is-on' : ''}`} onClick={() => choose(null)}>
-          おまかせ
+          セットに合わせる
         </button>
       </div>
     </div>
@@ -102,7 +102,7 @@ export function SoundLab() {
       </a>
       <h1 className="lab-title">サウンドテスト</h1>
       <p className="lab-sub">
-        数字は録音の候補です。押すと鳴り、そのまま採用されます（この端末に保存）。「おまかせ」は候補をランダムに鳴らします（既定）。
+        数字は録音の候補です。押すと鳴り、そのまま採用されます（この端末に保存）。「セットに合わせる」は設定の効果音セットの番号で鳴ります（既定）。同じ操作は必ず同じ音です。
       </p>
 
       <section className="lab-group">

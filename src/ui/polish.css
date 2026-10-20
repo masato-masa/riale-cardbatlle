@@ -1533,3 +1533,25 @@
     box-shadow: 0 0 0 3px #fff, 0 0 0 6px #4fd17a, 0 0 20px 6px rgb(79 209 122 / 0.85);
   }
 }
+
+/* 効果音の種類（A〜D） */
+.kit-pick {
+  display: flex;
+  gap: 6px;
+}
+
+.kit-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  border: 2px solid #5b4a2a;
+  background: #2a2216;
+  color: #e9d8a6;
+  font-weight: 800;
+}
+
+.kit-btn.is-on {
+  background: #f2c14e;
+  color: #3a2a08;
+  border-color: #fff3b0;
+}

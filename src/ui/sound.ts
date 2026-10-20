@@ -38,9 +38,9 @@ function play(name: PlayName, force = false, variant?: number): void {
     if (!buf) return;
     const src = g.ctx.createBufferSource();
     src.buffer = buf;
-    src.playbackRate.value = 1 + (Math.random() * 2 - 1) * 0.03;
+    src.playbackRate.value = 1;
     const amp = g.ctx.createGain();
-    amp.gain.value = dbToGain(trimDb) * (0.92 + Math.random() * 0.16);
+    amp.gain.value = dbToGain(trimDb);
     src.connect(amp);
     amp.connect(g.sfxBus);
     src.start(g.ctx.currentTime + 0.005);

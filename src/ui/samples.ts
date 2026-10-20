@@ -75,19 +75,32 @@ export function setPick(name: VoiceName, n: number | null): void {
   }
 }
 
-let last = new Map<VoiceName, number>();
+const KIT_KEY = 'riale-cardbatlle:sfx-kit';
 
-/** いま鳴らす録音。無ければ null。 */
+/** 効果音セット（1〜4）。音ごとの個別の選択が無いとき、全部の音をこの番号の録音でそろえる。 */
+export function getKit(): number {
+  try {
+    const v = Number(localStorage.getItem(KIT_KEY));
+    return v >= 1 && v <= 9 ? v : 1;
+  } catch {
+    return 1;
+  }
+}
+
+export function setKit(n: number): void {
+  try {
+    localStorage.setItem(KIT_KEY, String(n));
+  } catch {
+    // 保存できなくても、この場では聴ける
+  }
+}
+
+/** いま鳴らす録音。同じ操作は必ず同じ音（個別の選択 → セットの番号 → いちばん若い番号の順）。無ければ null。 */
 export function chooseBuffer(name: VoiceName, forceVariant?: number): AudioBuffer | null {
   const map = buffers.get(name);
   if (!map || map.size === 0) return null;
-  const pick = forceVariant ?? getPick(name);
-  if (pick !== null && map.has(pick)) return map.get(pick)!;
-  // 未選択: 候補をランダムに（直前と同じものは避ける）
-  const keys = [...map.keys()];
-  const prev = last.get(name);
-  const pool = keys.length > 1 ? keys.filter((k) => k !== prev) : keys;
-  const k = pool[Math.floor(Math.random() * pool.length)]!;
-  last.set(name, k);
-  return map.get(k)!;
+  for (const n of [forceVariant, getPick(name), getKit()]) {
+    if (n != null && map.has(n)) return map.get(n)!;
+  }
+  return map.get(Math.min(...map.keys()))!;
 }
