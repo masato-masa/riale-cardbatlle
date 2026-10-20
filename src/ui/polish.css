@@ -1877,3 +1877,9 @@
 .hand .pip-cd {
   right: -11cqw;
 }
+
+/* ホームのデッキ一覧: はみ出した台座が切れないよう余白と間をとる */
+.ts-deck-grid {
+  gap: 12px 12px;
+  padding: 6px 8px 4px;
+}
