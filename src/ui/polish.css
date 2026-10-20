@@ -1858,3 +1858,22 @@
   width: 32cqw;
   height: 32cqw;
 }
+
+/* 場: 隣のカードの台座と重ならないよう、カードの間をあける */
+.field {
+  width: 90%;
+  gap: 24px;
+}
+
+.field .pip-cd {
+  right: -11cqw;
+}
+
+.hand {
+  grid-template-columns: repeat(4, minmax(0, 70px));
+  gap: 22px;
+}
+
+.hand .pip-cd {
+  right: -11cqw;
+}
