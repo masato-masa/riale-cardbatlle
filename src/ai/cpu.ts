@@ -436,6 +436,19 @@ function summonCandidates(state: GameState, p: PlayerIndex, t: Tuning): Candidat
     // コインが余っているほど急いで出す、枠が空いているほど出す
     s += (me.coins - d.summon) * 0.05 + (FIELD_SLOTS - filled) * 0.25;
     if (me.coins >= COIN_MAX - 0.5) s += 1.5; // 上限で腐らせない
+    // 割り込み: 相手が溜め中の攻撃があり、ブロッカーを出せばそれが止まる（自分のカードが狙われているとき）
+    if (isBlocker(card) && foeBlockers >= 0 && myBlockers === 0) {
+      for (const x of state.pending) {
+        if (x.kind !== 'attack' || x.p === p) continue;
+        const att = findUnit(foe, x.uid)?.unit;
+        if (!att) continue;
+        s += (attackOf(foe, att) * 0.7 + 0.8) * t.skill;
+        const oi = ab.onInterrupt;
+        if (oi?.kind === 'strike') s += oi.amount * 0.3;
+        if (oi?.kind === 'stun') s += (oi.ms / 1000) * 0.15;
+        if (oi?.kind === 'coin') s += oi.amount * 0.4;
+      }
+    }
     if (isBlocker(card)) {
       s += myBlockers === 0 ? press * 3 * t.defend : -1.0;
       if (foeBlockers === 0 && foeAtk === 0) s -= 0.5;
