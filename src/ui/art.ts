@@ -28,3 +28,14 @@ export function cardArt(card: CardId, type: 'unit' | 'building' | 'spell'): stri
   if (own) return own;
   return byName.get(type === 'building' ? 'wall' : type === 'spell' ? 'quarry' : 'guard')!;
 }
+
+const fxFiles = import.meta.glob('../assets/art/{fx,ui}/*.webp', { eager: true, query: '?url', import: 'default' }) as Record<string, string>;
+
+/** 演出の素材（斬撃・爆発・毒・割り込みなど）を先に読み込む。初めて出る瞬間に絵が遅れて現れないようにする。 */
+export function preloadFx(): void {
+  for (const url of Object.values(fxFiles)) {
+    const img = new Image();
+    img.decoding = 'async';
+    img.src = url;
+  }
+}

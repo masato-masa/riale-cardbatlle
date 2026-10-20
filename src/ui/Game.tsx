@@ -37,7 +37,7 @@ import { awardMatch, CHEST_POINTS, type MatchReward } from '@/storage/collection
 import { addResult, isTutorialDone, setTutorialDone } from '@/storage/profile';
 import { COIN_MAX, DOUBLE_COIN_FROM_MS, FIELD_SLOTS, MATCH_MS, WINDUP_MS } from '@/game/rules';
 
-import { COIN_URL, FIELD_URL, HERO_FOE_URL, HERO_ME_URL } from './art';
+import { COIN_URL, FIELD_URL, HERO_FOE_URL, HERO_ME_URL, preloadFx } from './art';
 import { setBgmTension, startBgm, stopBgm } from './bgm';
 import { CardFace, type CardState } from './CardFace';
 import { RewardChest } from './RewardChest';
@@ -267,6 +267,8 @@ export function Game({ level, deck, onExit }: { level: CpuLevel; deck: CardId[];
     raf = requestAnimationFrame(frame);
     return () => cancelAnimationFrame(raf);
   }, [level, commit, seed]);
+
+  useEffect(() => preloadFx(), []);
 
   // ---- BGM ----
   useEffect(() => {
