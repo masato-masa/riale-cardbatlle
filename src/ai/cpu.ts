@@ -1,7 +1,7 @@
 // CPU。候補（召喚・攻撃・待つ）にスコアを付けて最大を選ぶ。
 // 人間らしく、一定の間隔をあけて考える。state は変更しない。
 
-import { CARDS, isBlocker, needsTarget, type CardId } from '../game/cards';
+import { CARDS, isBlocker, needsTarget, summonSide, type CardId } from '../game/cards';
 import {
   attackBlock,
   attackOf,
@@ -10,7 +10,9 @@ import {
   other,
   step,
   summonBlock,
+  summonSidePlayer,
   summonTargets,
+  maxHpOf,
   units,
   type Action,
   type GameState,
@@ -93,7 +95,16 @@ function worth(card: CardId, hp: number, atk: number, allies: number, barrier: b
   if (ab.unitBonus) v += ab.unitBonus * 0.35;
   if (ab.rally) v += ab.rally * (0.5 + allies * 0.5);
   if (ab.coinBoost) v += ab.coinBoost * 5;
-  if (ab.onDeath) v += ab.onDeath.amount * 0.3;
+  if (ab.onDeath?.kind === 'face') v += ab.onDeath.amount * 0.3;
+  if (ab.onDeath?.kind === 'buffAllies') v += (ab.onDeath.atk + ab.onDeath.hp) * 0.7;
+  if (ab.onDeath?.kind === 'poisonFoes') v += ab.onDeath.amount * 0.8;
+  // 追加の能力
+  if (ab.freeAim) v += 1.4;
+  if (ab.doubleStrike) v += atk * 0.9 * rate;
+  if (ab.lifesteal) v += 1.0;
+  if (ab.endure) v += 1.0;
+  if (ab.venom) v += ab.venom * 0.6;
+  if (ab.cannotAttack) v -= atk * 1.1 * rate; // 攻撃しない代わりに頑丈（スタッツに織り込み済み）
   // 建築物の能力（壊せば止まる）
   if (ab.pulse?.kind === 'token') v += 1.2;
   if (ab.pulse?.kind === 'snipe') v += 1.6;
@@ -114,7 +125,7 @@ function cardWorth(card: CardId, allies: number): number {
 /** 倒すと遺言で受けるダメージ（その分だけ損）。 */
 function deathCost(u: Unit): number {
   const od = CARDS[u.card].ab.onDeath;
-  return od ? od.amount * 0.45 : 0;
+  return od?.kind === 'face' ? od.amount * 0.45 : 0;
 }
 
 /** 手札に高いカード（コスト 5 以上）があって、あと少しで払えるとき、ほかの操作に使うコインへの罰。 */
@@ -155,6 +166,32 @@ function strikeValue(foe: PlayerState, u: Unit, amount: number, t: Tuning): numb
 /** 破壊で相手のユニット u を取り除く損得（結界・軽減は関係なく、必ず倒れる）。大物ほど高い。 */
 function destroyValue(foe: PlayerState, u: Unit, t: Tuning): number {
   return (1.8 + unitWorth(foe, u) * 0.9 * t.trade - deathCost(u)) * (0.5 + 0.5 * t.skill);
+}
+
+/** 登場時に選んだユニット u への効果の損得（敵・味方）。 */
+function pickValue(state: GameState, me: PlayerState, foe: PlayerState, u: Unit, os: NonNullable<(typeof CARDS)[CardId]['ab']['onSummon']>, t: Tuning): number {
+  switch (os.kind) {
+    case 'strike':
+      return strikeValue(foe, u, os.amount, t);
+    case 'stun':
+      return stunValue(state, foe, u, os.ms, t);
+    case 'destroy':
+      return destroyValue(foe, u, t);
+    case 'poison':
+      return (os.amount * 0.9 + attackOf(foe, u) * 0.08) * t.skill;
+    case 'seal': {
+      const has = Object.keys(CARDS[u.card].ab).length > 0;
+      return ((has ? 1.4 : 0) + (u.barrier ? 0.7 : 0) + (isBlocker(u.card) ? 0.5 : 0) + unitWorth(foe, u) * 0.12) * t.skill;
+    }
+    case 'disarm':
+      return (attackOf(foe, u) * 0.5 * Math.min(1, os.ms / 8000) + (isBlocker(u.card) ? 0 : 0.2)) * t.skill;
+    case 'healAlly':
+      return Math.min(os.amount, maxHpOf(u) - u.hp) * 0.5 * t.skill - 0.1;
+    case 'buffAlly':
+      return ((os.atk * 1.0 + os.hp * 0.6) * (0.6 + attackOf(me, u) * 0.12)) * t.skill;
+    default:
+      return 0;
+  }
 }
 
 /** 足止で相手のカード u を止める損得。攻撃待ちが明けそうな強いカードほど高い。 */
@@ -237,6 +274,31 @@ function spellCandidates(state: GameState, p: PlayerIndex, handIndex: number, ca
     // 相手が 2 枚以上倒れるか、大きく削れるときだけ
     if (kills < 2 && total < 6) v -= 3;
     v *= 0.4 + 0.6 * t.skill;
+  } else if (sp.kind === 'healAll') {
+    // 味方の減った HP ぶんだけ価値がある
+    for (const u of units(me)) if (CARDS[u.card].type === 'unit') v += Math.min(sp.amount, maxHpOf(u) - u.hp) * 0.5;
+    if (v < 1.5) v -= 3;
+    v *= t.skill;
+  } else if (sp.kind === 'buffAll') {
+    const mine = units(me).filter((u) => CARDS[u.card].type === 'unit');
+    v += mine.length * (sp.atk + sp.hp) * 0.9 - 1.5;
+    v *= t.skill;
+  } else if (sp.kind === 'poisonAll') {
+    let n = 0;
+    for (const u of foeFighters) {
+      n++;
+      v += sp.amount * 0.7 + attackOf(foe, u) * 0.1;
+    }
+    if (n < 2) v -= 2.5;
+    v *= t.skill;
+  } else if (sp.kind === 'sealAll') {
+    for (const u of foeFighters) {
+      const ab = CARDS[u.card].ab;
+      const has = Object.keys(ab).length > 0 ? 1 : 0;
+      v += has * 1.6 + (u.barrier ? 0.8 : 0);
+    }
+    if (v < 3) v -= 3;
+    v *= t.skill;
   } else if (sp.kind === 'freeze') {
     // 攻撃が明けそうなユニットが多いほど効く
     let soon = 0;
@@ -285,7 +347,7 @@ function summonCandidates(state: GameState, p: PlayerIndex, t: Tuning): Candidat
       return;
     }
     // 登場時に敵を選ぶカードは、選べる敵がいるなら対象つきでないと置けない（配置失敗）
-    const choices = needsTarget(card) ? summonTargets(foe, card) : [];
+    const choices = needsTarget(card) ? summonTargets(summonSidePlayer(state, p, card), card) : [];
     if (slot < 0 || summonBlock(state, p, handIndex, slot, choices[0]?.uid)) return;
     let s = cardWorth(card, filled) * 0.55 + d.summon * 0.15;
     // コインが余っているほど急いで出す、枠が空いているほど出す
@@ -337,16 +399,20 @@ function summonCandidates(state: GameState, p: PlayerIndex, t: Tuning): Candidat
       const myLoss = units(me).filter((u) => CARDS[u.card].type === 'unit').reduce((n, u) => n + unitWorth(me, u), 0);
       s += (foeLoss * 0.85 - myLoss) * 0.5 * t.skill - 1.0;
     }
-    if (needsTarget(card) && (os?.kind === 'strike' || os?.kind === 'stun' || os?.kind === 'destroy')) {
+    // 全員に効く登場時の強化: 味方が多いほど価値が高い
+    if (os?.kind === 'buffAllies') {
+      const mine = units(me).filter((u) => CARDS[u.card].type === 'unit');
+      s += mine.length * (os.atk + os.hp) * 0.8 * t.skill - 0.3;
+    }
+    const side = needsTarget(card) ? summonSide(card) : null;
+    if (side) {
       if (choices.length === 0) {
-        // 的が無い。出しても能力が空振りするので、的が来るまで少し待つ
-        out.push({ action: { type: 'summon', p, handIndex, slot }, score: s - 1.2 * t.skill, lethal: false });
+        // 的が無い。敵を選ぶ効果は空振りするので、的が来るまで少し待つ（味方を選ぶ効果は、そのまま置く）
+        out.push({ action: { type: 'summon', p, handIndex, slot }, score: s - (side === 'foe' ? 1.2 : 0.3) * t.skill, lethal: false });
         return;
       }
       for (const u of choices) {
-        const v =
-          os.kind === 'strike' ? strikeValue(foe, u, os.amount, t) : os.kind === 'stun' ? stunValue(state, foe, u, os.ms, t) : destroyValue(foe, u, t);
-        out.push({ action: { type: 'summon', p, handIndex, slot, target: u.uid }, score: s + v, lethal: false });
+        out.push({ action: { type: 'summon', p, handIndex, slot, target: u.uid }, score: s + pickValue(state, me, foe, u, os!, t), lethal: false });
       }
       return;
     }
@@ -412,7 +478,7 @@ function attackCandidates(state: GameState, p: PlayerIndex, t: Tuning): Candidat
           if (better > myWorth) s += Math.min(1.5, (better - myWorth) * 0.4) * t.save;
         }
         if (dies) {
-          if (ab.onDeath) s += ab.onDeath.amount * 0.3; // 遺言で一矢報いる
+          if (ab.onDeath?.kind === 'face') s += ab.onDeath.amount * 0.3; // 遺言で一矢報いる
           if (myWall) s -= 1.0 * press * t.defend + 0.5; // 壁が崩れる
         }
         // ステルスは自分で攻撃すると解ける。カード相手に使うのはもったいない

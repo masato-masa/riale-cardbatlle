@@ -1,4 +1,4 @@
-import { abilityLines, CARDS, TYPE_NAME, usageNote, WALL_TEXT, type CardId } from '@/game/cards';
+import { abilityLines, CARDS, STATUS_NOTES, TYPE_NAME, usageNote, WALL_TEXT, type CardId } from '@/game/cards';
 import { PLAYER_ATK, PLAYER_HP } from '@/game/rules';
 
 import { CardFace } from './CardFace';
@@ -67,6 +67,11 @@ export function CardDetail({ card, hp }: { card: CardId; hp?: number }) {
       ))}
       {abilityLines(card).length === 0 ? <p className="card-detail-text">能力なし</p> : null}
       {usageNote(card) ? <p className="card-detail-note">{usageNote(card)}</p> : null}
+      {STATUS_NOTES.filter((n, i) => abilityLines(card).join('').includes(['毒', '封印', '攻撃不能'][i]!)).map((n) => (
+        <p key={n} className="card-detail-note">
+          {n}
+        </p>
+      ))}
       {def.flavor ? <p className="card-flavor">「{def.flavor}」</p> : null}
     </div>
   );

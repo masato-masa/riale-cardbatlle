@@ -1488,3 +1488,48 @@
   letter-spacing: 0.05em;
   color: var(--gold-1);
 }
+
+/* 状態アイコンの色（不屈・封印・毒・攻撃不能） */
+.state-endure {
+  background: #d98a1f;
+}
+
+.state-seal {
+  background: #8a4bd6;
+}
+
+.state-poison {
+  background: #4aa83f;
+}
+
+.state-disarm {
+  background: #b34a4a;
+}
+
+.pip-hp.is-up {
+  box-shadow: 0 0 0 2px #7ce38c, 0 0 8px #7ce38c;
+}
+
+.popup-poison {
+  color: #d9a8ff;
+  font-size: 22px;
+  -webkit-text-stroke: 4px #3a1a60;
+}
+
+.popup-buff {
+  color: #fff3b0;
+  font-size: 20px;
+  -webkit-text-stroke: 4px #6b3f00;
+}
+
+/* 味方を選ぶ（回復・強化）: 緑に脈打つ */
+.unit.is-pick-ally {
+  cursor: pointer;
+  animation: pick-pulse-ally 0.9s ease-in-out infinite;
+}
+
+@keyframes pick-pulse-ally {
+  50% {
+    box-shadow: 0 0 0 3px #fff, 0 0 0 6px #4fd17a, 0 0 20px 6px rgb(79 209 122 / 0.85);
+  }
+}

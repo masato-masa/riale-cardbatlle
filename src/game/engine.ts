@@ -1,7 +1,7 @@
 // ゲームの進行。純粋関数（同じ状態と操作から必ず同じ結果）。
 // 時間は tick で進め、召喚と攻撃は好きな時刻に差し込む。
 
-import { CARDS, isBlocker, needsTarget, requiresTarget, type CardId } from './cards';
+import { CARDS, needsTarget, requiresTarget, summonSide, type Abilities, type CardId } from './cards';
 import { makeRng, shuffle } from './rng';
 import {
   COIN_MAX,
@@ -34,6 +34,20 @@ export interface Unit {
   /** ターゲット。クールタイムが明けるたびにこの対象を攻撃する（攻撃しても外れない）。
    *  狙えなくなったら（倒れた・ブロッカーが出た・壁ができた）外れる。 */
   reserved: Target | null;
+  /** 増えた最大 HP（バフ）。無ければカードの HP。 */
+  maxHp?: number;
+  /** 増えた攻撃力（バフ）。 */
+  atkBuff?: number;
+  /** 毒: 攻撃するたびに、この数のダメージを受ける。 */
+  poison?: number;
+  /** 封印: 能力がすべて無効。 */
+  sealed?: true;
+  /** この時刻（ms）まで攻撃不能。 */
+  disarmUntil?: number;
+  /** 不屈がまだ残っているか。 */
+  endure?: true;
+  /** 連撃の 2 回目を待っているか（1 回目のあと、クールタイムなしでもう 1 回）。 */
+  second?: true;
 }
 
 export interface PlayerState {
@@ -53,7 +67,7 @@ export type Target = { kind: 'player' } | { kind: 'unit'; uid: number };
  *  attack: ユニットの攻撃。spell: 呪文（target は単体のときだけ）。ability: 召喚時の狙撃・足止（uid は召喚したカード）。 */
 export type Pending =
   /** readyBefore/readyAfter: 選ぶ前と選んだ直後のクールタイム明け時刻。中断したら、選ぶ前に戻す（やり直しにしない）。 */
-  | { id: number; kind: 'attack'; p: PlayerIndex; uid: number; target: Target; at: number; readyBefore: number; readyAfter: number }
+  | { id: number; kind: 'attack'; p: PlayerIndex; uid: number; target: Target; at: number; readyBefore: number; readyAfter: number; secondBefore: boolean }
   | { id: number; kind: 'spell'; p: PlayerIndex; card: CardId; target: number | null; at: number }
   | { id: number; kind: 'ability'; p: PlayerIndex; uid: number; card: CardId; target: number; at: number };
 
@@ -77,6 +91,16 @@ export type GameEvent =
   | { id: number; kind: 'damage'; p: PlayerIndex; target: Target; amount: number; guard: 'barrier' | 'armor' | null }
   | { id: number; kind: 'heal'; p: PlayerIndex; amount: number }
   | { id: number; kind: 'stun'; p: PlayerIndex; uid: number }
+  /** 味方ユニットの HP が回復した。 */
+  | { id: number; kind: 'healUnit'; p: PlayerIndex; uid: number; amount: number }
+  /** ユニットの攻撃力・HP が上がった。 */
+  | { id: number; kind: 'buff'; p: PlayerIndex; uid: number; atk: number; hp: number }
+  /** ユニットに毒が付いた（amount は重なったあとの毒の数）。 */
+  | { id: number; kind: 'poison'; p: PlayerIndex; uid: number; amount: number }
+  /** ユニットが封印された。 */
+  | { id: number; kind: 'seal'; p: PlayerIndex; uid: number }
+  /** ユニットが攻撃不能になった。 */
+  | { id: number; kind: 'disarm'; p: PlayerIndex; uid: number }
   /** 召喚時にクールタイムを減らした（ms 減った）。 */
   | { id: number; kind: 'cdcut'; p: PlayerIndex; uid: number; ms: number }
   /** 召喚時にほかのユニットをすべて破壊した（uid は召喚したカード）。 */
@@ -160,6 +184,26 @@ export function units(player: PlayerState): Unit[] {
   return player.field.filter((u): u is Unit => !!u);
 }
 
+/** そのユニットの、いま効いている能力（封印されていれば何も無い）。 */
+export function abOf(u: Unit): Abilities {
+  return u.sealed ? {} : CARDS[u.card].ab;
+}
+
+/** ブロッカーか（封印されたブロッカーは数えない）。 */
+export function isBlockerUnit(u: Unit): boolean {
+  return !!abOf(u).blocker;
+}
+
+/** 最大 HP（バフを含む）。 */
+export function maxHpOf(u: Unit): number {
+  return u.maxHp ?? CARDS[u.card].hp;
+}
+
+/** 攻撃できない状態か（能力で攻撃できない・攻撃不能の効果中）。 */
+export function isDisarmed(u: Unit, time: number): boolean {
+  return !!abOf(u).cannotAttack || time < (u.disarmUntil ?? 0);
+}
+
 /** 相手が選んで狙えるカード（ステルス中は除く）。 */
 function pickable(player: PlayerState, uid: number): Unit | null {
   const f = findUnit(player, uid);
@@ -175,14 +219,14 @@ export function isWalled(player: PlayerState): boolean {
 export function attackOf(player: PlayerState, unit: Unit): number {
   if (CARDS[unit.card].type !== 'unit') return 0;
   let rally = 0;
-  for (const u of player.field) if (u && u.uid !== unit.uid) rally += CARDS[u.card].ab.rally ?? 0;
-  return CARDS[unit.card].atk + rally;
+  for (const u of player.field) if (u && u.uid !== unit.uid) rally += abOf(u).rally ?? 0;
+  return CARDS[unit.card].atk + rally + (unit.atkBuff ?? 0);
 }
 
 /** コインのたまる速さの倍率（増収を含む）。 */
 export function coinBoostOf(player: PlayerState): number {
   let boost = 1;
-  for (const u of player.field) if (u) boost += CARDS[u.card].ab.coinBoost ?? 0;
+  for (const u of player.field) if (u) boost += abOf(u).coinBoost ?? 0;
   return boost;
 }
 
@@ -191,11 +235,24 @@ export function legalTargets(state: GameState, p: PlayerIndex): Target[] {
   return targetsAgainst(state.players[other(p)]);
 }
 
+/** uid のユニットが、いま攻撃対象に選べる相手。狙い撃ちは、ブロッカー・壁を無視して好きな相手を選べる。 */
+export function legalTargetsFor(state: GameState, p: PlayerIndex, uid: number): Target[] {
+  const foe = state.players[other(p)];
+  const me = findUnit(state.players[p], uid)?.unit;
+  if (me && abOf(me).freeAim) return freeTargets(foe);
+  return targetsAgainst(foe);
+}
+
+/** 狙い撃ち用: ステルス中以外の敵ユニットと、プレイヤー。 */
+function freeTargets(foe: PlayerState): Target[] {
+  return [{ kind: 'player' }, ...units(foe).filter((u) => !u.stealth).map((u) => ({ kind: 'unit' as const, uid: u.uid }))];
+}
+
 /** 相手の盤面から、いま狙える対象。 */
 function targetsAgainst(foe: PlayerState): Target[] {
   // ステルス中のカードは存在しない扱い（選べない）
   const all = units(foe).filter((u) => !u.stealth);
-  const blockers = all.filter((u) => isBlocker(u.card));
+  const blockers = all.filter((u) => isBlockerUnit(u));
   if (blockers.length > 0) return blockers.map((u) => ({ kind: 'unit', uid: u.uid }));
   const list: Target[] = all.map((u) => ({ kind: 'unit' as const, uid: u.uid }));
   if (!isWalled(foe)) list.unshift({ kind: 'player' });
@@ -207,28 +264,35 @@ function sameTarget(a: Target, b: Target): boolean {
 }
 
 /** 相手の盤面に対して、その対象をいま狙えるか。 */
-function legalAgainst(foe: PlayerState, target: Target): boolean {
-  return targetsAgainst(foe).some((t) => sameTarget(t, target));
+function legalAgainst(foe: PlayerState, target: Target, attacker?: Unit): boolean {
+  const list = attacker && abOf(attacker).freeAim ? freeTargets(foe) : targetsAgainst(foe);
+  return list.some((t) => sameTarget(t, target));
 }
 
-export function isLegalTarget(state: GameState, p: PlayerIndex, target: Target): boolean {
-  return legalTargets(state, p).some(
-    (t) => t.kind === target.kind && (t.kind === 'player' || (target.kind === 'unit' && t.uid === target.uid)),
-  );
+export function isLegalTarget(state: GameState, p: PlayerIndex, target: Target, uid?: number): boolean {
+  const list = uid === undefined ? legalTargets(state, p) : legalTargetsFor(state, p, uid);
+  return list.some((t) => t.kind === target.kind && (t.kind === 'player' || (target.kind === 'unit' && t.uid === target.uid)));
 }
 
 /** そのカードのクールタイム（カードごとの値。祈りで縮む。最短で 40%）。 */
 export function cooldownOf(player: PlayerState, card: CardId): number {
   let cut = 0;
-  for (const u of player.field) if (u) cut += CARDS[u.card].ab.cooldownCut ?? 0;
+  for (const u of player.field) if (u) cut += abOf(u).cooldownCut ?? 0;
   return Math.round(CARDS[card].cd * COOLDOWN_SCALE * Math.max(0.4, 1 - cut));
 }
 
 /** 登場時に敵を選ぶカード（狙撃・足止・破壊）で、いま選べる敵。足止・破壊はユニットだけ。 */
-export function summonTargets(foe: PlayerState, card: CardId): Unit[] {
+export function summonTargets(side: PlayerState, card: CardId): Unit[] {
   const kind = CARDS[card].ab.onSummon?.kind;
-  const all = units(foe).filter((u) => !u.stealth);
-  return kind === 'stun' || kind === 'destroy' ? all.filter((u) => CARDS[u.card].type === 'unit') : all;
+  if (summonSide(card) === 'ally') return units(side).filter((u) => CARDS[u.card].type === 'unit');
+  const all = units(side).filter((u) => !u.stealth);
+  // 足止・破壊・毒・封印・攻撃不能は、敵ユニットだけ。狙撃は建築物も選べる
+  return kind === 'strike' ? all : all.filter((u) => CARDS[u.card].type === 'unit');
+}
+
+/** 登場時に選べる相手のいる側のプレイヤー（敵 or 自分）。 */
+export function summonSidePlayer(state: GameState, p: PlayerIndex, card: CardId): PlayerState {
+  return summonSide(card) === 'ally' ? state.players[p] : state.players[other(p)];
 }
 
 export type SummonBlock = 'coins' | 'slot' | 'target' | 'over' | null;
@@ -252,13 +316,13 @@ export function summonBlock(
   if (slot < 0 || slot >= FIELD_SLOTS) return 'slot';
   // 登場時に敵を選ぶカード: 選べる敵がいるのに選ばなければ、置けない（配置失敗）
   if (needsTarget(card)) {
-    const choices = summonTargets(state.players[other(p)], card);
+    const choices = summonTargets(summonSidePlayer(state, p, card), card);
     if (choices.length > 0 && (target === undefined || !choices.some((u) => u.uid === target))) return 'target';
   }
   return null;
 }
 
-export type AttackBlock = 'building' | 'cooldown' | 'target' | 'over' | null;
+export type AttackBlock = 'building' | 'disarmed' | 'cooldown' | 'target' | 'over' | null;
 
 export function attackBlock(state: GameState, p: PlayerIndex, uid: number, target?: Target): AttackBlock {
   if (state.result) return 'over';
@@ -266,9 +330,10 @@ export function attackBlock(state: GameState, p: PlayerIndex, uid: number, targe
   const found = findUnit(pl, uid);
   if (!found) return 'over';
   if (CARDS[found.unit.card].type !== 'unit') return 'building';
+  if (isDisarmed(found.unit, state.time)) return 'disarmed';
   if (state.time < found.unit.readyAt) return 'cooldown';
   if (state.pending.some((x) => x.kind === 'attack' && x.uid === uid)) return 'cooldown';
-  if (target && !isLegalTarget(state, p, target)) return 'target';
+  if (target && !isLegalTarget(state, p, target, uid)) return 'target';
   return null;
 }
 
@@ -299,26 +364,81 @@ function draftOf(state: GameState): Draft {
   };
 }
 
-/** カードにダメージを与える（結界・鉄壁を通す）。 */
-function hurtUnit(d: Draft, p: PlayerIndex, unit: Unit, amount: number): void {
-  if (amount <= 0) return;
+/** カードにダメージを与える（結界・鉄壁・不屈を通す）。実際に減った HP を返す。 */
+function hurtUnit(d: Draft, p: PlayerIndex, unit: Unit, amount: number): number {
+  if (amount <= 0) return 0;
   if (unit.barrier) {
     unit.barrier = false;
     d.events.push({ kind: 'damage', p, target: { kind: 'unit', uid: unit.uid }, amount: 0, guard: 'barrier' });
-    return;
+    return 0;
   }
-  const armor = CARDS[unit.card].ab.armor ?? 0;
-  const dealt = Math.max(0, amount - armor);
+  const armor = abOf(unit).armor ?? 0;
+  let dealt = Math.max(0, amount - armor);
+  // 不屈: 最初に倒されるとき、HP 1 で耐える
+  if (unit.endure && unit.hp - dealt <= 0) {
+    dealt = Math.max(0, unit.hp - 1);
+    unit.endure = undefined;
+  }
   unit.hp -= dealt;
   d.events.push({ kind: 'damage', p, target: { kind: 'unit', uid: unit.uid }, amount: dealt, guard: armor > 0 ? 'armor' : null });
+  return dealt;
 }
 
-function hurtPlayer(d: Draft, p: PlayerIndex, amount: number): void {
-  if (amount <= 0) return;
+function hurtPlayer(d: Draft, p: PlayerIndex, amount: number): number {
+  if (amount <= 0) return 0;
   const pl = d.players[p];
   const dealt = Math.min(pl.hp, amount);
   pl.hp -= dealt;
   d.events.push({ kind: 'damage', p, target: { kind: 'player' }, amount: dealt, guard: null });
+  return dealt;
+}
+
+function healPlayer(d: Draft, p: PlayerIndex, amount: number): void {
+  const pl = d.players[p];
+  const healed = Math.min(PLAYER_HP - pl.hp, amount);
+  if (healed > 0) {
+    pl.hp += healed;
+    d.events.push({ kind: 'heal', p, amount: healed });
+  }
+}
+
+function healUnit(d: Draft, p: PlayerIndex, unit: Unit, amount: number): void {
+  const healed = Math.min(maxHpOf(unit) - unit.hp, amount);
+  if (healed > 0) {
+    unit.hp += healed;
+    d.events.push({ kind: 'healUnit', p, uid: unit.uid, amount: healed });
+  }
+}
+
+function buffUnit(d: Draft, p: PlayerIndex, unit: Unit, atk: number, hp: number): void {
+  if (atk <= 0 && hp <= 0) return;
+  unit.atkBuff = (unit.atkBuff ?? 0) + atk;
+  if (hp > 0) {
+    unit.maxHp = maxHpOf(unit) + hp;
+    unit.hp += hp;
+  }
+  d.events.push({ kind: 'buff', p, uid: unit.uid, atk, hp });
+}
+
+function poisonUnit(d: Draft, p: PlayerIndex, unit: Unit, amount: number): void {
+  if (amount <= 0) return;
+  unit.poison = (unit.poison ?? 0) + amount;
+  d.events.push({ kind: 'poison', p, uid: unit.uid, amount: unit.poison });
+}
+
+function sealUnit(d: Draft, p: PlayerIndex, unit: Unit): void {
+  if (unit.sealed) return;
+  unit.sealed = true;
+  unit.barrier = false;
+  unit.stealth = false;
+  unit.endure = undefined;
+  unit.pulseAt = null;
+  d.events.push({ kind: 'seal', p, uid: unit.uid });
+}
+
+function disarmUnit(d: Draft, p: PlayerIndex, unit: Unit, ms: number): void {
+  unit.disarmUntil = Math.max(unit.disarmUntil ?? 0, d.time) + ms;
+  d.events.push({ kind: 'disarm', p, uid: unit.uid });
 }
 
 /** HP が 0 になったカードを場から除き、遺言を起こす。遺言で倒れるカードは無いので 1 回で済む。 */
@@ -329,8 +449,10 @@ function sweepDead(d: Draft): void {
       if (!u || u.hp > 0) return;
       pl.field[slot] = null;
       d.events.push({ kind: 'death', p, uid: u.uid, card: u.card, slot });
-      const od = CARDS[u.card].ab.onDeath;
+      const od = abOf(u).onDeath;
       if (od?.kind === 'face') hurtPlayer(d, other(p), od.amount);
+      if (od?.kind === 'buffAllies') for (const v of units(pl)) if (v.hp > 0 && CARDS[v.card].type === 'unit') buffUnit(d, p, v, od.atk, od.hp);
+      if (od?.kind === 'poisonFoes') for (const v of units(d.players[other(p)])) if (v.hp > 0 && CARDS[v.card].type === 'unit') poisonUnit(d, other(p), v, od.amount);
     });
   }
 }
@@ -345,6 +467,7 @@ function place(d: Draft, p: PlayerIndex, card: CardId, slot: number, token: bool
     readyAt: ab.haste ? d.time : d.time + Math.round(cooldownOf(d.players[p], card) / 2),
     barrier: !!ab.barrier,
     stealth: !!ab.stealth,
+    endure: ab.endure ? true : undefined,
     pulseAt: ab.pulse ? d.time + ab.pulse.everyMs : null,
     reserved: null,
   };
@@ -416,26 +539,48 @@ function pulses(state: GameState): GameState {
   for (const p of [0, 1] as const) {
     const pl = d.players[p];
     for (const b of [...pl.field]) {
-      const pulse = b ? CARDS[b.card].ab.pulse : undefined;
+      const pulse = b ? abOf(b).pulse : undefined;
       if (!b || !pulse || b.pulseAt === null) continue;
       while (b.pulseAt !== null && b.pulseAt <= d.time && b.hp > 0) {
         b.pulseAt += pulse.everyMs;
         d.events.push({ kind: 'pulse', p, uid: b.uid });
+        const q = other(p);
+        const mineUnits = units(pl).filter((u) => u.hp > 0 && CARDS[u.card].type === 'unit');
+        const foeUnits = units(d.players[q]).filter((u) => u.hp > 0 && CARDS[u.card].type === 'unit' && !u.stealth);
         if (pulse.kind === 'token') {
           const empty = pl.field.findIndex((u) => !u);
           if (empty >= 0) place(d, p, 'apprentice', empty, true);
-        } else {
-          const q = other(p);
+        } else if (pulse.kind === 'snipe') {
           const weakest = units(d.players[q])
             .filter((u) => u.hp > 0 && !u.stealth)
             .reduce<Unit | null>((m, u) => (!m || u.hp < m.hp ? u : m), null);
           if (weakest) hurtUnit(d, q, weakest, pulse.amount);
+        } else if (pulse.kind === 'heal') {
+          const hurt = mineUnits.filter((u) => u.hp < maxHpOf(u)).reduce<Unit | null>((m, u) => (!m || maxHpOf(u) - u.hp > maxHpOf(m) - m.hp ? u : m), null);
+          if (hurt) healUnit(d, p, hurt, pulse.amount);
+        } else if (pulse.kind === 'poison') {
+          const top = foeUnits.reduce<Unit | null>((m, u) => (!m || attackOf(d.players[q], u) > attackOf(d.players[q], m) ? u : m), null);
+          if (top) poisonUnit(d, q, top, pulse.amount);
+        } else {
+          const low = mineUnits.reduce<Unit | null>((m, u) => (!m || attackOf(pl, u) < attackOf(pl, m) ? u : m), null);
+          if (low) buffUnit(d, p, low, pulse.atk, 0);
         }
       }
     }
   }
   sweepDead(d);
   return finish(state, d);
+}
+
+/** 攻撃を選んだ（始めた）ときのクールタイム。連撃は、1 回目はクールタイムなしで、2 回目に全体のクールタイム。 */
+function startCooldown(d: Draft, p: PlayerIndex, u: Unit): void {
+  if (abOf(u).doubleStrike && !u.second) {
+    u.second = true;
+    u.readyAt = d.time;
+  } else {
+    u.second = undefined;
+    u.readyAt = d.time + cooldownOf(d.players[p], u.card);
+  }
 }
 
 /** 攻撃の予約を進める。狙えなくなった予約は消し、クールタイムが明けた予約は攻撃（溜め）に変える。 */
@@ -447,18 +592,19 @@ function runReservations(state: GameState): GameState {
     const foe = d.players[other(p)];
     for (const u of me.field) {
       if (!u?.reserved) continue;
-      if (!legalAgainst(foe, u.reserved)) {
+      if (!legalAgainst(foe, u.reserved, u)) {
         u.reserved = null;
         d.events.push({ kind: 'unreserve', p, uid: u.uid });
         changed = true;
         continue;
       }
-      if (d.time < u.readyAt || d.pending.some((x) => x.kind === 'attack' && x.uid === u.uid)) continue;
+      if (d.time < u.readyAt || isDisarmed(u, d.time) || d.pending.some((x) => x.kind === 'attack' && x.uid === u.uid)) continue;
       const target = u.reserved;
       const readyBefore = u.readyAt;
-      u.readyAt = d.time + cooldownOf(me, u.card);
+      const secondBefore = !!u.second;
+      startCooldown(d, p, u);
       u.stealth = false;
-      windup(d, { id: d.nextUid++, kind: 'attack', p, uid: u.uid, target, at: d.time + WINDUP_MS, readyBefore, readyAfter: u.readyAt });
+      windup(d, { id: d.nextUid++, kind: 'attack', p, uid: u.uid, target, at: d.time + WINDUP_MS, readyBefore, readyAfter: u.readyAt, secondBefore });
       changed = true;
     }
   }
@@ -473,7 +619,7 @@ function reserve(state: GameState, p: PlayerIndex, uid: number, target: Target |
   if (target === null) {
     if (!found.unit.reserved) return state;
   } else {
-    if (!isLegalTarget(state, p, target)) return state;
+    if (!isLegalTarget(state, p, target, uid)) return state;
     const busy = state.time < found.unit.readyAt || state.pending.some((x) => x.kind === 'attack' && x.uid === uid);
     if (!busy) return state;
   }
@@ -524,6 +670,14 @@ function applySpell(d: Draft, p: PlayerIndex, card: CardId, target: number | nul
       u.readyAt = Math.max(u.readyAt, d.time) + effect.ms;
       d.events.push({ kind: 'stun', p: q, uid: u.uid });
     }
+  } else if (effect.kind === 'healAll') {
+    for (const u of units(pl)) if (CARDS[u.card].type === 'unit') healUnit(d, p, u, effect.amount);
+  } else if (effect.kind === 'buffAll') {
+    for (const u of units(pl)) if (CARDS[u.card].type === 'unit') buffUnit(d, p, u, effect.atk, effect.hp);
+  } else if (effect.kind === 'poisonAll') {
+    for (const u of units(foe)) if (CARDS[u.card].type === 'unit') poisonUnit(d, q, u, effect.amount);
+  } else if (effect.kind === 'sealAll') {
+    for (const u of units(foe)) sealUnit(d, q, u);
   } else {
     for (const u of units(pl)) {
       if (CARDS[u.card].type !== 'unit' || u.readyAt <= d.time) continue;
@@ -543,39 +697,57 @@ function applyAttack(d: Draft, p: PlayerIndex, uid: number, target: Target): boo
   if (!unit) return false;
   const hit = target.kind === 'unit' ? findUnit(foe, target.uid)?.unit : undefined;
   if (target.kind === 'unit' && !hit) return false;
-  if (!legalAgainst(foe, target)) return false;
-  const ab = CARDS[unit.card].ab;
+  if (!legalAgainst(foe, target, unit)) return false;
+  const ab = abOf(unit);
   const atk = attackOf(me, unit);
   d.events.push({ kind: 'attack', p, uid, target });
+  let dealtTotal = 0;
   if (!hit) {
-    hurtPlayer(d, q, atk + (ab.faceBonus ?? 0));
+    dealtTotal += hurtPlayer(d, q, atk + (ab.faceBonus ?? 0));
     // プレイヤーも反撃する（攻撃力 PLAYER_ATK）。遠隔は受けない
     if (!ab.ranged) hurtUnit(d, p, unit, PLAYER_ATK);
   } else {
     // 反撃は殴られる前の値で決まる（同時にぶつかる）。討伐は攻撃時だけで、反撃には乗らない
     const back = attackOf(foe, hit);
-    hurtUnit(d, q, hit, atk + (ab.unitBonus ?? 0));
-    if (ab.splash) for (const v of units(foe)) if (v.uid !== hit.uid) hurtUnit(d, q, v, ab.splash);
+    dealtTotal += hurtUnit(d, q, hit, atk + (ab.unitBonus ?? 0));
+    if (ab.splash) for (const v of units(foe)) if (v.uid !== hit.uid) dealtTotal += hurtUnit(d, q, v, ab.splash);
     if (!ab.ranged) hurtUnit(d, p, unit, back);
+    // 毒の牙: 攻撃した相手に毒を与える
+    if (ab.venom && hit.hp > 0) poisonUnit(d, q, hit, ab.venom);
+  }
+  // 吸血: 与えたダメージぶん、自分のプレイヤーが回復
+  if (ab.lifesteal && dealtTotal > 0) healPlayer(d, p, dealtTotal);
+  // 毒: 攻撃するたびに、毒の数だけダメージを受ける（結界・軽減は通らない）
+  if (unit.poison && unit.hp > 0) {
+    const dmg = Math.min(unit.hp, unit.poison);
+    unit.hp -= dmg;
+    d.events.push({ kind: 'damage', p, target: { kind: 'unit', uid: unit.uid }, amount: dmg, guard: null });
   }
   return true;
 }
 
-/** 召喚時の狙撃・足止の解決（溜めのあと）。召喚したカードか対象が消えていたら false（中断）。 */
+/** 召喚時に選んだ相手への効果の解決（溜めのあと）。召喚したカードか対象が消えていたら false（中断）。 */
 function applyAbility(d: Draft, p: PlayerIndex, uid: number, card: CardId, target: number): boolean {
   const q = other(p);
   if (!findUnit(d.players[p], uid)) return false;
-  const hit = pickable(d.players[q], target);
-  if (!hit) return false;
   const os = CARDS[card].ab.onSummon;
+  const ally = summonSide(card) === 'ally';
+  const side = ally ? p : q;
+  const hit = ally ? findUnit(d.players[p], target)?.unit : pickable(d.players[q], target);
+  if (!hit) return false;
   d.events.push({ kind: 'ability', p, uid, target });
-  if (os?.kind === 'strike') hurtUnit(d, q, hit, os.amount);
+  if (os?.kind === 'strike') hurtUnit(d, side, hit, os.amount);
   if (os?.kind === 'stun') {
     hit.readyAt = Math.max(hit.readyAt, d.time) + os.ms;
     d.events.push({ kind: 'stun', p: q, uid: hit.uid });
   }
   // 破壊: 結界・軽減を無視して HP を 0 にする（倒れたカードは sweepDead が場から除く）
   if (os?.kind === 'destroy') hit.hp = 0;
+  if (os?.kind === 'poison') poisonUnit(d, side, hit, os.amount);
+  if (os?.kind === 'seal') sealUnit(d, side, hit);
+  if (os?.kind === 'disarm') disarmUnit(d, side, hit, os.ms);
+  if (os?.kind === 'healAlly') healUnit(d, side, hit, os.amount);
+  if (os?.kind === 'buffAlly') buffUnit(d, side, hit, os.atk, os.hp);
   return true;
 }
 
@@ -598,7 +770,10 @@ function resolvePending(state: GameState): GameState {
       // 攻撃が中断されても、クールタイムはやり直しにしない（選ぶ前に戻す。足止などで延びたぶんは残す）
       if (x.kind === 'attack') {
         const u = findUnit(d.players[x.p], x.uid)?.unit;
-        if (u) u.readyAt = x.readyBefore + Math.max(0, u.readyAt - x.readyAfter);
+        if (u) {
+          u.readyAt = x.readyBefore + Math.max(0, u.readyAt - x.readyAfter);
+          u.second = x.secondBefore ? true : undefined;
+        }
       }
     }
     sweepDead(d);
@@ -635,6 +810,8 @@ function summon(state: GameState, p: PlayerIndex, handIndex: number, slot: numbe
       pl.hp += healed;
       d.events.push({ kind: 'heal', p, amount: healed });
     }
+  } else if (os?.kind === 'buffAllies') {
+    for (const u of units(pl)) if (u.uid !== placed.uid && CARDS[u.card].type === 'unit') buffUnit(d, p, u, os.atk, os.hp);
   } else if (os?.kind === 'cdCut') {
     for (const u of units(pl)) {
       if (u.uid === placed.uid || CARDS[u.card].type !== 'unit') continue;
@@ -651,7 +828,7 @@ function summon(state: GameState, p: PlayerIndex, handIndex: number, slot: numbe
         if (u.uid !== placed.uid && CARDS[u.card].type === 'unit') u.hp = 0;
       }
     }
-  } else if (needsTarget(card) && target !== undefined && pickable(d.players[q], target)) {
+  } else if (needsTarget(card) && target !== undefined && (summonSide(card) === 'ally' ? !!findUnit(d.players[p], target) : pickable(d.players[q], target))) {
     windup(d, { id: d.nextUid++, kind: 'ability', p, uid: placed.uid, card, target, at: d.time + WINDUP_MS });
   }
   sweepDead(d);
@@ -664,10 +841,11 @@ function attack(state: GameState, p: PlayerIndex, uid: number, target: Target): 
   const me = d.players[p];
   const { unit } = findUnit(me, uid)!;
   const readyBefore = unit.readyAt;
-  unit.readyAt = d.time + cooldownOf(me, unit.card);
+  const secondBefore = !!unit.second;
+  startCooldown(d, p, unit);
   unit.stealth = false; // 自分で攻撃を選んだらステルスは解ける
   unit.reserved = target; // 攻撃した対象をターゲットとして残す（明けるたびに攻撃し続ける）
-  windup(d, { id: d.nextUid++, kind: 'attack', p, uid, target, at: d.time + WINDUP_MS, readyBefore, readyAfter: unit.readyAt });
+  windup(d, { id: d.nextUid++, kind: 'attack', p, uid, target, at: d.time + WINDUP_MS, readyBefore, readyAfter: unit.readyAt, secondBefore });
   return finish(state, d);
 }
 

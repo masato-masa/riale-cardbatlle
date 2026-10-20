@@ -1,15 +1,19 @@
 import { CARDS, type CardId } from '@/game/cards';
 
-import { CARD_ART } from './art';
+import { cardArt } from './art';
 
 /** 場のカードの状態。ブロッカー・結界・ステルス・遅延（足止め・通行止め）。 */
-export type CardState = 'blocker' | 'barrier' | 'stealth' | 'stun';
+export type CardState = 'blocker' | 'barrier' | 'stealth' | 'stun' | 'endure' | 'seal' | 'poison' | 'disarm';
 
 const STATE_LABEL: Record<CardState, string> = {
   blocker: 'ブロッカー',
   barrier: '結界',
   stealth: 'ステルス',
   stun: '遅延中',
+  endure: '不屈',
+  seal: '封印',
+  poison: '毒',
+  disarm: '攻撃不能',
 };
 
 /** カードの面。左上 召喚コスト・右上 クールタイム（秒）・左下 攻撃力（赤）・右下 HP（緑）。
@@ -19,12 +23,15 @@ const STATE_LABEL: Record<CardState, string> = {
 export function CardFace({
   card,
   hp,
+  maxHp,
   atk,
   small,
   states = [],
 }: {
   card: CardId;
   hp?: number;
+  /** 最大 HP（バフを含む）。無ければカードの HP。 */
+  maxHp?: number;
   atk?: number;
   small?: boolean;
   states?: CardState[];
@@ -38,7 +45,7 @@ export function CardFace({
   return (
     <div className={cls.join(' ')}>
       <div className="face-body">
-        <img className="face-art" src={CARD_ART[card]} alt="" draggable={false} />
+        <img className="face-art" src={cardArt(card, def.type)} alt="" draggable={false} />
         <span className="face-name">{def.name}</span>
       </div>
       {states.length > 0 ? (
@@ -64,7 +71,7 @@ export function CardFace({
         </span>
       ) : null}
       {def.type !== 'spell' ? (
-        <span className={`pip pip-hp${shownHp < def.hp ? ' is-hurt' : ''}`} aria-label="HP">
+        <span className={`pip pip-hp${shownHp < (maxHp ?? def.hp) ? ' is-hurt' : shownHp > def.hp ? ' is-up' : ''}`} aria-label="HP">
           {shownHp}
         </span>
       ) : null}
@@ -94,6 +101,38 @@ function StateIcon({ state }: { state: CardState }) {
         <path d="M2.5 12 C5.5 7 9 5.5 12 5.5 C15 5.5 18.5 7 21.5 12 C18.5 17 15 18.5 12 18.5 C9 18.5 5.5 17 2.5 12 Z" fill="none" stroke="#fff" strokeWidth="2.2" />
         <circle cx="12" cy="12" r="2.8" fill="#fff" />
         <path d="M4 20 L20 4" stroke="#fff" strokeWidth="2.6" strokeLinecap="round" />
+      </svg>
+    );
+  }
+  if (state === 'endure') {
+    return (
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M12 21 C5 15.5 3 12 3 8.5 C3 5.7 5 4 7.3 4 C9.2 4 11 5.2 12 7 C13 5.2 14.8 4 16.7 4 C19 4 21 5.7 21 8.5 C21 12 19 15.5 12 21 Z" fill="#fff" />
+      </svg>
+    );
+  }
+  if (state === 'seal') {
+    return (
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <circle cx="12" cy="12" r="8" fill="none" stroke="#fff" strokeWidth="2.4" />
+        <path d="M6.5 6.5 L17.5 17.5" stroke="#fff" strokeWidth="2.6" strokeLinecap="round" />
+      </svg>
+    );
+  }
+  if (state === 'poison') {
+    return (
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M12 3 C12 3 5 11 5 15 A7 7 0 0 0 19 15 C19 11 12 3 12 3 Z" fill="#fff" />
+        <circle cx="9.5" cy="15.5" r="1.6" fill="#7a2fb0" />
+        <circle cx="14.5" cy="15.5" r="1.6" fill="#7a2fb0" />
+      </svg>
+    );
+  }
+  if (state === 'disarm') {
+    return (
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M5 19 L16 8 M14 6 L18 10" stroke="#fff" strokeWidth="2.6" strokeLinecap="round" />
+        <path d="M4 4 L20 20" stroke="#fff" strokeWidth="2.6" strokeLinecap="round" />
       </svg>
     );
   }

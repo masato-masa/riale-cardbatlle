@@ -44,6 +44,15 @@ const SHEETS = {
     null,
     null,
   ],
+  // 追加の 40 枚（シート 5〜9。3×3）
+  5: ['recruit', 'footman', 'lancer', 'knight', 'captain', 'warlord', 'champion', 'ogre', 'dragoon'].map((n) => `cards/${n}`),
+  6: ['needle', 'medic', 'bulwark', 'creeper', 'marksman', 'twin', 'bloody', 'bard', 'sealer'].map((n) => `cards/${n}`),
+  7: ['binder', 'poisoner', 'stalwart', 'drummer', 'duelist', 'sniper', 'priest', 'bloodknight', 'hexer'].map((n) => `cards/${n}`),
+  8: [
+    ...['raider', 'martyr', 'warden', 'ironwall', 'banner', 'reaper'].map((n) => `cards/${n}`),
+    ...['infirmary', 'altar', 'forge'].map((n) => `buildings/${n}`),
+  ],
+  9: [...['rain', 'warcry', 'miasma', 'edict'].map((n) => `spells/${n}`), null, null, null, null, null],
   // 3 列×2 行（縦長のマス）。切り札ユニット 5 人と予備 1 枚
   4: {
     cols: 3,

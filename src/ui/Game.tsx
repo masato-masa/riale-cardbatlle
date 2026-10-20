@@ -9,6 +9,7 @@ import {
   needsTarget,
   requiresTarget,
   RIVAL_DECK,
+  summonSide,
   usageNote,
   type CardId,
 } from '@/game/cards';
@@ -19,7 +20,10 @@ import {
   findUnit,
   firstEmptySlot,
   isWalled,
-  legalTargets,
+  legalTargetsFor,
+  abOf,
+  isBlockerUnit,
+  maxHpOf,
   step,
   summonBlock,
   summonTargets,
@@ -84,7 +88,7 @@ interface Popup {
   x: number;
   y: number;
   text: string;
-  tone: 'dmg' | 'face' | 'heal' | 'guard' | 'stun';
+  tone: 'dmg' | 'face' | 'heal' | 'guard' | 'stun' | 'poison' | 'buff';
 }
 
 /** 着弾の火花・倒れた煙。位置に置いて、CSS のアニメーションが終わったら消す。 */
@@ -125,6 +129,7 @@ const SUMMON_REASON = {
 } as const;
 const ATTACK_REASON = {
   building: '建築物は攻撃しません',
+  disarmed: '攻撃できません',
   cooldown: 'クールタイム中です',
   target: 'ブロッカーを先に倒してください',
   over: '',
@@ -380,7 +385,7 @@ export function Game({ level, deck, onExit }: { level: CpuLevel; deck: CardId[];
         // 全体・遅延は相手の場ごと、再動は自分の場ごと光らせる。単体は使った側から弾を飛ばす。
         if (eff.kind === 'bolt' && e.target !== null) shoot(heroEl(e.p), unitEl(e.target), 'rock');
         else {
-          const foeSide = eff.kind === 'blast' || eff.kind === 'freeze';
+          const foeSide = eff.kind === 'blast' || eff.kind === 'freeze' || eff.kind === 'poisonAll' || eff.kind === 'sealAll';
           const row = (e.p === 0) === foeSide ? foeFieldRef.current : fieldRef.current;
           if (row) animate(row, { filter: ['brightness(1)', 'brightness(1.9)', 'brightness(1)'] }, { duration: 0.8 });
           if (eff.kind === 'blast' || eff.kind === 'freeze') {
@@ -476,6 +481,28 @@ export function Game({ level, deck, onExit }: { level: CpuLevel; deck: CardId[];
         if (e.kind === 'heal') {
           addPopup(heroEl(e.p), `+${e.amount}`, 'heal');
           playHeal();
+        }
+        if (e.kind === 'healUnit') {
+          addPopup(unitEl(e.uid), `+${e.amount}`, 'heal');
+          flash(unitEl(e.uid));
+          playHeal();
+        }
+        if (e.kind === 'buff') {
+          addPopup(unitEl(e.uid), `${e.atk ? `攻+${e.atk}` : ''}${e.atk && e.hp ? ' ' : ''}${e.hp ? `体+${e.hp}` : ''}`, 'buff');
+          flash(unitEl(e.uid));
+          playReady();
+        }
+        if (e.kind === 'poison') {
+          addPopup(unitEl(e.uid), `毒${e.amount}`, 'poison');
+          addBurst(unitEl(e.uid), 'puff');
+        }
+        if (e.kind === 'seal') {
+          addPopup(unitEl(e.uid), '封印', 'guard');
+          playBarrier();
+        }
+        if (e.kind === 'disarm') {
+          addPopup(unitEl(e.uid), '攻撃不能', 'stun');
+          playStun();
         }
         if (e.kind === 'stun') {
           addPopup(unitEl(e.uid), '遅延', 'stun');
@@ -624,6 +651,11 @@ export function Game({ level, deck, onExit }: { level: CpuLevel; deck: CardId[];
   const onPressStart = (e: ReactPointerEvent, p: { kind: 'hand'; index: number } | { kind: 'unit'; uid: number }) => {
     if (gameRef.current.result || pressRef.current) return;
     primeAudio();
+    // 登場時に選ぶ待ち: 選べる味方をタップしたら選ぶ（それ以外は、ここでは何もしない）
+    if (pick) {
+      if (p.kind === 'unit' && summonSide(pick.card) === 'ally' && summonTargets(gameRef.current.players[0], pick.card).some((x) => x.uid === p.uid)) confirmPick(p.uid);
+      return;
+    }
     if (p.kind === 'hand') playPickup();
     try {
       (e.currentTarget as Element).setPointerCapture(e.pointerId);
@@ -738,7 +770,7 @@ export function Game({ level, deck, onExit }: { level: CpuLevel; deck: CardId[];
       // 登場時に敵を選ぶカード（狙撃・足止・破壊）: 場に置く操作のあと、効かせる敵をタップして選ぶ。
       // 選ばなければ配置失敗。選べる敵がいなければ、そのまま置く
       if (needsTarget(card)) {
-        const choices = summonTargets(s.players[1], card);
+        const choices = summonTargets(s.players[summonSide(card) === 'ally' ? 0 : 1], card);
         if (choices.length > 0) {
           const block0 = summonBlock(s, 0, d.index, d.slot, choices[0]!.uid);
           if (block0) return reject(SUMMON_REASON[block0]);
@@ -805,8 +837,8 @@ export function Game({ level, deck, onExit }: { level: CpuLevel; deck: CardId[];
   // ---- 描画用の値 ----
   const me = game.players[0];
   const foe = game.players[1];
-  const legal = useMemo(() => new Set(legalTargets(game, 0).map(targetKey)), [game]);
   const unitDrag = drag?.kind === 'unit' ? drag : null;
+  const legal = useMemo(() => new Set(unitDrag ? legalTargetsFor(game, 0, unitDrag.uid).map(targetKey) : []), [game, unitDrag?.uid]);
   const handDrag = drag?.kind === 'hand' ? drag : null;
   const handDragCard = handDrag ? me.hand[handDrag.index] : undefined;
   const aiming = !!handDragCard && CARDS[handDragCard].type === 'spell' && needsTarget(handDragCard);
@@ -839,9 +871,13 @@ export function Game({ level, deck, onExit }: { level: CpuLevel; deck: CardId[];
   /** 場のカードの状態アイコン。 */
   const statesOf = (u: Unit, left: number): CardState[] => {
     const out: CardState[] = [];
-    if (isBlocker(u.card)) out.push('blocker');
+    if (isBlockerUnit(u)) out.push('blocker');
     if (u.barrier) out.push('barrier');
     if (u.stealth) out.push('stealth');
+    if (u.endure) out.push('endure');
+    if (u.sealed) out.push('seal');
+    if (u.poison) out.push('poison');
+    if (abOf(u).cannotAttack || game.time < (u.disarmUntil ?? 0)) out.push('disarm');
     if (stunned.has(u.uid) && left > 0) out.push('stun');
     return out;
   };
@@ -854,8 +890,10 @@ export function Game({ level, deck, onExit }: { level: CpuLevel; deck: CardId[];
     if (side === 0 && isUnit && left === 0 && !game.result) cls.push('is-ready');
     if (side === 1 && unitDrag) cls.push(legal.has(key) ? 'is-target' : 'is-off');
     if (side === 1 && aiming) cls.push('is-target');
-    const pickable = !!pick && side === 1 && summonTargets(foe, pick.card).some((x) => x.uid === u.uid);
-    if (pick && side === 1) cls.push(pickable ? 'is-target is-pick' : 'is-off');
+    const pickSide = pick ? (summonSide(pick.card) === 'ally' ? 0 : 1) : null;
+    const pickable = !!pick && side === pickSide && summonTargets(game.players[side], pick.card).some((x) => x.uid === u.uid);
+    if (pick && side === pickSide) cls.push(pickable ? (side === 0 ? 'is-pick is-pick-ally' : 'is-target is-pick') : 'is-off');
+    else if (pick && side === 1) cls.push('is-off');
     if (side === 1 && (unitDrag?.over === key ? legal.has(key) : handDrag?.over === key)) cls.push('is-over');
     if (unitDrag?.uid === u.uid) cls.push('is-aiming');
     if (justReady.has(u.uid)) cls.push('is-just-ready');
@@ -901,7 +939,7 @@ export function Game({ level, deck, onExit }: { level: CpuLevel; deck: CardId[];
           onPointerCancel={side === 0 ? onPressCancel : undefined}
           onContextMenu={(e) => e.preventDefault()}
         >
-          <CardFace card={u.card} hp={u.hp} atk={attackOf(pl, u)} states={statesOf(u, left)} />
+          <CardFace card={u.card} hp={u.hp} maxHp={maxHpOf(u)} atk={attackOf(pl, u)} states={statesOf(u, left)} />
           {left > 0 ? (
             <span className="unit-cd" style={{ ['--cd' as string]: `${left * 360}deg` }} aria-hidden="true">
               <span className="unit-cd-num">{Math.ceil((u.readyAt - game.time) / 1000)}</span>
@@ -1419,7 +1457,7 @@ function PendingMarks({ game, fieldMe, fieldFoe }: { game: GameState; fieldMe: H
     const foe: 0 | 1 = x.p === 0 ? 1 : 0;
     if (x.kind === 'spell' && x.target === null) {
       const eff = CARDS[x.card].ab.spell!;
-      const toFoe = eff.kind === 'blast' || eff.kind === 'freeze';
+      const toFoe = eff.kind === 'blast' || eff.kind === 'freeze' || eff.kind === 'poisonAll' || eff.kind === 'sealAll';
       const row = (x.p === 0) === toFoe ? fieldFoe : fieldMe;
       if (row) {
         const r = row.getBoundingClientRect();
