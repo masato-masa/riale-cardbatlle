@@ -634,6 +634,7 @@ export const RIVAL_DECKS: { name: string; deck: CardId[] }[] = [
   { name: '狙撃', deck: ['guard', 'marksman', 'bard', 'lancer', 'sniper', 'priest', 'infirmary', 'rain', 'warden', 'banner'] },
   { name: '割り込み', deck: ['recruit', 'shieldmaid', 'warder', 'diehard', 'ambusher', 'berserk', 'knight', 'gatekeeper', 'parry', 'captain'] },
   { name: '生贄', deck: ['offering', 'bomber', 'heir', 'footman', 'usurper', 'phoenix', 'conqueror', 'knight', 'captain', 'recruit'] },
+  { name: '討伐', deck: ['herald', 'hunter', 'avenger', 'knight', 'slayer', 'riposte', 'trickster', 'captain', 'monarch', 'recruit'] },
   { name: '封印', deck: ['informer', 'spy', 'sealer', 'binder', 'blockader', 'knight', 'quarry', 'captain', 'poisoner', 'martyr'] },
 ];
 
