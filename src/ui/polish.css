@@ -1773,3 +1773,88 @@
   padding: 0 10px;
   font-size: 12px;
 }
+
+/* 四隅の台座は、カードの角の真上に中心が来るように外へはみ出させる（クラロワ／ライバルズ式） */
+.pip-summon {
+  top: -17cqw;
+  left: -17cqw;
+  width: 38cqw;
+  height: 38cqw;
+}
+
+.pip-cd {
+  top: -14cqw;
+  right: -14cqw;
+  width: 30cqw;
+  height: 30cqw;
+}
+
+.pip-atk {
+  bottom: -14cqw;
+  left: -14cqw;
+  width: 32cqw;
+  height: 32cqw;
+}
+
+.pip-hp {
+  bottom: -14cqw;
+  right: -14cqw;
+  width: 32cqw;
+  height: 32cqw;
+}
+
+/* はみ出した台座が、一覧の左右の端で切れないように余白をとる */
+.dk .deck-main {
+  padding-inline: 16px;
+}
+
+.deck-grid,
+.collection-grid {
+  gap: 14px 10px;
+}
+
+.pip-summon {
+  top: -21cqw;
+  left: -21cqw;
+  width: 44cqw;
+  height: 44cqw;
+}
+
+.pip-cd {
+  top: -17cqw;
+  right: -17cqw;
+  width: 36cqw;
+  height: 36cqw;
+}
+
+.pip-atk {
+  bottom: -18cqw;
+  left: -18cqw;
+  width: 38cqw;
+  height: 38cqw;
+}
+
+.pip-hp {
+  bottom: -18cqw;
+  right: -18cqw;
+  width: 38cqw;
+  height: 38cqw;
+}
+
+.pip > i {
+  -webkit-text-stroke-width: 2.5px;
+}
+
+.pip-summon {
+  top: -19cqw;
+  left: -19cqw;
+  width: 40cqw;
+  height: 40cqw;
+}
+
+.pip-cd {
+  top: -15cqw;
+  right: -15cqw;
+  width: 32cqw;
+  height: 32cqw;
+}
