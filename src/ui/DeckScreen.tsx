@@ -1,9 +1,9 @@
 import { AnimatePresence, motion } from 'motion/react';
 import { useMemo, useRef, useState } from 'react';
 
-import { CARDS, TYPE_NAME, type CardId, type CardType } from '@/game/cards';
+import { CARDS, RIVAL_DECKS, STARTER_DECK, TYPE_NAME, type CardId, type CardType } from '@/game/cards';
 import { loadUnlocked } from '@/storage/collection';
-import { averageCost, COLLECTION, saveDeck } from '@/storage/deck';
+import { applyPreset, averageCost, COLLECTION, DECK_SLOTS, loadBook, saveBook, saveDeck } from '@/storage/deck';
 
 import { CardFace } from './CardFace';
 import { DECK_BG_URL } from './art';
@@ -13,6 +13,12 @@ import { playSelect, playUiTap } from './sound';
 import { TabBar } from './TabBar';
 
 const TYPE_ORDER: CardType[] = ['unit', 'building', 'spell'];
+
+/** コンセプトデッキ（選ぶと、いまのデッキに入る）。 */
+const PRESETS: { name: string; deck: CardId[] }[] = [
+  { name: 'はじめてのデッキ', deck: STARTER_DECK },
+  ...RIVAL_DECKS.map((d) => ({ name: `${d.name}デッキ`, deck: d.deck })),
+];
 
 /** 一覧の並び: 種類ごと、コストの安い順。 */
 function sorted(ids: CardId[]): CardId[] {
@@ -37,6 +43,30 @@ function byCost(ids: CardId[]): CardId[] {
 export function DeckScreen({ deck, onChange, onBack }: { deck: CardId[]; onChange: (deck: CardId[]) => void; onBack: () => void }) {
   const [open, setOpen] = useState<{ card: CardId; inDeck: boolean; locked?: boolean } | null>(null);
   const unlocked = useMemo(() => loadUnlocked(), []);
+  /** 保存した 5 つのデッキと、使っている番号。 */
+  const [active, setActive] = useState(() => loadBook().active);
+  /** コンセプトデッキの一覧と、補った枚数の知らせ。 */
+  const [presets, setPresets] = useState(false);
+  const [note, setNote] = useState<string | null>(null);
+  const chooseSlot = (i: number) => {
+    const b = loadBook();
+    b.active = i;
+    saveBook(b);
+    setActive(i);
+    setSwapIn(null);
+    setNote(null);
+    onChange(b.decks[i]!);
+    playUiTap();
+  };
+  const usePreset = (pdeck: CardId[]) => {
+    const { deck: next, missing } = applyPreset(pdeck, deck, unlocked);
+    saveDeck(next);
+    onChange(next);
+    setPresets(false);
+    setSwapIn(null);
+    setNote(missing > 0 ? `未獲得の ${missing} 枚は、いまのデッキのカードで補いました` : null);
+    playSelect();
+  };
   const mainRef = useRef<HTMLElement>(null);
   /** 未獲得の一覧は最初は閉じておく（60 枚以上あって長いため）。 */
   const [showLocked, setShowLocked] = useState(false);
@@ -76,6 +106,23 @@ export function DeckScreen({ deck, onChange, onBack }: { deck: CardId[]; onChang
       </header>
 
       <main className="deck-main" ref={mainRef}>
+        <div className="slot-chips" role="tablist" aria-label="保存したデッキ">
+          {Array.from({ length: DECK_SLOTS }, (_, i) => (
+            <button key={i} role="tab" aria-selected={active === i} className={`slot-chip${active === i ? ' is-on' : ''}`} onClick={() => chooseSlot(i)}>
+              {i + 1}
+            </button>
+          ))}
+          <button
+            className="preset-btn"
+            onClick={() => {
+              playUiTap();
+              setPresets(true);
+            }}
+          >
+            コンセプトデッキ
+          </button>
+        </div>
+        {note ? <p className="deck-note">{note}</p> : null}
         <section className={`deck-box${swapIn ? ' is-swapping' : ''}`}>
           <AnimatePresence>
             {swapIn ? (
@@ -209,6 +256,36 @@ export function DeckScreen({ deck, onChange, onBack }: { deck: CardId[]; onChang
           </section>
         ) : null}
       </main>
+
+      <AnimatePresence>
+        {presets ? (
+          <Sheet key="presets" title="コンセプトデッキ" subtitle={`デッキ ${active + 1} に入ります`} onClose={() => setPresets(false)}>
+            <div className="preset-list">
+              {PRESETS.map((pr) => {
+                const missing = pr.deck.filter((id) => !unlocked.has(id)).length;
+                return (
+                  <button key={pr.name} className="preset-row" onClick={() => usePreset(pr.deck)}>
+                    <span className="preset-head">
+                      <b>{pr.name}</b>
+                      <small>平均コスト {averageCost(pr.deck).toFixed(1)}{missing > 0 ? ` ・ 未獲得 ${missing} 枚` : ''}</small>
+                    </span>
+                    <span className="preset-faces">
+                      {pr.deck.map((id) => (
+                        <span key={id} className={`preset-face${unlocked.has(id) ? '' : ' is-locked'}`}>
+                          <CardFace card={id} small />
+                        </span>
+                      ))}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+            <button className="sheet-btn quiet" onClick={() => setPresets(false)}>
+              とじる
+            </button>
+          </Sheet>
+        ) : null}
+      </AnimatePresence>
 
       <TabBar active="deck" onDeck={() => undefined} onBattle={onBack} />
 

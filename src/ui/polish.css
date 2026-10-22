@@ -2535,3 +2535,113 @@
   display: block;
   width: 100%;
 }
+
+/* ---- 保存した 5 つのデッキ・コンセプトデッキ ---- */
+.slot-chips {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  position: relative;
+  z-index: 3;
+}
+
+.slot-chip {
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  border: 2px solid #5b4a2a;
+  background: #251d3f;
+  color: #e9d8a6;
+  font-size: 18px;
+  font-weight: 900;
+}
+
+.slot-chip.is-on {
+  background: linear-gradient(#ffe28a, #f2b52a);
+  border-color: #fff3b0;
+  color: #3a2a08;
+  box-shadow: 0 3px 0 #a85d00;
+}
+
+.preset-btn {
+  margin-left: auto;
+  height: 40px;
+  padding: 0 12px;
+  border-radius: 12px;
+  border: 2px solid var(--gold-2);
+  background: linear-gradient(var(--navy-1), var(--navy-2));
+  color: #fff;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.deck-note {
+  margin: 0;
+  color: #ffe28a;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.preset-list {
+  display: grid;
+  gap: 10px;
+  max-height: 58vh;
+  overflow-y: auto;
+  margin-bottom: 10px;
+}
+
+.preset-row {
+  display: grid;
+  gap: 6px;
+  padding: 8px 10px 10px;
+  border: 2px solid var(--gold-2);
+  border-radius: 12px;
+  background: rgb(255 255 255 / 0.06);
+  text-align: left;
+  color: #fff;
+}
+
+.preset-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+}
+
+.preset-head small {
+  color: #cdbfa0;
+  font-size: 11px;
+}
+
+.preset-faces {
+  display: grid;
+  grid-template-columns: repeat(8, minmax(0, 1fr));
+  gap: 4px;
+}
+
+.preset-face {
+  position: relative;
+  aspect-ratio: 68 / 84;
+  container-type: inline-size;
+}
+
+.preset-face.is-locked {
+  filter: grayscale(1) brightness(0.55);
+}
+
+.preset-face .pip {
+  display: none;
+}
+
+.preset-btn {
+  white-space: nowrap;
+  font-size: 12px;
+  padding: 0 10px;
+}
+
+.slot-chips {
+  gap: 6px;
+}
+
+.slot-chip {
+  width: 36px;
+}
