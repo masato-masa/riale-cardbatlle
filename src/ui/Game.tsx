@@ -35,7 +35,7 @@ import {
 import { makeRng } from '@/game/rng';
 import { awardMatch, CHEST_POINTS, type MatchReward } from '@/storage/collection';
 import { addResult, isTutorialDone, setTutorialDone } from '@/storage/profile';
-import { COIN_MAX, DOUBLE_COIN_FROM_MS, FIELD_SLOTS, MATCH_MS, PLAYER_HP, SUMMON_WINDUP_MS, WINDUP_MS } from '@/game/rules';
+import { COIN_MAX, FAST_COOLDOWN_FROM_MS, FIELD_SLOTS, MATCH_MS, PLAYER_HP, SUMMON_WINDUP_MS, WINDUP_MS } from '@/game/rules';
 
 import { COIN_URL, FIELD_URL, HERO_FOE_URL, HERO_ME_URL, preloadFx } from './art';
 import { setBgmTension, startBgm, stopBgm } from './bgm';
@@ -281,13 +281,12 @@ export function Game({ level, deck, onExit }: { level: CpuLevel; deck: CardId[];
     startBgm('battle');
     return () => stopBgm();
   }, []);
-  const overtime = game.time >= DOUBLE_COIN_FROM_MS;
+  const overtime = game.time >= FAST_COOLDOWN_FROM_MS;
   const [overBanner, setOverBanner] = useState(false);
   useEffect(() => {
     if (!overtime) return;
     setBgmTension(true);
     playHorn();
-    addBurst(document.querySelector('.coin-count'), 'coin');
     setOverBanner(true);
     const t = window.setTimeout(() => setOverBanner(false), 2000);
     return () => window.clearTimeout(t);
@@ -381,6 +380,26 @@ export function Game({ level, deck, onExit }: { level: CpuLevel; deck: CardId[];
     const el = document.querySelector('.arena');
     if (el) animate(el, { x: [0, -power, power, -power * 0.6, power * 0.6, 0], y: [0, power * 0.5, -power * 0.5, 0, 0, 0] }, { duration: 0.38 });
   }, []);
+
+  // ---- 壁ができた瞬間の演出（それ以降、壁の状態は表示しない） ----
+  const wallMe = isWalled(game.players[0]);
+  const wallFoe = isWalled(game.players[1]);
+  const prevWall = useRef<[boolean, boolean]>([false, false]);
+  useEffect(() => {
+    const prev = prevWall.current;
+    prevWall.current = [wallMe, wallFoe];
+    ([[wallMe, 0], [wallFoe, 1]] as const).forEach(([now, side]) => {
+      if (!now || prev[side]) return;
+      const row = side === 0 ? fieldRef.current : foeFieldRef.current;
+      if (!row) return;
+      addCallout(row, '壁！', 'block');
+      row.querySelectorAll('.slot').forEach((slot, i) => window.setTimeout(() => addBurst(slot, 'guard'), i * 90));
+      shake(5);
+      playBarrier();
+      if (side === 0) hapticImpact([30, 30]);
+    });
+  }, [wallMe, wallFoe, addCallout, addBurst, shake]);
+
 
   const shoot = useCallback((from: Element | null, to: Element | null, tone: Shot['tone'] = 'arrow') => {
     const b = centerOf(to);
@@ -644,7 +663,7 @@ export function Game({ level, deck, onExit }: { level: CpuLevel; deck: CardId[];
           playReady();
         }
         if (e.kind === 'poison') {
-          addPopup(unitEl(e.uid), `毒${e.amount}`, 'poison');
+          addPopup(unitEl(e.uid), '毒', 'poison');
           addBurst(unitEl(e.uid), 'poison');
         }
         if (e.kind === 'seal') {
@@ -1043,7 +1062,6 @@ export function Game({ level, deck, onExit }: { level: CpuLevel; deck: CardId[];
     if (isBlockerUnit(u)) out.push('blocker');
     if (u.barrier) out.push('barrier');
     if (u.stealth) out.push('stealth');
-    if (u.endure) out.push('endure');
     if (u.sealed) out.push('seal');
     if (u.poison) out.push('poison');
     if (abOf(u).cannotAttack || game.time < (u.disarmUntil ?? 0)) out.push('disarm');
@@ -1179,7 +1197,7 @@ export function Game({ level, deck, onExit }: { level: CpuLevel; deck: CardId[];
               {overtime ? <b className="clock-double">×2</b> : null}
             </span>
             <div className={foeCls.join(' ')} data-player={1} data-drop={foeKey}>
-              <HeroBadge hp={foe.hp} label="あいて" walled={isWalled(foe)} portrait={HERO_FOE_URL} />
+              <HeroBadge hp={foe.hp} label="あいて" portrait={HERO_FOE_URL} />
             </div>
             <span className="hero-coins">
               <img src={COIN_URL} alt="" />
@@ -1194,7 +1212,7 @@ export function Game({ level, deck, onExit }: { level: CpuLevel; deck: CardId[];
             {fieldRow(0)}
           </div>
           <div className="hero hero-me" data-player={0}>
-            <HeroBadge hp={me.hp} label="あなた" walled={isWalled(me)} portrait={HERO_ME_URL} />
+            <HeroBadge hp={me.hp} label="あなた" portrait={HERO_ME_URL} />
           </div>
           <button
             className="menu-btn"
@@ -1452,7 +1470,7 @@ export function Game({ level, deck, onExit }: { level: CpuLevel; deck: CardId[];
             animate={{ x: 0, transition: { type: 'spring', stiffness: 380, damping: 30 } }}
             exit={{ x: '-110%', opacity: 0, pointerEvents: 'none', transition: { duration: 0.3 } }}
           >
-            <span>コイン 2 倍！</span>
+            <span>クールタイム 2 倍速！</span>
           </motion.div>
         ) : null}
       </AnimatePresence>
@@ -1667,7 +1685,8 @@ export function Game({ level, deck, onExit }: { level: CpuLevel; deck: CardId[];
 /** 溜め中の行動の印。描画のたびに要素の位置を読む（盤面は操作で 1px も動かないので、読むだけで足りる）。 */
 function PendingMarks({ game, fieldMe, fieldFoe }: { game: GameState; fieldMe: HTMLElement | null; fieldFoe: HTMLElement | null }) {
   const reserves: { key: number; x0: number; y0: number; x1: number; y1: number }[] = [];
-  for (const p of [0, 1] as const) {
+  // 予約の線は自分のカードだけ（相手の攻撃のあとに跡の線が残らないように）
+  for (const p of [0] as const) {
     for (const u of game.players[p].field) {
       if (!u?.reserved) continue;
       if (game.pending.some((x) => x.kind === 'attack' && x.uid === u.uid)) continue;

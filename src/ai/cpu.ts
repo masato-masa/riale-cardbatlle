@@ -107,7 +107,6 @@ function worth(card: CardId, hp: number, atk: number, allies: number, barrier: b
   if (ab.clanArmor) v += ab.clanArmor * 0.6;
   if (ab.clanDouble) v += atk * 0.9 * rate * 0.45;
   if (ab.lifesteal) v += 1.0;
-  if (ab.endure) v += 1.0;
   if (ab.venom) v += ab.venom * 0.6;
   if (ab.cannotAttack) v -= atk * 1.1 * rate; // 攻撃しない代わりに頑丈（スタッツに織り込み済み）
   // 割り込み・攻撃中断・生贄・上書きの能力

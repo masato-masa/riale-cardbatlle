@@ -38,7 +38,7 @@ const GROUPS: { title: string; items: { name: VoiceName; label: string; note: st
     items: [
       { name: 'ready', label: 'クールタイム明け', note: '' },
       { name: 'heal', label: '回復', note: '' },
-      { name: 'horn', label: '角笛（コイン 2 倍）', note: '' },
+      { name: 'horn', label: '角笛（終盤の合図）', note: '' },
       { name: 'battleStart', label: '対戦開始', note: 'VS の演出に合わせる' },
     ],
   },

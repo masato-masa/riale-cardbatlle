@@ -8,7 +8,7 @@ import {
   COIN_START,
   COOLDOWN_SCALE,
   coinRate,
-  DOUBLE_COIN_FROM_MS,
+  FAST_COOLDOWN_FROM_MS,
   FIELD_SLOTS,
   HAND_SIZE,
   INTERFERE_MS,
@@ -47,7 +47,6 @@ export interface Unit {
   /** この時刻（ms）まで攻撃不能。 */
   disarmUntil?: number;
   /** 不屈がまだ残っているか。 */
-  endure?: true;
   /** 連撃の 2 回目を待っているか（1 回目のあと、クールタイムなしでもう 1 回）。 */
   second?: true;
 }
@@ -407,12 +406,7 @@ function hurtUnit(d: Draft, p: PlayerIndex, unit: Unit, amount: number): number 
     return 0;
   }
   const armor = (abOf(unit).armor ?? 0) + (clanOthers(d.players[p], unit) > 0 ? (abOf(unit).clanArmor ?? 0) : 0);
-  let dealt = Math.max(0, amount - armor);
-  // 不屈: 最初に倒されるとき、HP 1 で耐える
-  if (unit.endure && unit.hp - dealt <= 0) {
-    dealt = Math.max(0, unit.hp - 1);
-    unit.endure = undefined;
-  }
+  const dealt = Math.max(0, amount - armor);
   unit.hp -= dealt;
   d.events.push({ kind: 'damage', p, target: { kind: 'unit', uid: unit.uid }, amount: dealt, guard: armor > 0 ? 'armor' : null });
   return dealt;
@@ -455,10 +449,10 @@ function buffUnit(d: Draft, p: PlayerIndex, unit: Unit, atk: number, hp: number)
 }
 
 function poisonUnit(d: Draft, p: PlayerIndex, unit: Unit, amount: number): void {
-  // 同じ状態は重ならない。毒は、すでにあれば強いほう（数が大きいほう）だけが残る
-  if (amount <= 0 || (unit.poison ?? 0) >= amount) return;
-  unit.poison = amount;
-  d.events.push({ kind: 'poison', p, uid: unit.uid, amount: unit.poison });
+  // 毒は数のない状態: 付いていれば、攻撃するたびに 1 ダメージ。同じ状態は重ならない（amount は使わない）
+  if (amount <= 0 || unit.poison) return;
+  unit.poison = 1;
+  d.events.push({ kind: 'poison', p, uid: unit.uid, amount: 1 });
 }
 
 function sealUnit(d: Draft, p: PlayerIndex, unit: Unit): void {
@@ -466,7 +460,6 @@ function sealUnit(d: Draft, p: PlayerIndex, unit: Unit): void {
   unit.sealed = true;
   unit.barrier = false;
   unit.stealth = false;
-  unit.endure = undefined;
   unit.pulseAt = null;
   d.events.push({ kind: 'seal', p, uid: unit.uid });
 }
@@ -588,7 +581,6 @@ function place(d: Draft, p: PlayerIndex, card: CardId, slot: number, token: bool
     readyAt: ab.haste ? d.time : d.time + Math.round(cooldownOf(d.players[p], card) / 2),
     barrier: !!ab.barrier,
     stealth: !!ab.stealth,
-    endure: ab.endure ? true : undefined,
     pulseAt: ab.pulse ? d.time + ab.pulse.everyMs : null,
     reserved: null,
   };
@@ -625,12 +617,18 @@ function finish(state: GameState, d: Draft): GameState {
 function tick(state: GameState, dt: number): GameState {
   if (state.result || dt <= 0) return state;
   const end = Math.min(MATCH_MS, state.time + dt);
-  const split = state.time < DOUBLE_COIN_FROM_MS && end > DOUBLE_COIN_FROM_MS ? DOUBLE_COIN_FROM_MS : end;
-  const base = (split - state.time) * coinRate(state.time) + (end - split) * coinRate(split);
+  const base = (end - state.time) * coinRate(state.time);
   const players = state.players.map((pl) => ({
     ...pl,
     coins: Math.min(COIN_MAX, pl.coins + base * coinBoostOf(pl)),
   })) as GameState['players'];
+  // 最後の 1 分: クールタイムが 2 倍の速さで減る（早く明ける分だけ、readyAt を前へ）
+  const fast = Math.max(0, end - Math.max(state.time, FAST_COOLDOWN_FROM_MS));
+  if (fast > 0) {
+    for (const pl of players) {
+      pl.field = pl.field.map((u) => (u && u.readyAt > state.time ? { ...u, readyAt: Math.max(state.time, u.readyAt - fast) } : u));
+    }
+  }
   let next: GameState = { ...state, time: end, players };
   if (next.pending.some((x) => x.at <= end)) {
     next = resolvePending(next);

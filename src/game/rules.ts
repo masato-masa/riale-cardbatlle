@@ -6,8 +6,8 @@ export const PLAYER_HP = 20;
 export const PLAYER_ATK = 0;
 /** 試合の長さ（ms）。 */
 export const MATCH_MS = 240_000;
-/** この時刻（ms）からコインが 2 倍速になる。 */
-export const DOUBLE_COIN_FROM_MS = 180_000;
+/** この時刻（ms）から、ユニットのクールタイムが 2 倍の速さで減る（コインは 2 倍にしない。膠着を防ぐため）。 */
+export const FAST_COOLDOWN_FROM_MS = 180_000;
 /** コイン 1 枚がたまるまでの時間（ms）。 */
 export const COIN_MS = 3000;
 export const COIN_MAX = 10;
@@ -34,8 +34,8 @@ export function overrideSummonWindupForTests(ms: number): void {
 export const INTERFERE_MS = 5000;
 
 /** その時刻のコインのたまる速さ（枚/ms）。 */
-export function coinRate(timeMs: number): number {
-  return (timeMs >= DOUBLE_COIN_FROM_MS ? 2 : 1) / COIN_MS;
+export function coinRate(_timeMs: number): number {
+  return 1 / COIN_MS;
 }
 
 /** クールタイムの倍率。カードごとのクールタイム（cards.ts の cd）に掛ける。ゲームでは 1 のまま。 */

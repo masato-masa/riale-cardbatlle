@@ -269,7 +269,6 @@ export interface Abilities {
   /** 吸血: 攻撃で与えたダメージぶん、自分（プレイヤー）の HP を回復 */
   lifesteal?: true;
   /** 不屈: 最初に倒されるとき、HP 1 で耐える */
-  endure?: true;
   /** 毒の牙: 攻撃した敵ユニットに毒 N を与える */
   venom?: number;
   onSummon?: OnSummon;
@@ -621,7 +620,7 @@ export const CARDS: Record<CardId, CardDef> = {
   sealer: unit('sealer', 'ヴィク', 4, 3, 4, 15, { onSummon: { kind: 'seal' } }),
   binder: unit('binder', 'カイ', 4, 4, 3, 16, { onSummon: { kind: 'disarm', ms: 10000 } }),
   poisoner: unit('poisoner', 'ゾーラ', 4, 3, 4, 15, { onSummon: { kind: 'poison', amount: 2 } }),
-  stalwart: unit('stalwart', 'バーナ', 4, 3, 5, 16, { endure: true }),
+  stalwart: unit('stalwart', 'バーナ', 4, 3, 5, 16, { barrier: true }),
   drummer: unit('drummer', 'オッド', 4, 3, 3, 15, { onSummon: { kind: 'buffAllies', atk: 1, hp: 0 } }),
   duelist: unit('duelist', 'セシル', 5, 4, 4, 16, { doubleStrike: true }),
   sniper: unit('sniper', 'ガルム', 5, 4, 5, 16, { freeAim: true }),
@@ -631,7 +630,7 @@ export const CARDS: Record<CardId, CardDef> = {
   raider: unit('raider', 'アーク', 6, 5, 6, 16, { doubleStrike: true }),
   martyr: unit('martyr', 'ネメア', 6, 5, 5, 16, { onDeath: { kind: 'buffAllies', atk: 2, hp: 0 } }),
   warden: unit('warden', 'エルヴァ', 7, 6, 6, 16, { freeAim: true, lifesteal: true }),
-  ironwall: unit('ironwall', 'ヴァル', 8, 6, 10, 18, { blocker: true, endure: true }),
+  ironwall: unit('ironwall', 'ヴァル', 8, 6, 10, 18, { blocker: true, barrier: true }),
   banner: unit('banner', 'ミナ', 9, 6, 6, 16, { onSummon: { kind: 'buffAllies', atk: 2, hp: 2 } }),
   reaper: unit('reaper', 'ラスト', 10, 9, 9, 17, { doubleStrike: true }),
 
@@ -756,13 +755,13 @@ export const STATUS_NOTES: string[] = [
   '妨害: 攻撃の溜め中に、相手のブロッカーが出る・壁ができる・狙われたカードがチェンジで入れ替わると、その攻撃は中断される。妨害された攻撃元は、クールタイムが 5 秒増える',
   'チェンジ: 自分のカードの上に召喚すると入れ替わる。入れ替わって場を離れるカードの「生贄時」の能力が起きる',
   '生贄: チェンジで入れ替わって場を離れること',
-  '毒: 攻撃するたびに、その数だけダメージを受ける',
+  '毒: 攻撃するたびに 1 ダメージを受ける（重ならない）',
   '封印: 能力がすべて無効になる',
   '攻撃不能: しばらく、または能力で、攻撃できない',
 ];
 
 /** 説明の中で黄色く出す言葉（基本能力の名前と状態の名前。ドラクエライバルズのキーワードと同じ扱い）。 */
-export const KEYWORDS: string[] = ['ブロッカー', '速攻', '結界', 'ステルス', '狙い撃ち', '連撃', '遠隔', '吸血', '不屈', '鉄壁', '妨害耐性', '攻撃不能', '毒', '封印'];
+export const KEYWORDS: string[] = ['ブロッカー', '速攻', '結界', 'ステルス', '狙い撃ち', '連撃', '遠隔', '吸血', '鉄壁', '妨害耐性', '攻撃不能', '毒', '封印'];
 
 /** 能力の説明（長押しの説明・ドラッグ中の案内）。ドラクエライバルズの書き方にそろえる:
  *  キーワード（ブロッカー・速攻・結界）はそのまま、時機のある能力は「登場時：」「攻撃時：」「死亡時：」
@@ -787,7 +786,7 @@ export function abilityLines(card: CardId): string[] {
   if (s?.kind === 'healAlly') lines.push(`登場時：味方ユニット 1 体の HP を ${s.amount} 回復`);
   if (s?.kind === 'buffAlly') lines.push(`登場時：味方ユニット 1 体の${buffText(s.atk, s.hp)}`);
   if (s?.kind === 'buffAllies') lines.push(`登場時：自分のほかのユニット全員の${buffText(s.atk, s.hp)}`);
-  if (s?.kind === 'poison') lines.push(`登場時：敵ユニット 1 体に毒 ${s.amount} を与える`);
+  if (s?.kind === 'poison') lines.push(`登場時：敵ユニット 1 体に毒を与える`);
   if (s?.kind === 'buffClan') lines.push(`登場時：場のほかの ${a.clan} 一族全員の${buffText(s.atk, s.hp)}`);
   if (s?.kind === 'clanBurst') lines.push(`登場時：場の ${a.clan} 一族（自分を含む）1 体につき、敵プレイヤーに ${s.per} ダメージ`);
   if (s?.kind === 'seal') lines.push('登場時：敵ユニット 1 体を封印する（能力を無効にする）');
@@ -799,8 +798,7 @@ export function abilityLines(card: CardId): string[] {
   if (a.doubleStrike) lines.push('連撃（1 回のクールタイムで 2 回攻撃する）');
   if (a.cannotAttack) lines.push('攻撃不能（このカードは、自分に攻撃不能の状態を持つ）');
   if (a.lifesteal) lines.push('吸血（攻撃で与えたダメージぶん、自分の HP を回復）');
-  if (a.endure) lines.push('不屈（最初に倒されるとき、HP 1 で耐える）');
-  if (a.venom) lines.push(`攻撃時：攻撃した敵ユニットに毒 ${a.venom} を与える`);
+  if (a.venom) lines.push(`攻撃時：攻撃した敵ユニットに毒を与える`);
   if (a.ranged) lines.push('攻撃時：反撃を受けない');
   if (a.splash) lines.push(`攻撃時：ほかの敵カード全員に ${a.splash} ダメージ`);
   if (a.onDeath?.kind === 'face') lines.push(`死亡時：敵プレイヤーに ${a.onDeath.amount} ダメージ`);
@@ -827,12 +825,12 @@ export function abilityLines(card: CardId): string[] {
   if (oo?.kind === 'buff') lines.push(`チェンジ登場時：自分の${buffText(oo.atk, oo.hp)}`);
   if (oo?.kind === 'refund') lines.push('チェンジ登場時：入れ替わったカードのコストの半分のコインが戻る');
   if (oo?.kind === 'haste') lines.push('チェンジ登場時：速攻');
-  if (a.onDeath?.kind === 'poisonFoes') lines.push(`死亡時：敵ユニット全員に毒 ${a.onDeath.amount} を与える`);
+  if (a.onDeath?.kind === 'poisonFoes') lines.push(`死亡時：敵ユニット全員に毒を与える`);
   const p = a.pulse;
   if (p?.kind === 'token') lines.push(`${p.everyMs / 1000} 秒ごと：空いている枠に志願兵を出す`);
   if (p?.kind === 'snipe') lines.push(`${p.everyMs / 1000} 秒ごと：HP がいちばん低い敵カードに ${p.amount} ダメージ`);
   if (p?.kind === 'heal') lines.push(`${p.everyMs / 1000} 秒ごと：HP がいちばん減っている味方ユニットを ${p.amount} 回復`);
-  if (p?.kind === 'poison') lines.push(`${p.everyMs / 1000} 秒ごと：攻撃力がいちばん高い敵ユニットに毒 ${p.amount} を重ねる`);
+  if (p?.kind === 'poison') lines.push(`${p.everyMs / 1000} 秒ごと：攻撃力がいちばん高い敵ユニットに毒を与える`);
   if (p?.kind === 'buff') lines.push(`${p.everyMs / 1000} 秒ごと：攻撃力がいちばん低い味方ユニットの攻撃力 +${p.atk}`);
   if (a.faceBonus) lines.push(`敵プレイヤーへのダメージ +${a.faceBonus}`);
   if (a.unitBonus) lines.push(`攻撃時：敵カードへのダメージ +${a.unitBonus}`);
@@ -847,7 +845,7 @@ export function abilityLines(card: CardId): string[] {
   if (sp?.kind === 'ready') lines.push('味方ユニット全員のクールタイムをなくす');
   if (sp?.kind === 'healAll') lines.push(`味方ユニット全員の HP を ${sp.amount} 回復`);
   if (sp?.kind === 'buffAll') lines.push(`味方ユニット全員の${buffText(sp.atk, sp.hp)}`);
-  if (sp?.kind === 'poisonAll') lines.push(`敵ユニット全員に毒 ${sp.amount} を与える`);
+  if (sp?.kind === 'poisonAll') lines.push(`敵ユニット全員に毒を与える`);
   if (sp?.kind === 'sealAll') lines.push('敵ユニット全員を封印する（能力を無効にする）');
   if (sp?.kind === 'ambush') lines.push('空いている枠に民兵（ブロッカー）をすぐ出す。溜め中の敵の攻撃は割り込まれて中断する');
   if (sp?.kind === 'parry') lines.push(`溜め中の敵の攻撃をすべて中断させ、攻撃元のクールタイム +${sp.ms / 1000} 秒（すぐ効く）`);

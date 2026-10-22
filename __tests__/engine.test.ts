@@ -20,7 +20,7 @@ import {
   COIN_MAX,
   COIN_MS,
   COIN_START,
-  DOUBLE_COIN_FROM_MS,
+  FAST_COOLDOWN_FROM_MS,
   FIELD_SLOTS,
   MATCH_MS,
   PLAYER_ATK,
@@ -93,26 +93,36 @@ describe('コイン', () => {
     const s = tick(fresh(), 60_000);
     expect(s.players[0].coins).toBe(COIN_MAX);
   });
-  it('120 秒以降は 2 倍速', () => {
-    let s = { ...fresh(), time: DOUBLE_COIN_FROM_MS };
+  it('最後の 1 分でも、コインは 2 倍にならない（膠着を防ぐため）', () => {
+    let s = { ...fresh(), time: FAST_COOLDOWN_FROM_MS };
     s = { ...s, players: [{ ...s.players[0], coins: 0 }, { ...s.players[1], coins: 0 }] };
     s = tick(s, COIN_MS);
-    expect(s.players[0].coins).toBeCloseTo(2);
+    expect(s.players[0].coins).toBeCloseTo(1);
   });
-  it('120 秒の境目をまたぐ tick は前後で速さを分ける', () => {
-    let s = { ...fresh(), time: DOUBLE_COIN_FROM_MS - COIN_MS };
-    s = { ...s, players: [{ ...s.players[0], coins: 0 }, { ...s.players[1], coins: 0 }] };
-    // 手前の 2.8 秒で 1 枚 + 先の 2.8 秒で 2 枚
-    s = tick(s, COIN_MS * 2);
-    expect(s.players[0].coins).toBeCloseTo(3);
-  });
-  it('tick を細かく刻んでも一度に進めても同じ', () => {
-    let a = { ...fresh(), time: DOUBLE_COIN_FROM_MS - 1000 };
-    a = { ...a, players: [{ ...a.players[0], coins: 0 }, a.players[1]] };
-    let b = a;
-    a = tick(a, 5000);
-    for (let i = 0; i < 100; i++) b = tick(b, 50);
-    expect(b.players[0].coins).toBeCloseTo(a.players[0].coins, 6);
+  it('最後の 1 分は、クールタイムが 2 倍の速さで減る。境目をまたぐ tick も、刻んでも同じ', () => {
+    const mk = (time: number) => {
+      let [s, u] = place(withHand(HAND4), 0, 0, 'knight');
+      s = { ...s, time };
+      s = { ...s, players: [{ ...s.players[0], field: s.players[0].field.map((x) => (x ? { ...x, readyAt: time + 10_000 } : x)) }, s.players[1]] } as typeof s;
+      return [s, u] as const;
+    };
+    // 通常: 4 秒たつと残り 6 秒
+    let [a, ua] = mk(FAST_COOLDOWN_FROM_MS - 20_000);
+    a = tick(a, 4000);
+    expect(a.players[0].field[0]!.readyAt - a.time).toBe(6000);
+    // 最後の 1 分: 4 秒で 8 秒ぶん減る（残り 2 秒）
+    let [b] = mk(FAST_COOLDOWN_FROM_MS);
+    b = tick(b, 4000);
+    expect(b.players[0].field[0]!.readyAt - b.time).toBe(2000);
+    // 境目をまたぐ: 手前 2 秒 + 先 2 秒 → 2 + 4 = 6 秒ぶん減る（残り 4 秒）
+    let [c] = mk(FAST_COOLDOWN_FROM_MS - 2000);
+    c = tick(c, 4000);
+    expect(c.players[0].field[0]!.readyAt - c.time).toBe(4000);
+    // 刻んでも同じ
+    let [d] = mk(FAST_COOLDOWN_FROM_MS - 2000);
+    for (let i = 0; i < 80; i++) d = tick(d, 50);
+    expect(d.players[0].field[0]!.readyAt - d.time).toBe(4000);
+    void ua;
   });
   it('dt が 0 以下なら何も変わらない', () => {
     const s = fresh();
@@ -517,11 +527,11 @@ describe('能力: 召喚時・コイン・遺言', () => {
     expect(tick(withCoins(s, 0, 9.9), 60_000).players[0].coins).toBe(COIN_MAX);
   });
 
-  it('増収: 2 倍速の時間帯にも効く。倒れたら元に戻る', () => {
-    let s = withCoins({ ...withHand(HAND4), time: DOUBLE_COIN_FROM_MS }, 0, 0);
+  it('増収: 終盤にも効く。倒れたら元に戻る', () => {
+    let s = withCoins({ ...withHand(HAND4), time: FAST_COOLDOWN_FROM_MS }, 0, 0);
     let b: Unit, a: Unit;
     [s, b] = place(s, 0, 0, 'banker');
-    expect(tick(s, COIN_MS).players[0].coins).toBeCloseTo(2 * (1 + B));
+    expect(tick(s, COIN_MS).players[0].coins).toBeCloseTo(1 + B);
     [s, a] = place(s, 1, 0, 'craftsman'); // 討伐込みで 4 ダメージ = 銀行家の HP
     s = hit(s, 1, a.uid, U(b.uid));
     expect(gone(s, 0, b.uid)).toBe(true);

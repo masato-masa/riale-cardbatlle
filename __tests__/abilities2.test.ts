@@ -45,7 +45,6 @@ function place(s: GameState, p: PlayerIndex, slot: number, card: CardId, extra: 
     stealth: !!ab.stealth,
     pulseAt: ab.pulse ? s.time + ab.pulse.everyMs : null,
     reserved: null,
-    endure: ab.endure ? true : undefined,
     ...extra,
   };
   const field = [...s.players[p].field];
@@ -199,19 +198,13 @@ describe('毒（poison）', () => {
     expect(unitOf(s, 1, t.uid)!.poison).toBe(1);
   });
 
-  it('ゾーラの登場時: 選んだ敵に毒 2。毒霧: 敵全員に毒 2', () => {
+  it('ゾーラの登場時: 選んだ敵に毒（数はない状態）。毒霧: 敵全員に毒。重ならない', () => {
     let [s, t] = place(withHand(['poisoner', 'miasma', 'herald', 'herald']), 1, 0, 'ogre');
     s = step(s, { type: 'summon', p: 0, handIndex: 0, slot: 0, target: t.uid });
-    expect(unitOf(s, 1, t.uid)!.poison).toBe(2);
+    expect(unitOf(s, 1, t.uid)!.poison).toBe(1);
     s = step(s, { type: 'summon', p: 0, handIndex: 1, slot: -1 });
-    // 同じ状態は重ならない: 毒 2 に毒 2 を重ねても 2 のまま
-    expect(unitOf(s, 1, t.uid)!.poison).toBe(2);
-  });
-
-  it('毒は重ならず、強い毒だけが残る', () => {
-    let [s, t] = place(withHand(['hexer', 'miasma', 'herald', 'herald']), 1, 0, 'ogre', { poison: 1 });
-    s = step(s, { type: 'summon', p: 0, handIndex: 1, slot: -1 }); // 毒霧 2
-    expect(unitOf(s, 1, t.uid)!.poison).toBe(2);
+    // 同じ状態は重ならない
+    expect(unitOf(s, 1, t.uid)!.poison).toBe(1);
   });
 
   it('ハッカの死亡時: 敵ユニット全員に毒 1', () => {
@@ -299,16 +292,14 @@ describe('吸血・不屈', () => {
     expect(s.players[0].hp).toBe(PLAYER_HP);
   });
 
-  it('バーナ: 最初に倒されるとき HP 1 で耐える。2 回目は倒れる', () => {
+  it('バーナ: 結界で、最初のダメージを 0 にする。2 回目は受ける', () => {
     let [s, b] = place(withHand(['herald', 'herald', 'herald', 'herald']), 0, 0, 'stalwart');
     let foe: Unit;
     [s, foe] = place(s, 1, 0, 'ogre');
+    expect(unitOf(s, 0, b.uid)!.barrier).toBe(true);
     s = attack(s, foe.uid, U(b.uid), 1);
-    expect(unitOf(s, 0, b.uid)!.hp).toBe(1);
-    expect(unitOf(s, 0, b.uid)!.endure).toBeUndefined();
-    s = tick(s, 20_000); // クールタイムが明けると、残したターゲットへ自動で攻撃が始まる
-    s = tick(s, WINDUP_MS);
-    expect(unitOf(s, 0, b.uid)).toBeUndefined();
+    expect(unitOf(s, 0, b.uid)!.hp).toBe(CARDS.stalwart.hp);
+    expect(unitOf(s, 0, b.uid)!.barrier).toBe(false);
   });
 });
 

@@ -20,7 +20,6 @@ const basic: Group[] = [
   { title: '連撃', note: '1 回のクールタイムで 2 回攻撃', pick: (i) => !!ab(i).doubleStrike },
   { title: '遠隔', note: '攻撃時に反撃を受けない', pick: (i) => !!ab(i).ranged },
   { title: '吸血', note: '与えたダメージぶん自分の HP を回復', pick: (i) => !!ab(i).lifesteal },
-  { title: '不屈', note: '最初に倒されるとき HP 1 で耐える', pick: (i) => !!ab(i).endure },
   { title: '鉄壁', note: '受けるダメージ -N', pick: (i) => !!ab(i).armor },
 ];
 

@@ -13,7 +13,7 @@ function highlight(line: string): React.ReactNode[] {
   return head ? [<b key="t" className="kw">{head}</b>, ...body] : body;
 }
 
-export function HeroBadge({ hp, label, walled, portrait }: { hp: number; label: string; walled: boolean; portrait: string }) {
+export function HeroBadge({ hp, label, portrait }: { hp: number; label: string; portrait: string }) {
   const ratio = hp / PLAYER_HP;
   return (
     <span className={`hero-badge${ratio <= 0.3 ? ' is-low' : ''}`}>
@@ -30,11 +30,6 @@ export function HeroBadge({ hp, label, walled, portrait }: { hp: number; label: 
         <HeartMark />
         <b>{hp}</b>
       </span>
-      {walled ? (
-        <span className="hero-wall" title={WALL_TEXT}>
-          壁
-        </span>
-      ) : null}
       <span className="hero-bar" aria-hidden="true">
         <i style={{ width: `${Math.max(0, Math.min(1, ratio)) * 100}%` }} />
       </span>
@@ -90,7 +85,7 @@ export function CardDetail({ card, hp }: { card: CardId; hp?: number }) {
 export function HelpBody() {
   return (
     <ul className="help-list">
-      <li>コインは時間でたまります（最大 10）。最後の 1 分は 2 倍速。</li>
+      <li>コインは時間でたまります（最大 10）。最後の 1 分は、ユニットのクールタイムが 2 倍の速さで減ります。</li>
       <li>手札を自分の場へドラッグすると召喚。自分のカードの上に重ねると入れ替わります（チェンジ）。左上の数字が召喚コストです。</li>
       <li>場のカードを相手のカードか相手のプレイヤーへドラッグすると攻撃。右上の数字がクールタイム（秒）で、明けるとまた攻撃できます。</li>
       <li>カードは、場へ置いてから 0.5 秒後に登場します（半透明のカードが濃くなります）。攻撃を見てから出しても妨害には間に合わないので、相手の攻撃を読んで先に置きましょう。</li>

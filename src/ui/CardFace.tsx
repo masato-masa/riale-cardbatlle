@@ -3,14 +3,13 @@ import { CARDS, type CardId } from '@/game/cards';
 import { cardArt } from './art';
 
 /** 場のカードの状態。ブロッカー・結界・ステルス・遅延（足止め・通行止め）。 */
-export type CardState = 'blocker' | 'barrier' | 'stealth' | 'stun' | 'endure' | 'seal' | 'poison' | 'disarm';
+export type CardState = 'blocker' | 'barrier' | 'stealth' | 'stun' | 'seal' | 'poison' | 'disarm';
 
 const STATE_LABEL: Record<CardState, string> = {
   blocker: 'ブロッカー',
   barrier: '結界',
   stealth: 'ステルス',
   stun: '遅延中',
-  endure: '不屈',
   seal: '封印',
   poison: '毒',
   disarm: '攻撃不能',
@@ -26,7 +25,7 @@ export function CardFace({
   maxHp,
   atk,
   small,
-  states = [],
+  states: statesProp,
 }: {
   card: CardId;
   hp?: number;
@@ -39,7 +38,11 @@ export function CardFace({
   const def = CARDS[card];
   const shownHp = hp ?? def.hp;
   const shownAtk = atk ?? def.atk;
+  const states = statesProp ?? [];
+  // 場のカードは、いまの状態（封印されたブロッカーは数えない）。手札・一覧は、カードの定義どおり
+  const blocker = statesProp ? statesProp.includes('blocker') : !!def.ab.blocker;
   const cls = ['face', `is-${def.type}`];
+  if (blocker) cls.push('is-blocker');
   if (small) cls.push('is-small');
   if (def.token) cls.push('is-token');
   return (
@@ -48,9 +51,23 @@ export function CardFace({
         <img className="face-art" src={cardArt(card, def.type)} alt="" draggable={false} />
         <span className="face-name">{def.name}</span>
       </div>
+      {blocker ? (
+        <span className="blocker-badge" aria-label="ブロッカー" title="ブロッカー">
+          <svg viewBox="0 0 24 28" aria-hidden="true">
+            <path d="M12 1.5 L22 5 V13 C22 19.5 17.5 24.5 12 26.5 C6.5 24.5 2 19.5 2 13 V5 Z" fill="url(#bb-grad)" stroke="#fff" strokeWidth="1.6" strokeLinejoin="round" />
+            <path d="M12 5.5 V22 M6 11 H18" stroke="#fff" strokeWidth="2.2" strokeLinecap="round" opacity="0.9" />
+            <defs>
+              <linearGradient id="bb-grad" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0" stopColor="#7fc0ff" />
+                <stop offset="1" stopColor="#1f5fc4" />
+              </linearGradient>
+            </defs>
+          </svg>
+        </span>
+      ) : null}
       {states.length > 0 ? (
         <span className="face-states">
-          {states.map((s) => (
+          {states.filter((s) => s !== 'blocker').map((s) => (
             <span key={s} className={`state state-${s}`} aria-label={STATE_LABEL[s]} title={STATE_LABEL[s]}>
               <StateIcon state={s} />
             </span>
@@ -105,13 +122,6 @@ function StateIcon({ state }: { state: CardState }) {
         <path d="M2.5 12 C5.5 7 9 5.5 12 5.5 C15 5.5 18.5 7 21.5 12 C18.5 17 15 18.5 12 18.5 C9 18.5 5.5 17 2.5 12 Z" fill="none" stroke="#fff" strokeWidth="2.2" />
         <circle cx="12" cy="12" r="2.8" fill="#fff" />
         <path d="M4 20 L20 4" stroke="#fff" strokeWidth="2.6" strokeLinecap="round" />
-      </svg>
-    );
-  }
-  if (state === 'endure') {
-    return (
-      <svg viewBox="0 0 24 24" aria-hidden="true">
-        <path d="M12 21 C5 15.5 3 12 3 8.5 C3 5.7 5 4 7.3 4 C9.2 4 11 5.2 12 7 C13 5.2 14.8 4 16.7 4 C19 4 21 5.7 21 8.5 C21 12 19 15.5 12 21 Z" fill="#fff" />
       </svg>
     );
   }
