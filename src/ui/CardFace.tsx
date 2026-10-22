@@ -26,6 +26,7 @@ export function CardFace({
   atk,
   small,
   states: statesProp,
+  mine,
 }: {
   card: CardId;
   hp?: number;
@@ -34,6 +35,8 @@ export function CardFace({
   atk?: number;
   small?: boolean;
   states?: CardState[];
+  /** 場のカードの持ち主: 自分（true）は攻撃力・HP を上、コスト・クールタイムを下に入れ替える。相手（false）は能力のアイコンを下に出す。 */
+  mine?: boolean;
 }) {
   const def = CARDS[card];
   const shownHp = hp ?? def.hp;
@@ -43,6 +46,8 @@ export function CardFace({
   const blocker = statesProp ? statesProp.includes('blocker') : !!def.ab.blocker;
   const cls = ['face', `is-${def.type}`];
   if (blocker) cls.push('is-blocker');
+  if (mine === true) cls.push('is-flip');
+  if (mine === false) cls.push('is-foe');
   if (small) cls.push('is-small');
   if (def.token) cls.push('is-token');
   return (

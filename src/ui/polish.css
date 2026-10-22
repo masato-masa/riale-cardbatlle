@@ -2645,3 +2645,39 @@
 .slot-chip {
   width: 36px;
 }
+
+/* ---- 場の自分のカード: 攻撃力・HP を上、コスト・クールタイムを下に入れ替える ---- */
+.face.is-flip .pip-atk {
+  top: -22cqw;
+  bottom: auto;
+  left: -20cqw;
+}
+
+.face.is-flip .pip-hp {
+  top: -22cqw;
+  bottom: auto;
+  right: -20cqw;
+}
+
+.face.is-flip .pip-summon {
+  top: auto;
+  bottom: -19cqw;
+  left: -19cqw;
+}
+
+.face.is-flip .pip-cd {
+  top: auto;
+  bottom: -15cqw;
+  right: -15cqw;
+}
+
+/* ---- 場の相手のカード: ブロッカーなどのアイコンを、カードの下に ---- */
+.face.is-foe .blocker-badge {
+  top: auto;
+  bottom: -17cqw;
+}
+
+.face.is-foe .face-states {
+  top: auto;
+  bottom: -11%;
+}

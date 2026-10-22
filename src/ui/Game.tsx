@@ -1126,7 +1126,7 @@ export function Game({ level, deck, onExit }: { level: CpuLevel; deck: CardId[];
           onPointerCancel={side === 0 ? onPressCancel : undefined}
           onContextMenu={(e) => e.preventDefault()}
         >
-          <CardFace card={u.card} hp={u.hp} maxHp={maxHpOf(u)} atk={attackOf(pl, u)} states={statesOf(u, left)} />
+          <CardFace card={u.card} hp={u.hp} maxHp={maxHpOf(u)} atk={attackOf(pl, u)} states={statesOf(u, left)} mine={side === 0} />
           {left > 0 ? (
             <span className="unit-cd" style={{ ['--cd' as string]: `${left * 360}deg` }} aria-hidden="true">
               <span className="unit-cd-num">{Math.ceil((u.readyAt - game.time) / 1000)}</span>
