@@ -697,20 +697,20 @@ export const CARDS: Record<CardId, CardDef> = {
 export const STARTER_DECK: CardId[] = ['herald', 'guard', 'double', 'taxman', 'knight', 'quarry', 'veteran', 'executioner'];
 
 /** CPU のデッキ（8 枚固定）。 */
-export const RIVAL_DECK: CardId[] = ['herald', 'usurer', 'banker', 'inspector', 'blockader', 'architect', 'tradingHouse', 'strategist'];
+export const RIVAL_DECK: CardId[] = ['herald', 'usurer', 'banker', 'informer', 'hunter', 'sniper', 'cathedral', 'strategist'];
 
 /** CPU のデッキ（テーマ別。試合ごとに 1 つ選ぶ。どれも 8 枚）。 */
 export const RIVAL_DECKS: { name: string; deck: CardId[] }[] = [
   { name: '商人', deck: RIVAL_DECK },
-  { name: '毒', deck: ['needle', 'creeper', 'footman', 'poisoner', 'hexer', 'altar', 'knight', 'raider'] },
-  { name: '巨人', deck: ['recruit', 'bulwark', 'stalwart', 'captain', 'warlord', 'champion', 'ogre', 'forge'] },
-  { name: '連撃', deck: ['herald', 'twin', 'bloody', 'drummer', 'duelist', 'bloodknight', 'raider', 'reaper'] },
-  { name: '狙撃', deck: ['guard', 'marksman', 'bard', 'sniper', 'priest', 'infirmary', 'warden', 'banner'] },
-  { name: '割り込み', deck: ['recruit', 'shieldmaid', 'warder', 'diehard', 'ambusher', 'knight', 'gatekeeper', 'ambush'] },
-  { name: '生贄', deck: ['offering', 'bomber', 'heir', 'footman', 'usurper', 'phoenix', 'conqueror', 'knight'] },
-  { name: '討伐', deck: ['herald', 'hunter', 'avenger', 'knight', 'slayer', 'riposte', 'trickster', 'monarch'] },
-  { name: 'K一族', deck: ['kleen', 'kvav', 'kboyan', 'kroda', 'kdera', 'recruit', 'knight', 'captain'] },
-  { name: '封印', deck: ['informer', 'spy', 'sealer', 'binder', 'blockader', 'knight', 'quarry', 'poisoner'] },
+  { name: '毒', deck: ['needle', 'creeper', 'footman', 'poisoner', 'knight', 'raider', 'stalwart', 'captain'] },
+  { name: '巨人', deck: ['recruit', 'bulwark', 'stalwart', 'captain', 'taxman', 'champion', 'ogre', 'forge'] },
+  { name: '連撃', deck: ['herald', 'twin', 'bloody', 'duelist', 'knight', 'bloodknight', 'raider', 'stalwart'] },
+  { name: '狙撃', deck: ['guard', 'marksman', 'craftsman', 'sniper', 'priest', 'wall', 'festival', 'bloodknight'] },
+  { name: '割り込み', deck: ['guard', 'shieldmaid', 'warder', 'diehard', 'ambusher', 'knight', 'oldguard', 'ambush'] },
+  { name: '生贄', deck: ['offering', 'tactician', 'heir', 'footman', 'usurper', 'sniper', 'conqueror', 'knight'] },
+  { name: '討伐', deck: ['herald', 'hunter', 'avenger', 'kdera', 'slayer', 'riposte', 'trickster', 'monarch'] },
+  { name: 'K一族', deck: ['kleen', 'kvav', 'kboyan', 'kroda', 'kdera', 'boss', 'avenger', 'captain'] },
+  { name: '封印', deck: ['informer', 'warder', 'binder', 'blockader', 'knight', 'stalwart', 'shieldmaid', 'quarry'] },
 ];
 
 export function isBlocker(card: CardId): boolean {
