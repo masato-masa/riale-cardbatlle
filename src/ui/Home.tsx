@@ -266,7 +266,9 @@ export function Home({ deck, onStart, onDeck }: { deck: CardId[]; onStart: (leve
                   <div className="stat-cards">
                     {s.topCards.map(({ card, count }) => (
                       <span key={card} className="stat-card">
-                        <CardFace card={card} small />
+                        <span className="stat-face">
+                          <CardFace card={card} small />
+                        </span>
                         <small>
                           {CARDS[card].name} ×{count}
                         </small>

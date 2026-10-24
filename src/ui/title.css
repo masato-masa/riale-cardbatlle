@@ -919,8 +919,12 @@ body {
   text-align: center;
 }
 
-.stat-card .face {
+/* カードの面は入れ物いっぱいに広がる作りなので、縦横比を決めた入れ物で包む（無いと画面全体に広がった） */
+.stat-face {
+  position: relative;
   width: 100%;
+  aspect-ratio: 68 / 84;
+  container-type: inline-size;
 }
 
 .stat-card .pip,
