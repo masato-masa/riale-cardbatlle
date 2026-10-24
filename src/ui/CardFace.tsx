@@ -1,3 +1,5 @@
+import { memo } from 'react';
+
 import { CARDS, type CardId } from '@/game/cards';
 
 import { cardArt } from './art';
@@ -19,7 +21,7 @@ const STATE_LABEL: Record<CardState, string> = {
  *  建築物は攻撃力とクールタイムが無く（石の枠）、呪文は召喚コストだけ（紫の枠）。
  *  能力の文字は面に書かない（長押しの説明で見る）。場のカードだけ、上端に状態のアイコンを並べる。
  *  hp・atk を渡すと場のカードとして、減った HP を赤、上がった攻撃力を金の縁で出す。 */
-export function CardFace({
+function CardFaceView({
   card,
   hp,
   maxHp,
@@ -106,6 +108,17 @@ export function CardFace({
     </div>
   );
 }
+
+type CardFaceProps = Parameters<typeof CardFaceView>[0];
+
+/** 対戦中は毎フレーム親が描き直すので、中身が同じカードは描き直さない（状態の配列は中身で比べる）。 */
+export const CardFace = memo(CardFaceView, (a: CardFaceProps, b: CardFaceProps) => {
+  if (a.card !== b.card || a.hp !== b.hp || a.maxHp !== b.maxHp || a.atk !== b.atk || a.small !== b.small || a.mine !== b.mine) return false;
+  if ((a.states === undefined) !== (b.states === undefined)) return false;
+  const x = a.states ?? [];
+  const y = b.states ?? [];
+  return x.length === y.length && x.every((v, i) => v === y[i]);
+});
 
 function StateIcon({ state }: { state: CardState }) {
   if (state === 'blocker') {
