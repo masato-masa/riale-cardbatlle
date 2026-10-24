@@ -1177,3 +1177,12 @@ button.ts-arena-name {
 .road-row.is-locked .road-foes img {
   filter: grayscale(0.6);
 }
+
+.arena-up-foes {
+  justify-content: center;
+}
+
+.arena-up-foes img {
+  width: 40px;
+  height: 40px;
+}

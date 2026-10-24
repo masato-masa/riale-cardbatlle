@@ -40,6 +40,9 @@ export function Home({ deck, onStart, onDeck }: { deck: CardId[]; onStart: (leve
   const [dailyOpen, setDailyOpen] = useState(false);
   const [statsOpen, setStatsOpen] = useState(false);
   const [roadOpen, setRoadOpen] = useState(false);
+  /** アリーナ i で初めて出てくる相手デッキ（それより前のアリーナに無いもの）。 */
+  const freshFoes = (i: number) => ARENAS[i]!.pool.filter((n) => !ARENAS.slice(0, i).some((b) => b.pool.includes(n)));
+  const newFoes = freshFoes(ai);
   /** 新しいアリーナに上がってから初めてホームに来たときの演出（一度だけ）。 */
   const [arenaUp, setArenaUp] = useState(() => arenaIndex(loadTrophies()) > loadArenaSeen());
   const daily = loadDaily();
@@ -84,6 +87,13 @@ export function Home({ deck, onStart, onDeck }: { deck: CardId[]; onStart: (leve
                 {ARENAS[ai]!.name}
               </b>
               <p>宝箱からコスト {ARENAS[ai]!.cardCap} までのカードが出るようになり、出てくる相手デッキが増えました。</p>
+              {newFoes.length > 0 ? (
+                <span className="road-foes arena-up-foes" aria-label={`新しい相手: ${newFoes.join('・')}`}>
+                  {newFoes.map((n) => (
+                    <img key={n} src={foePortrait(n)} alt="" title={`${n}デッキ`} draggable={false} />
+                  ))}
+                </span>
+              ) : null}
             </div>
             <button
               className="sheet-btn"
@@ -102,7 +112,7 @@ export function Home({ deck, onStart, onDeck }: { deck: CardId[]; onStart: (leve
             {/* クラロワのトロフィーロード: アリーナごとに、必要なトロフィー・宝箱の上限・新しく出てくる相手。上ほど先 */}
             <div className="road">
               {ARENAS.map((a, i) => {
-                const fresh = a.pool.filter((n) => !ARENAS.slice(0, i).some((b) => b.pool.includes(n)));
+                const fresh = freshFoes(i);
                 const state = i < ai ? 'is-past' : i === ai ? 'is-now' : 'is-locked';
                 return (
                   <div key={a.name} className={`road-row ${state}`}>
