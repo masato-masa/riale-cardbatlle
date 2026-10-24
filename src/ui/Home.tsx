@@ -41,6 +41,7 @@ export function Home({ deck, onStart, onDeck }: { deck: CardId[]; onStart: (leve
   };
   return (
     <div className="ts" style={{ backgroundImage: `url(${FIELD_URL})` }}>
+      <div className="arena-floor" aria-hidden="true" style={{ backgroundImage: `url(${FIELD_URL})`, filter: ARENAS[ai]!.tint }} />
       <button
         className="ts-dev"
         onClick={() => {

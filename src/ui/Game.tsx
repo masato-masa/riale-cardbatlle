@@ -34,7 +34,7 @@ import {
 import { makeRng } from '@/game/rng';
 import { awardMatch, CHEST_POINTS, type MatchReward } from '@/storage/collection';
 import { addResult, isTutorialDone, setTutorialDone } from '@/storage/profile';
-import { ARENAS, loadTrophies, recordTrophies, rivalFor, type TrophyChange } from '@/storage/trophy';
+import { ARENAS, arenaIndex, loadTrophies, recordTrophies, rivalFor, type TrophyChange } from '@/storage/trophy';
 import { COIN_MAX, FAST_COOLDOWN_FROM_MS, MATCH_MS, PLAYER_HP, SUMMON_WINDUP_MS, WINDUP_MS } from '@/game/rules';
 
 import { COIN_URL, FIELD_URL, HERO_FOE_URL, HERO_ME_URL, preloadFx } from './art';
@@ -352,6 +352,8 @@ export function Game({ level, deck, onExit }: { level: CpuLevel; deck: CardId[];
 
   // 床の絵の金の帯（縦 45%）を、盤面の仕切りの位置に合わせる。絵は寸法が違う画面でも帯がずれないよう拡大して動かす。
   const [floorBg, setFloorBg] = useState<{ size: string; pos: string } | null>(null);
+  /** 床の色味はアリーナで変わる（試合の始めに決める）。 */
+  const [floorTint] = useState(() => ARENAS[arenaIndex(loadTrophies())]!.tint);
   useLayoutEffect(() => {
     const fit = () => {
       const mid = document.querySelector('.midline')?.getBoundingClientRect();
@@ -1210,6 +1212,11 @@ export function Game({ level, deck, onExit }: { level: CpuLevel; deck: CardId[];
       }}
       style={{ backgroundImage: `url(${FIELD_URL})`, backgroundSize: floorBg?.size, backgroundPosition: floorBg?.pos }}
     >
+      <div
+        className="arena-floor"
+        aria-hidden="true"
+        style={{ backgroundImage: `url(${FIELD_URL})`, backgroundSize: floorBg?.size, backgroundPosition: floorBg?.pos, filter: floorTint }}
+      />
       <main className={`battle${castReady ? ' is-casting' : ''}${me.hp <= PLAYER_HP * 0.3 && !game.result ? ' is-danger' : ''}`}>
         <div className="arena">
           <div className="arena-top">
@@ -1621,7 +1628,12 @@ export function Game({ level, deck, onExit }: { level: CpuLevel; deck: CardId[];
                           トロフィー {trophy.after >= trophy.before ? '+' : ''}{trophy.after - trophy.before}
                         </span>
                         <small>{trophy.before} → {trophy.after}</small>
-                        {trophy.arenaAfter > trophy.arenaBefore ? <b className="arena-up">アリーナ昇格！ {ARENAS[trophy.arenaAfter]!.name}</b> : null}
+                        {trophy.arenaAfter > trophy.arenaBefore ? (
+                          <>
+                            <b className="arena-up">アリーナ昇格！ {ARENAS[trophy.arenaAfter]!.name}</b>
+                            <small>宝箱からコスト {ARENAS[trophy.arenaAfter]!.cardCap} までのカードが出るように</small>
+                          </>
+                        ) : null}
                       </div>
                     ) : null}
                     {reward ? (

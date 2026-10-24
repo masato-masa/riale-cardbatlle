@@ -2804,3 +2804,18 @@
   -webkit-text-stroke: 7px #c4161e;
   filter: drop-shadow(0 0 10px rgb(255 120 60 / 0.9));
 }
+
+/* アリーナごとの床の色味: 同じ絵に filter を掛けた層を、背景の上・中身の下に敷く */
+.app-battle,
+.ts {
+  isolation: isolate;
+}
+
+.arena-floor {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background-size: cover;
+  background-position: center;
+  pointer-events: none;
+}

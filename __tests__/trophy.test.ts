@@ -34,3 +34,27 @@ describe('トロフィーとアリーナ', () => {
     expect(seenTop.size).toBe(RIVAL_DECKS.length);
   });
 });
+
+import { CARDS } from '../src/game/cards';
+import { pickReward } from '../src/storage/collection';
+
+describe('アリーナの解放カード', () => {
+  it('宝箱はアリーナのコスト上限以下から出る。上限以下を持ちきったら上限を超えて出る', () => {
+    const owned = new Set<keyof typeof CARDS>();
+    for (let i = 0; i < 40; i++) {
+      const c = pickReward(owned, () => (i * 0.137) % 1, 4);
+      expect(c).not.toBeNull();
+      expect(CARDS[c!].summon).toBeLessThanOrEqual(4);
+    }
+    const allCheap = new Set((Object.keys(CARDS) as (keyof typeof CARDS)[]).filter((id) => CARDS[id].summon <= 4));
+    const c = pickReward(allCheap, () => 0.5, 4);
+    expect(c === null || CARDS[c].summon > 4).toBe(true);
+  });
+
+  it('アリーナが上がるほど上限が上がり、色味が違う', () => {
+    for (let i = 1; i < ARENAS.length; i++) {
+      expect(ARENAS[i]!.cardCap).toBeGreaterThanOrEqual(ARENAS[i - 1]!.cardCap);
+      expect(ARENAS[i]!.tint).not.toBe(ARENAS[i - 1]!.tint);
+    }
+  });
+});

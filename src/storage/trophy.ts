@@ -12,14 +12,18 @@ export interface Arena {
   from: number;
   /** 出てくる相手デッキ（RIVAL_DECKS の name）。 */
   pool: string[];
+  /** 床の絵の色味（CSS filter）。アリーナごとに見た目を変える。赤（相手）と青（自分）の陣地が分かるよう、色相は大きく回さない。 */
+  tint: string;
+  /** 宝箱から出るカードのコストの上限（アリーナが上がると重いカードが解放される）。 */
+  cardCap: number;
 }
 
 export const ARENAS: Arena[] = [
-  { name: 'はじまりの広場', from: 0, pool: ['商人', '毒', '巨人'] },
-  { name: '石畳の闘技場', from: 300, pool: ['商人', '毒', '巨人', '連撃', '割り込み'] },
-  { name: '城門前', from: 700, pool: ['毒', '巨人', '連撃', '割り込み', '狙撃', '生贄', '討伐'] },
-  { name: '王の間', from: 1200, pool: ['巨人', '連撃', '割り込み', '狙撃', '生贄', '討伐', 'T一族', '封印'] },
-  { name: '伝説の頂', from: 1800, pool: RIVAL_DECKS.map((d) => d.name) },
+  { name: 'はじまりの広場', from: 0, pool: ['商人', '毒', '巨人'], tint: 'none', cardCap: 4 },
+  { name: '石畳の闘技場', from: 300, pool: ['商人', '毒', '巨人', '連撃', '割り込み'], tint: 'saturate(1.25) brightness(1.04)', cardCap: 6 },
+  { name: '城門前', from: 700, pool: ['毒', '巨人', '連撃', '割り込み', '狙撃', '生贄', '討伐'], tint: 'sepia(0.3) saturate(1.2) brightness(1.02)', cardCap: 7 },
+  { name: '王の間', from: 1200, pool: ['巨人', '連撃', '割り込み', '狙撃', '生贄', '討伐', 'T一族', '封印'], tint: 'brightness(0.84) contrast(1.12) saturate(1.15)', cardCap: 8 },
+  { name: '伝説の頂', from: 1800, pool: RIVAL_DECKS.map((d) => d.name), tint: 'hue-rotate(-10deg) saturate(1.45) contrast(1.08) brightness(1.06)', cardCap: 10 },
 ];
 
 export function arenaIndex(trophies: number): number {

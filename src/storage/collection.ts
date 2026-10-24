@@ -4,6 +4,8 @@
 
 import { CARDS, STARTER_DECK, type CardId } from '@/game/cards';
 
+import { ARENAS, arenaIndex, loadTrophies } from './trophy';
+
 const UNLOCK_KEY = 'riale-cardbatlle:unlocked';
 const POINTS_KEY = 'riale-cardbatlle:points';
 
@@ -78,9 +80,12 @@ function weight(id: CardId): number {
   return c <= 4 ? 3 : c <= 6 ? 2 : 1;
 }
 
-/** 持っていないカードを 1 枚選ぶ（全部持っていれば null）。 */
-export function pickReward(unlocked: Set<CardId>, rand: () => number): CardId | null {
-  const locked = ALL.filter((id) => !unlocked.has(id));
+/** 持っていないカードを 1 枚選ぶ（全部持っていれば null）。cap はアリーナで解放されているコストの上限。
+ *  上限以下を持ちきったら、上限を超えたカードから選ぶ（宝箱が空にならないように）。 */
+export function pickReward(unlocked: Set<CardId>, rand: () => number, cap = Infinity): CardId | null {
+  const notYet = ALL.filter((id) => !unlocked.has(id));
+  const inCap = notYet.filter((id) => CARDS[id].summon <= cap);
+  const locked = inCap.length > 0 ? inCap : notYet;
   if (locked.length === 0) return null;
   const total = locked.reduce((n, id) => n + weight(id), 0);
   let r = rand() * total;
@@ -108,7 +113,7 @@ export function awardMatch(winner: 0 | 1 | null, rand: () => number = Math.rando
   const cards: CardId[] = [];
   while (total >= CHEST_POINTS) {
     total -= CHEST_POINTS;
-    const c = pickReward(unlocked, rand);
+    const c = pickReward(unlocked, rand, ARENAS[arenaIndex(loadTrophies())]!.cardCap);
     if (c) {
       unlocked.add(c);
       cards.push(c);
