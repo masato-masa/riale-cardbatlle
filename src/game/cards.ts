@@ -202,7 +202,7 @@ export type Pulse =
   | { everyMs: number; kind: 'token' }
   /** 相手のいちばん HP の低いカード（同じなら左）にダメージ */
   | { everyMs: number; kind: 'snipe'; amount: number }
-  /** HP が最も減っている味方ユニットを回復 */
+  /** 自分（プレイヤー）の HP を回復。味方ユニット 1 体の回復は 3 枠の盤面ではすぐ倒れて効かなかった（hard で 23%） */
   | { everyMs: number; kind: 'heal'; amount: number }
   /** 敵ユニット 1 体（攻撃力が最も高い）に毒を重ねる */
   | { everyMs: number; kind: 'poison'; amount: number }
@@ -463,7 +463,7 @@ const FLAVOR: Partial<Record<CardId, string>> = {
   ironwall: '壁は、倒れてなお、立つ。',
   banner: '旗の下に集え！ 勝利は我らの手に！',
   reaper: '刈り取る。二度。',
-  infirmary: '傷ついた兵は、ここで息を吹き返す。',
+  infirmary: '傷ついた主も、ここで息を吹き返す。',
   altar: '禍々しい煙が、敵の足を蝕む。',
   forge: '打て、鍛えろ。刃は何度でも研がれる。',
   rain: '恵みの雨よ、傷を洗い流せ。',
@@ -648,14 +648,14 @@ export const CARDS: Record<CardId, CardDef> = {
   reaper: unit('reaper', 'ラスト', 10, 9, 9, CD_SLOW, { doubleStrike: true }),
 
   wall: building('wall', '城壁', 2, 8, { blocker: true }),
-  exchange: building('exchange', '補給所', 3, 5, { coinBoost: 0.3 }),
-  tradingHouse: building('tradingHouse', '戦旗塔', 2, 5, { rally: 1 }),
-  factory: building('factory', '兵舎', 3, 5, { pulse: { everyMs: 4000, kind: 'token' } }),
-  cathedral: building('cathedral', '鐘楼', 2, 12, { cooldownCut: 0.3 }),
+  exchange: building('exchange', '補給所', 3, 5, { coinBoost: 0.4 }),
+  tradingHouse: building('tradingHouse', '戦旗塔', 1, 5, { rally: 1 }),
+  factory: building('factory', '兵舎', 3, 5, { pulse: { everyMs: 2000, kind: 'token' } }),
+  cathedral: building('cathedral', '鐘楼', 1, 12, { cooldownCut: 0.5 }),
   fortress: building('fortress', '砦', 5, 8, { pulse: { everyMs: 9000, kind: 'snipe', amount: 1 } }),
-  infirmary: building('infirmary', '治療所', 1, 5, { pulse: { everyMs: 8000, kind: 'heal', amount: 2 } }),
-  altar: building('altar', '毒の祭壇', 3, 5, { pulse: { everyMs: 8000, kind: 'poison', amount: 1 } }),
-  forge: building('forge', '鍛冶場', 3, 7, { pulse: { everyMs: 7000, kind: 'buff', atk: 1 } }),
+  infirmary: building('infirmary', '治療所', 1, 5, { pulse: { everyMs: 6000, kind: 'heal', amount: 1 } }),
+  altar: building('altar', '毒の祭壇', 2, 5, { pulse: { everyMs: 3000, kind: 'poison', amount: 1 } }),
+  forge: building('forge', '鍛冶場', 3, 7, { pulse: { everyMs: 4000, kind: 'buff', atk: 1 } }),
 
   quarry: spell('quarry', '投石', 4, { kind: 'bolt', amount: 5 }),
   quake: spell('quake', '大地割り', 4, { kind: 'blast', amount: 2 }),
@@ -861,7 +861,7 @@ export function abilityLines(card: CardId): string[] {
   const p = a.pulse;
   if (p?.kind === 'token') lines.push(`${p.everyMs / 1000} 秒ごと：空いている枠に志願兵を出す`);
   if (p?.kind === 'snipe') lines.push(`${p.everyMs / 1000} 秒ごと：HP がいちばん低い敵カードに ${p.amount} ダメージ`);
-  if (p?.kind === 'heal') lines.push(`${p.everyMs / 1000} 秒ごと：HP がいちばん減っている味方ユニットを ${p.amount} 回復`);
+  if (p?.kind === 'heal') lines.push(`${p.everyMs / 1000} 秒ごと：自分の HP を ${p.amount} 回復`);
   if (p?.kind === 'poison') lines.push(`${p.everyMs / 1000} 秒ごと：攻撃力がいちばん高い敵ユニットに毒を与える`);
   if (p?.kind === 'buff') lines.push(`${p.everyMs / 1000} 秒ごと：攻撃力がいちばん低い味方ユニットの攻撃力 +${p.atk}`);
   if (a.faceBonus) lines.push(`敵プレイヤーへのダメージ +${a.faceBonus}`);

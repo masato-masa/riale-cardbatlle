@@ -304,15 +304,17 @@ describe('吸血・不屈', () => {
 });
 
 describe('建築物の定期効果', () => {
-  it('治療所: 8 秒ごと、HP がいちばん減っている味方ユニットを 2 回復', () => {
+  it('治療所: 一定時間ごとに自分の HP を回復（最大を超えない）', () => {
     let [s] = place(withHand(['herald', 'herald', 'herald', 'herald']), 0, 0, 'infirmary');
-    let a: Unit;
-    [s, a] = place(s, 0, 1, 'lancer', { hp: 1 });
-    s = tick(s, 8_000);
-    expect(unitOf(s, 0, a.uid)!.hp).toBe(3);
+    const pulse = CARDS.infirmary.ab.pulse!;
+    s = { ...s, players: [{ ...s.players[0], hp: 10 }, s.players[1]] };
+    s = tick(s, pulse.everyMs);
+    expect(s.players[0].hp).toBe(10 + (pulse.kind === 'heal' ? pulse.amount : 0));
+    s = tick(s, pulse.everyMs * 20);
+    expect(s.players[0].hp).toBe(PLAYER_HP);
   });
 
-  it('毒の祭壇: 10 秒ごと、攻撃力のいちばん高い敵ユニットに毒 1', () => {
+  it('毒の祭壇: 一定時間ごとに、毒の無い敵ユニットのうち攻撃力のいちばん高いものに毒', () => {
     let [s] = place(withHand(['herald', 'herald', 'herald', 'herald']), 0, 0, 'altar');
     let hi: Unit;
     [s] = place(s, 1, 0, 'lancer');
@@ -321,20 +323,28 @@ describe('建築物の定期効果', () => {
     expect(unitOf(s, 1, hi.uid)!.poison).toBe(1);
   });
 
-  it('鍛冶場: 10 秒ごと、攻撃力のいちばん低い味方ユニットの攻撃力 +1', () => {
+  it('毒の祭壇: 毒の付いた相手は飛ばして、次に攻撃力の高い相手に毒', () => {
+    let [s] = place(withHand(['herald', 'herald', 'herald', 'herald']), 0, 0, 'altar');
+    let lo: Unit;
+    [s, lo] = place(s, 1, 0, 'lancer');
+    [s] = place(s, 1, 1, 'ogre', { poison: 1 });
+    s = tick(s, CARDS.altar.ab.pulse!.everyMs);
+    expect(unitOf(s, 1, lo.uid)!.poison).toBe(1);
+  });
+
+  it('鍛冶場: 一定時間ごとに、攻撃力のいちばん低い味方ユニットの攻撃力 +1', () => {
     let [s] = place(withHand(['herald', 'herald', 'herald', 'herald']), 0, 0, 'forge');
     let lo: Unit;
     [s] = place(s, 0, 1, 'ogre');
     [s, lo] = place(s, 0, 2, 'lancer');
-    s = tick(s, 10_000);
+    s = tick(s, CARDS.forge.ab.pulse!.everyMs);
     expect(attackOf(s.players[0], unitOf(s, 0, lo.uid)!)).toBe(CARDS.lancer.atk + 1);
   });
 
   it('封印された建築物は、定期効果が止まる', () => {
     let [s] = place(withHand(['herald', 'herald', 'herald', 'herald']), 0, 0, 'infirmary', { sealed: true, pulseAt: null });
-    let a: Unit;
-    [s, a] = place(s, 0, 1, 'lancer', { hp: 1 });
+    s = { ...s, players: [{ ...s.players[0], hp: 10 }, s.players[1]] };
     s = tick(s, 20_000);
-    expect(unitOf(s, 0, a.uid)!.hp).toBe(1);
+    expect(s.players[0].hp).toBe(10);
   });
 });

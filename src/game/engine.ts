@@ -682,10 +682,10 @@ function pulses(state: GameState): GameState {
             .reduce<Unit | null>((m, u) => (!m || u.hp < m.hp ? u : m), null);
           if (weakest) hurtUnit(d, q, weakest, pulse.amount);
         } else if (pulse.kind === 'heal') {
-          const hurt = mineUnits.filter((u) => u.hp < maxHpOf(u)).reduce<Unit | null>((m, u) => (!m || maxHpOf(u) - u.hp > maxHpOf(m) - m.hp ? u : m), null);
-          if (hurt) healUnit(d, p, hurt, pulse.amount);
+          healPlayer(d, p, pulse.amount);
         } else if (pulse.kind === 'poison') {
-          const top = foeUnits.reduce<Unit | null>((m, u) => (!m || attackOf(d.players[q], u) > attackOf(d.players[q], m) ? u : m), null);
+          // 毒は重ならないので、まだ毒の無い相手から選ぶ
+          const top = foeUnits.filter((u) => !u.poison).reduce<Unit | null>((m, u) => (!m || attackOf(d.players[q], u) > attackOf(d.players[q], m) ? u : m), null);
           if (top) poisonUnit(d, q, top, pulse.amount);
         } else {
           const low = mineUnits.reduce<Unit | null>((m, u) => (!m || attackOf(pl, u) < attackOf(pl, m) ? u : m), null);

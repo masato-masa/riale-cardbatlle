@@ -269,8 +269,8 @@ function buildingValue(state: GameState, me: PlayerState, foe: PlayerState, card
   }
   const pulses = Math.min(6, (MATCH_MS * left) / (ab.pulse?.everyMs ?? 1e9));
   if (ab.pulse?.kind === 'heal') {
-    // 味方が多いほど、時間が残っているほど効く（HP は減るので、早いほど得）
-    v += Math.min(3.4, pulses * ab.pulse.amount * 0.22 * (0.6 + mine.length * 0.5)) * t.skill;
+    // 自分の HP を回復。減っているほど、時間が残っているほど効く
+    v += Math.min(3.4, pulses * ab.pulse.amount * 0.15 + (PLAYER_HP - me.hp) * 0.1) * t.skill;
   }
   if (ab.pulse?.kind === 'poison') {
     v += Math.min(3.6, pulses * ab.pulse.amount * 0.4 * (0.5 + Math.min(units(foe).length, 3) * 0.5)) * t.skill;
