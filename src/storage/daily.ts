@@ -3,16 +3,20 @@
 
 const KEY = 'riale-cardbatlle:daily';
 
-export type MissionId = 'win1' | 'win3' | 'play3' | 'summon15' | 'interrupt2' | 'spell3' | 'face30';
+export type MissionId = 'win1' | 'win3' | 'play3' | 'summon15' | 'interrupt2' | 'spell3' | 'face30' | 'reserve3' | 'overwrite2' | 'build2';
 
 export const MISSIONS: Record<MissionId, { text: string; goal: number }> = {
   win1: { text: '1 回勝つ', goal: 1 },
   win3: { text: '3 回勝つ', goal: 3 },
   play3: { text: '3 回対戦する', goal: 3 },
   summon15: { text: 'カードを 15 枚出す', goal: 15 },
-  interrupt2: { text: '割り込みを 2 回成功させる', goal: 2 },
+  interrupt2: { text: '相手の攻撃を 2 回妨害する', goal: 2 },
   spell3: { text: '呪文を 3 回使う', goal: 3 },
   face30: { text: '相手プレイヤーに合計 30 ダメージ', goal: 30 },
+  // 仕組みを使ってもらうミッション（予約・チェンジ・建築）
+  reserve3: { text: '攻撃を 3 回予約する', goal: 3 },
+  overwrite2: { text: 'チェンジを 2 回する', goal: 2 },
+  build2: { text: '建築物を 2 回置く', goal: 2 },
 };
 
 const IDS = Object.keys(MISSIONS) as MissionId[];
@@ -24,6 +28,9 @@ export interface MatchStats {
   interrupts: number;
   spells: number;
   faceDamage: number;
+  reserves?: number;
+  overwrites?: number;
+  buildings?: number;
 }
 
 function gainOf(id: MissionId, s: MatchStats): number {
@@ -41,6 +48,12 @@ function gainOf(id: MissionId, s: MatchStats): number {
       return s.spells;
     case 'face30':
       return s.faceDamage;
+    case 'reserve3':
+      return s.reserves ?? 0;
+    case 'overwrite2':
+      return s.overwrites ?? 0;
+    case 'build2':
+      return s.buildings ?? 0;
   }
 }
 

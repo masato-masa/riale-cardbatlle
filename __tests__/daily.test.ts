@@ -40,4 +40,19 @@ describe('デイリーミッション', () => {
     for (const id of ids) expect(loadDaily(day).progress[id]).toBeLessThanOrEqual(MISSIONS[id].goal);
     expect(loadDaily('2026-10-25').progress).toEqual({});
   });
+
+  it('予約・チェンジ・建築のミッションは、その回数で進む', () => {
+    // 3 つが選ばれる日を探して、1 試合ぶんの記録で進むことを見る
+    const ids = ['reserve3', 'overwrite2', 'build2'] as const;
+    for (const id of ids) {
+      let day = '';
+      for (let d = 1; d <= 365 && !day; d++) {
+        const key = `2026-${String(Math.ceil(d / 28)).padStart(2, '0')}-${String(((d - 1) % 28) + 1).padStart(2, '0')}`;
+        if (missionsFor(key).includes(id)) day = key;
+      }
+      expect(day).not.toBe('');
+      recordDaily({ ...stats, reserves: 2, overwrites: 1, buildings: 1 }, day);
+      expect(loadDaily(day).progress[id]).toBe({ reserve3: 2, overwrite2: 1, build2: 1 }[id]);
+    }
+  });
 });

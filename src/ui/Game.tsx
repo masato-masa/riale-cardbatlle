@@ -264,7 +264,7 @@ export function Game({ level, deck, onExit }: { level: CpuLevel; deck: CardId[];
   /** 連勝ボーナスが付いたときの連勝数（付かなければ 0）。 */
   const [streakBonus, setStreakBonus] = useState(0);
   /** デイリーミッション用の、この試合の記録（自分の行動）。 */
-  const freshStats = () => ({ summons: 0, interrupts: 0, spells: 0, faceDamage: 0, myAttacksBlocked: 0, interruptChances: 0, faceTaken: 0, reserves: 0, coinCapMs: 0, lastTime: 0, played: {} as Partial<Record<CardId, number>> });
+  const freshStats = () => ({ summons: 0, interrupts: 0, spells: 0, faceDamage: 0, myAttacksBlocked: 0, interruptChances: 0, faceTaken: 0, reserves: 0, overwrites: 0, buildings: 0, coinCapMs: 0, lastTime: 0, played: {} as Partial<Record<CardId, number>> });
   const statsRef = useRef(freshStats());
   /** 試合後の振り返りの一言。 */
   const [hints, setHints] = useState<Hint[]>([]);
@@ -575,6 +575,8 @@ export function Game({ level, deck, onExit }: { level: CpuLevel; deck: CardId[];
     for (const e of batch) {
       // デイリーミッションの記録（自分の行動と、相手プレイヤーへのダメージ・割り込みの成功）
       if (e.kind === 'summon' && e.p === 0 && !e.token) statsRef.current.summons += 1;
+      if (e.kind === 'summon' && e.p === 0 && !e.token && CARDS[e.card].type === 'building') statsRef.current.buildings += 1;
+      if (e.kind === 'overwrite' && e.p === 0) statsRef.current.overwrites += 1;
       if (e.kind === 'spell' && e.p === 0) statsRef.current.spells += 1;
       if ((e.kind === 'summon' && e.p === 0 && !e.token) || (e.kind === 'spell' && e.p === 0)) {
         const pl = statsRef.current.played;
