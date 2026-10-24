@@ -1,5 +1,5 @@
 import { motion } from 'motion/react';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 /** 初回だけの案内（クラロワの最初の数戦と同じ。1 つずつ、その操作をするまで次へ進まない）。
  *  step 0: コインの説明（OK で次へ。時間は止まる）/ 1: 手札を場へドラッグ / 2: 場のカードを相手へドラッグ / 3: 完了の一言。
@@ -38,20 +38,36 @@ export const TIP_TEXT: Record<TipId, { title: string; body: string }> = {
   },
 };
 
+/** 場面ごとの一言案内。試合は止めず、盤面の中央（両方の場のあいだ）に帯で出して、しばらくすると消える。触れても消える。
+ *  （以前は試合を止める大きな窓で、自分の場が隠れた。クラロワ・ライバルズの対戦中の案内は止めない帯） */
 export function Tip({ id, onClose }: { id: TipId; onClose: () => void }) {
   const t = TIP_TEXT[id];
+  // 親は毎フレーム描き直す（onClose も毎回新しい）ので、タイマーは id ごとに 1 回だけ張る
+  const close = useRef(onClose);
+  close.current = onClose;
+  useEffect(() => {
+    const timer = window.setTimeout(() => close.current(), TIP_MS);
+    return () => window.clearTimeout(timer);
+  }, [id]);
   return (
-    <div className="tutorial" aria-live="polite">
-      <motion.div className="tut-card" key={id} initial={{ y: 16, opacity: 0 }} animate={{ y: 0, opacity: 1 }}>
-        <b>{t.title}</b>
-        <p>{t.body}</p>
-        <button className="tut-ok" onClick={onClose}>
-          OK
-        </button>
-      </motion.div>
-    </div>
+    <motion.button
+      type="button"
+      className="tip-banner"
+      key={id}
+      aria-live="polite"
+      initial={{ scale: 0.85, opacity: 0 }}
+      animate={{ scale: 1, opacity: 1 }}
+      transition={{ type: 'spring', stiffness: 500, damping: 30 }}
+      onClick={onClose}
+    >
+      <b>{t.title}</b>
+      <span>{t.body}</span>
+    </motion.button>
   );
 }
+
+/** 案内の帯を出しておく時間。 */
+const TIP_MS = 7000;
 
 export function Tutorial({ step, onNext }: { step: TutorialStep; onNext: () => void }) {
   const [path, setPath] = useState<{ from: { x: number; y: number }; to: { x: number; y: number } } | null>(null);

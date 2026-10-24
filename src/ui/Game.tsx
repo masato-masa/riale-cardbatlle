@@ -276,7 +276,7 @@ export function Game({ level, deck, onExit }: { level: CpuLevel; deck: CardId[];
   const [tip, setTip] = useState<TipId | null>(null);
   const tipsSeen = useRef(seenTips());
   const pausedRef = useRef(false);
-  pausedRef.current = detail !== null || menu !== null || tut === 0 || tip !== null;
+  pausedRef.current = detail !== null || menu !== null || tut === 0;
   /** 開始の演出（VS）のあいだは時間を進めない。 */
   const introRef = useRef(true);
   /** 初回は、案内のあいだ相手を「よわい」にする。 */
