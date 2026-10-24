@@ -241,9 +241,9 @@ export function DeckScreen({ deck, onChange, onBack }: { deck: CardId[]; onChang
               <h2 className="collection-title">{TYPE_NAME[type]}</h2>
               <div className="collection-grid">
                 {list.map((id) => (
+                  // 一覧（最大 100 枚以上）には並べ替えの動き（layout）を付けない。絞り込みのたびに全カードの位置を測り直し、CPU 4 倍遅で 1 フレーム 711ms 止まった
                   <motion.button
                     key={id}
-                    layout
                     className={`deck-card${swapIn === id ? ' is-picked' : ''}`}
                     onClick={() => {
                       playUiTap();
