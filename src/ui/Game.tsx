@@ -215,6 +215,8 @@ const DEV_SPEED = Math.min(10, Math.max(1, Number(new URLSearchParams(location.s
 
 /** 端末の「動きを減らす」設定。 */
 const REDUCED_MOTION = typeof matchMedia !== 'undefined' && matchMedia('(prefers-reduced-motion: reduce)').matches;
+/** 横向きのスマホ（「縦向きに」の全面表示が出ている間は、試合を止める）。条件は title.css の .rotate-hint と同じ。 */
+const LANDSCAPE_PHONE = typeof matchMedia !== 'undefined' ? matchMedia('(orientation: landscape) and (max-height: 500px)') : null;
 
 /** 結果画面の項目（トロフィー→振り返り→ミッション→宝箱）を順に出す間隔。星が出そろう 1.3 秒後から始める。 */
 const RESULT_STEP_START_MS = 1400;
@@ -294,7 +296,7 @@ export function Game({ level, deck, challenge, onExit }: { level: CpuLevel; deck
   const [tip, setTip] = useState<TipId | null>(null);
   const tipsSeen = useRef(seenTips());
   const pausedRef = useRef(false);
-  pausedRef.current = detail !== null || menu !== null || tut === 0;
+  pausedRef.current = detail !== null || menu !== null || tut === 0 || !!LANDSCAPE_PHONE?.matches;
   /** 開始の演出（VS）のあいだは時間を進めない。 */
   const introRef = useRef(true);
   /** 初回は、案内のあいだ相手を「よわい」にする。 */
