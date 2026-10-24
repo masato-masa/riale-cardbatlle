@@ -3,14 +3,14 @@ import { useState } from 'react';
 
 import type { CpuLevel } from '@/ai/cpu';
 import type { CardId } from '@/game/cards';
-import { isUnlockAll, setUnlockAll } from '@/storage/collection';
+import { CHEST_POINTS, isUnlockAll, loadPoints, loadUnlocked, pickReward, setUnlockAll } from '@/storage/collection';
 import { loadLevel, loadRecord, saveLevel } from '@/storage/profile';
 import { CARDS } from '@/game/cards';
 import { loadDaily, MISSIONS } from '@/storage/daily';
 import { loadHistory, suggestLevel, summarize } from '@/storage/history';
 import { ARENAS, arenaIndex, loadArenaSeen, loadTrophies, saveArenaSeen } from '@/storage/trophy';
 
-import { ARENA_FLOOR_URLS, foePortrait, HERO_ME_URL, ICON_URL } from './art';
+import { ARENA_FLOOR_URLS, CHEST_URL, COIN_URL, foePortrait, HERO_ME_URL, ICON_URL } from './art';
 import { CardFace } from './CardFace';
 import { Sheet } from './Sheets';
 import { playUiTap, primeAudio } from './sound';
@@ -350,6 +350,20 @@ export function Home({ deck, onStart, onDeck }: { deck: CardId[]; onStart: (leve
             <button className="ts-suggest" onClick={() => pick(sug.to)}>
               {sug.why === 'win' ? `3 連勝！「${name}」に挑戦する？` : `3 連敗中。「${name}」で腕を磨く？`}
             </button>
+          );
+        })()}
+        {(() => {
+          // 次の宝箱の見通し（クラロワのホームの宝箱の枠）。勝てば 2 点で必ず開き、1 点たまっていれば負けても開く
+          if (pickReward(loadUnlocked(), () => 0) === null) return null;
+          const pts = loadPoints();
+          return (
+            <div className="ts-chest" aria-label={`宝箱ゲージ ${pts}/${CHEST_POINTS}`}>
+              <img className="ts-chest-icon" src={CHEST_URL} alt="" draggable={false} />
+              <span>{pts > 0 ? '次の 1 戦で宝箱が開く（負けても）' : '勝てば宝箱が開いて、新しいカード'}</span>
+              {Array.from({ length: CHEST_POINTS }, (_, i) => (
+                <img key={i} src={COIN_URL} alt="" draggable={false} className={`reward-coin${i < pts ? ' is-on' : ''}`} />
+              ))}
+            </div>
           );
         })()}
         <div className="ts-levels" role="radiogroup" aria-label="CPU のつよさ">
