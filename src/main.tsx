@@ -14,3 +14,10 @@ createRoot(document.getElementById('root')!).render(
     </MotionConfig>
   </StrictMode>,
 );
+
+// 公開版だけ、オフラインでも遊べるように Service Worker を入れる（開発中は入れない）。
+if (import.meta.env.PROD && 'serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register(`${import.meta.env.BASE_URL}sw.js`).catch(() => undefined);
+  });
+}
