@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 
 import { addBeaten, loadAvatar, loadBeaten, resetProgress, saveAvatar } from '../src/storage/profile';
+import { loadBestTrophies, loadTrophies, recordTrophies } from '../src/storage/trophy';
 
 class MemStorage {
   private m = new Map<string, string>();
@@ -48,6 +49,18 @@ describe('アイコン（勝った相手の顔）', () => {
     expect(loadBeaten().has('毒')).toBe(true);
     saveAvatar('毒');
     expect(loadAvatar()).toBe('毒');
+  });
+});
+
+describe('最高トロフィー', () => {
+  it('勝って上がると最高も上がり、負けて下がっても最高は残る', () => {
+    mem.setItem('riale-cardbatlle:trophies', '1300');
+    recordTrophies('hard', 0);
+    const top = loadTrophies();
+    expect(loadBestTrophies()).toBe(top);
+    recordTrophies('hard', 1);
+    expect(loadTrophies()).toBeLessThan(top);
+    expect(loadBestTrophies()).toBe(top);
   });
 });
 

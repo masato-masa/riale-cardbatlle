@@ -86,12 +86,27 @@ export interface TrophyChange {
 export function recordTrophies(level: CpuLevel, winner: 0 | 1 | null): TrophyChange {
   const before = loadTrophies();
   const after = applyTrophies(before, level, winner);
+  // 最高は、いまの値を書き換える前に比べる（書いたあとだと自分自身と比べることになる）
+  const best = loadBestTrophies();
   try {
     localStorage.setItem(KEY, String(after));
+    if (after > best) localStorage.setItem(BEST_KEY, String(after));
   } catch {
     // 保存できなくても遊べる
   }
   return { before, after, arenaBefore: arenaIndex(before), arenaAfter: arenaIndex(after) };
+}
+
+const BEST_KEY = 'riale-cardbatlle:trophies-best';
+
+/** これまでの最高トロフィー（記録が無ければ、いまのトロフィー）。 */
+export function loadBestTrophies(): number {
+  try {
+    const v = Number(localStorage.getItem(BEST_KEY));
+    return Math.max(Number.isFinite(v) ? v : 0, loadTrophies());
+  } catch {
+    return loadTrophies();
+  }
 }
 
 const SEEN_KEY = 'riale-cardbatlle:arena-seen';

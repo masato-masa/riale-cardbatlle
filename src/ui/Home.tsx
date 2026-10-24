@@ -9,7 +9,7 @@ import { CARDS, RIVAL_DECKS } from '@/game/cards';
 import { CHALLENGE_POINTS, challengeFor, isChallengeCleared } from '@/storage/challenge';
 import { loadDaily, MISSIONS } from '@/storage/daily';
 import { loadHistory, suggestLevel, summarize } from '@/storage/history';
-import { ARENAS, arenaIndex, loadArenaSeen, loadTrophies, saveArenaSeen } from '@/storage/trophy';
+import { ARENAS, arenaIndex, loadArenaSeen, loadBestTrophies, loadTrophies, saveArenaSeen } from '@/storage/trophy';
 
 import { ARENA_FLOOR_URLS, avatarUrl, CHEST_URL, COIN_URL, foePersona, foePortrait, HERO_ME_URL, ICON_URL } from './art';
 import { CardFace } from './CardFace';
@@ -228,6 +228,11 @@ export function Home({ deck, onStart, onDeck }: { deck: CardId[]; onStart: (leve
                     <span>勝率</span>
                     <b>{s.total.pct}%</b>
                     <small>{s.total.n} 試合・平均 {s.avgSec} 秒・最高 {record.best} 連勝</small>
+                  </div>
+                  <div className="stat-row is-total">
+                    <span>最高トロフィー</span>
+                    <b>{loadBestTrophies()}</b>
+                    <small>勝った相手 {loadBeaten().size}/{RIVAL_DECKS.length}</small>
                   </div>
                   <div className="stat-head">最近の対戦</div>
                   <div className="stat-recent">
