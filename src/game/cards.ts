@@ -828,7 +828,7 @@ export function abilityLines(card: CardId): string[] {
   if (a.clanDouble) lines.push(`場にほかの ${a.clan} 一族が ${a.clanDouble} 体以上いるとき：連撃（1 回のクールタイムで 2 回攻撃）`);
   if (a.freeAim) lines.push('狙い撃ち（ブロッカー・壁を無視して、好きな相手を攻撃できる）');
   if (a.doubleStrike) lines.push('連撃（1 回のクールタイムで 2 回攻撃する）');
-  if (a.cannotAttack) lines.push('攻撃不能（このカードは、自分に攻撃不能の状態を持つ）');
+  if (a.cannotAttack) lines.push('攻撃不能（このカードは攻撃できない。守り専用）');
   if (a.lifesteal) lines.push('吸血（攻撃で与えたダメージぶん、自分の HP を回復）');
   if (a.venom) lines.push(`攻撃時：攻撃した敵ユニットに毒を与える`);
   if (a.ranged) lines.push('攻撃時：反撃を受けない');
