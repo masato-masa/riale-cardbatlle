@@ -3629,3 +3629,9 @@ img.result-star.is-lit {
     padding-left: 38px;
   }
 }
+
+/* 遊びかたの一覧はシートより長いので、一覧だけスクロール（はみ出して「とじる」が見えなかった） */
+.sheet > .help-list {
+  min-height: 0;
+  overflow-y: auto;
+}

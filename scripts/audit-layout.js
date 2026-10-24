@@ -83,9 +83,23 @@ async (page) => {
     await page.getByText('バトル！', { exact: true }).click({ force: true, timeout: 5000 });
     await page.waitForTimeout(4000);
     const battle = await measure();
+    // 対戦中のシート（一時停止・あそびかた）
+    const inBad = [];
+    const over = () =>
+      page.evaluate(() => {
+        const s = document.querySelector('.sheet')?.getBoundingClientRect();
+        if (!s) return -1;
+        return [...document.querySelectorAll('.sheet > *')].filter((c) => c.getBoundingClientRect().bottom > s.bottom + 1).length;
+      });
+    await page.locator('[aria-label="メニュー"]').click({ force: true, timeout: 5000 });
+    await page.waitForTimeout(600);
+    if ((await over()) !== 0) inBad.push('一時停止');
+    await page.getByText('あそびかた', { exact: true }).click({ force: true, timeout: 5000 });
+    await page.waitForTimeout(600);
+    if ((await over()) !== 0) inBad.push('あそびかた');
     const fmt = (m) => (m.tall || m.wide || m.over ? `NG(高さ${m.tall ? '×' : '○'} 幅${m.wide ? '×' : '○'} はみ出し${m.over})` : 'OK');
     // デッキ画面は縦にスクロールする画面なので、高さは見ない
-    out.push(`${w}×${h}: ホーム ${fmt(home)} / ホームのシート ${sheetBad.length ? `NG(${sheetBad.join(',')})` : 'OK'} / デッキ ${fmt({ ...deck, tall: false })} / 説明シート ${sheetOver === 0 ? 'OK' : `NG(${sheetOver})`} / 対戦 ${fmt(battle)}`);
+    out.push(`${w}×${h}: ホーム ${fmt(home)} / ホームのシート ${sheetBad.length ? `NG(${sheetBad.join(',')})` : 'OK'} / デッキ ${fmt({ ...deck, tall: false })} / 説明シート ${sheetOver === 0 ? 'OK' : `NG(${sheetOver})`} / 対戦 ${fmt(battle)} / 対戦のシート ${inBad.length ? `NG(${inBad.join(',')})` : 'OK'}`);
   }
   return out.join('\n');
 }
