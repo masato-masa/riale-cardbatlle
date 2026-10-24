@@ -62,6 +62,8 @@ const SHEETS = {
   16: ['spells/ambush', 'cards/militia', null, null, null, null, null, null, null],
   17: [...['titan', 'overlord'].map((n) => `cards/${n}`), null, null, null, null, null, null, null],
   18: [...['scout', 'oldguard'].map((n) => `cards/${n}`), null, null, null, null, null, null, null],
+  // 上の段だけ使う 3 列（上の段が縦長で、高さ 482px）。T一族の追加 3 人
+  21: { cols: 3, rows: 1, cellH: 482, cells: ['cards/tmassa', 'cards/tzarashi', 'cards/tkisuke'] },
   // 4 列×3 行（縦長のマス）。左上の 4 枚だけ
   20: [...['kboyan', 'kvav', 'kleen', 'kroda', 'kdera'].map((n) => `cards/${n}`), null, null, null, null],
   19: {
@@ -78,7 +80,7 @@ const SHEETS = {
 };
 
 for (const [n, def] of Object.entries(SHEETS)) {
-  const { cols, rows, cells } = Array.isArray(def) ? { cols: 3, rows: 3, cells: def } : def;
+  const { cols, rows, cells, cellH } = Array.isArray(def) ? { cols: 3, rows: 3, cells: def, cellH: undefined } : def;
   const src = `${root}art-src/cards-sheet-${n}.png`;
   let meta;
   try {
@@ -88,7 +90,7 @@ for (const [n, def] of Object.entries(SHEETS)) {
     continue;
   }
   const cw = meta.width / cols;
-  const ch = meta.height / rows;
+  const ch = cellH ?? meta.height / rows;
   const mx = Math.round(cw * 0.03);
   const my = Math.round(ch * 0.03);
   for (let i = 0; i < cols * rows; i++) {
