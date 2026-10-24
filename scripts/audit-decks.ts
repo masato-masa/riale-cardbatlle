@@ -1,4 +1,4 @@
-// 相手デッキ（テーマ別）ごとに、初期デッキ相手の勝率（通常 CPU 同士）を測る。使い方: npx tsx scripts/audit-decks.ts
+// 相手デッキ（テーマ別）ごとに、初期デッキ相手の勝率（hard CPU 同士）を測る。使い方: npx tsx scripts/audit-decks.ts
 import { createBrain, cpuStep } from '../src/ai/cpu';
 import { RIVAL_DECKS, STARTER_DECK } from '../src/game/cards';
 import { createGame, step, type Action, type PlayerIndex } from '../src/game/engine';
@@ -16,7 +16,7 @@ for (const { name, deck } of RIVAL_DECKS) {
       st = step(st, { type: 'tick', dt: 50 });
       for (const p of [0, 1] as PlayerIndex[]) {
         if (st.result) break;
-        const r = cpuStep(st, p, br[p]!, 'normal', rd[p]!);
+        const r = cpuStep(st, p, br[p]!, 'hard', rd[p]!);
         br[p] = r.brain;
         for (const a of r.actions as Action[]) st = step(st, a);
       }

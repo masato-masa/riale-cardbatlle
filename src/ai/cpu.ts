@@ -22,7 +22,7 @@ import {
   type Target,
   type Unit,
 } from '../game/engine';
-import { COIN_MAX, FIELD_SLOTS, MATCH_MS, PLAYER_HP } from '../game/rules';
+import { COIN_MAX, FIELD_SLOTS, MATCH_MS, PLAYER_HP, SUMMON_WINDUP_MS } from '../game/rules';
 
 export type CpuLevel = 'easy' | 'normal' | 'hard';
 
@@ -63,12 +63,16 @@ interface Tuning {
   spellBias: number;
   /** 溜め（pending）の先読み: すでに倒れる予定の相手を重ねて狙わず、倒される予定の味方を先に使う度合い。 */
   foresee: number;
+  /** 相手の溜め中の攻撃を見て、ブロッカーで割り込む度合い。 */
+  react: number;
+  /** 攻撃を予約する度合い（0 なら使わない）。 */
+  reserve: number;
 }
 
 const TUNING: Record<CpuLevel, Tuning> = {
-  easy: { thinkMin: 1600, thinkSpan: 800, noise: 5.5, second: 0.1, missLethal: 0.35, random: 0.25, idle: 0.5, face: 0.6, trade: 0.4, defend: 0.3, skill: 0.6, save: 0, spellBias: 9, foresee: 0 },
-  normal: { thinkMin: 600, thinkSpan: 400, noise: 2.0, second: 0.6, missLethal: 0.05, random: 0.04, idle: 0.4, face: 1.0, trade: 0.9, defend: 0.8, skill: 0.8, save: 0.5, spellBias: 0, foresee: 0.6 },
-  hard: { thinkMin: 200, thinkSpan: 100, noise: 0.5, second: 0.7, missLethal: 0, random: 0, idle: 0.0, face: 1.0, trade: 1.0, defend: 1.2, skill: 0.2, save: 1.0, spellBias: -1, foresee: 1.0 },
+  easy: { thinkMin: 1600, thinkSpan: 800, noise: 5.5, second: 0.1, missLethal: 0.35, random: 0.25, idle: 0.5, face: 0.6, trade: 0.4, defend: 0.3, skill: 0.6, save: 0, spellBias: 9, foresee: 0, react: 0.3, reserve: 0 },
+  normal: { thinkMin: 600, thinkSpan: 400, noise: 2.0, second: 0.6, missLethal: 0.05, random: 0.04, idle: 0.4, face: 1.0, trade: 0.9, defend: 0.8, skill: 0.8, save: 0.5, spellBias: 0, foresee: 0.6, react: 0.9, reserve: 0.6 },
+  hard: { thinkMin: 200, thinkSpan: 100, noise: 0.5, second: 0.7, missLethal: 0, random: 0, idle: 0.0, face: 1.0, trade: 1.0, defend: 1.2, skill: 0.2, save: 1.0, spellBias: -1, foresee: 1.0, react: 1.3, reserve: 1.0 },
 };
 
 /** カードの価値を測る基準のクールタイム（ms）。ユニットの平均あたり。 */
@@ -451,17 +455,22 @@ function summonCandidates(state: GameState, p: PlayerIndex, t: Tuning): Candidat
     // コインが余っているほど急いで出す、枠が空いているほど出す
     s += (me.coins - d.summon) * 0.05 + (FIELD_SLOTS - filled) * 0.25;
     if (me.coins >= COIN_MAX - 0.5) s += 1.5; // 上限で腐らせない
-    // 割り込み: 相手が溜め中の攻撃があり、ブロッカーを出せばそれが止まる（自分のカードが狙われているとき）
-    if (isBlocker(card) && foeBlockers >= 0 && myBlockers === 0) {
+    // 割り込み: 相手の溜め中の攻撃を見て、間に合う（登場が攻撃の命中より前）ならブロッカーで止める。止めた攻撃元はクールタイムが延びる
+    if (isBlocker(card) && myBlockers === 0) {
       for (const x of state.pending) {
         if (x.kind !== 'attack' || x.p === p) continue;
+        if (x.at - state.time <= SUMMON_WINDUP_MS) continue; // 間に合わない
         const att = findUnit(foe, x.uid)?.unit;
-        if (!att) continue;
-        s += (attackOf(foe, att) * 0.7 + 0.8) * t.skill;
+        if (!att || CARDS[att.card].ab.freeAim) continue;
+        const aimed = x.target.kind === 'unit' ? findUnit(me, x.target.uid)?.unit : undefined;
+        const blow = attackOf(foe, att) + (CARDS[att.card].ab.unitBonus ?? 0);
+        // 狙われているのが自分のユニットなら、その損害（倒されるなら価値ぶん）を防ぐ。顔なら顔へのダメージ
+        const saved = aimed ? Math.min(blow, aimed.hp) * 0.6 + (blow >= aimed.hp ? unitWorth(me, aimed) * 0.5 : 0) : blow * 0.9;
+        s += (saved + 1.5) * t.react;
         const oi = ab.onInterrupt;
-        if (oi?.kind === 'strike') s += oi.amount * 0.3;
-        if (oi?.kind === 'stun') s += (oi.ms / 1000) * 0.15;
-        if (oi?.kind === 'coin') s += oi.amount * 0.4;
+        if (oi?.kind === 'strike') s += oi.amount * 0.3 * t.react;
+        if (oi?.kind === 'stun') s += (oi.ms / 1000) * 0.15 * t.react;
+        if (oi?.kind === 'coin') s += oi.amount * 0.4 * t.react;
       }
     }
     if (isBlocker(card)) {
@@ -549,14 +558,18 @@ function attackCandidates(state: GameState, p: PlayerIndex, t: Tuning): Candidat
   const press = pressure(me, foe);
   const myWall = isWalled(me);
   const foeWall = isWalled(foe);
+  const bestRes = new Map<number, Candidate>();
   for (const unit of me.field) {
     if (!unit) continue;
     const d = CARDS[unit.card];
     const ab = d.ab;
     const myAtk = attackOf(me, unit);
     for (const target of targets) {
-      // 建築物・クールタイム中・狙えない相手は候補にしない
-      if (attackBlock(state, p, unit.uid, target)) continue;
+      // 建築物・攻撃不能は候補にしない。クールタイム中・ブロッカーや壁で狙えない相手は、予約の候補にする
+      const block = attackBlock(state, p, unit.uid, target);
+      const reserving = block === 'cooldown' || block === 'target';
+      if (block && !(reserving && t.reserve > 0 && !unit.reserved)) continue;
+      const out0 = out.length;
       if (target.kind === 'player') {
         const dmg = myAtk + (ab.faceBonus ?? 0);
         const lethal = foe.hp <= dmg;
@@ -567,6 +580,7 @@ function attackCandidates(state: GameState, p: PlayerIndex, t: Tuning): Candidat
         s += (1 - foe.hp / PLAYER_HP) * dmg * 0.5;
         if (lethal) s += 100;
         out.push({ action: { type: 'attack', p, uid: unit.uid, target }, score: s, lethal });
+        if (reserving) toReserve(out, out0, p, unit.uid, target, t, bestRes);
       } else {
         const hit = foeUnits.find((u) => u.uid === target.uid)!;
         const dmg = myAtk + (ab.unitBonus ?? 0);
@@ -611,10 +625,22 @@ function attackCandidates(state: GameState, p: PlayerIndex, t: Tuning): Candidat
           }
         }
         out.push({ action: { type: 'attack', p, uid: unit.uid, target }, score: s, lethal: false });
+        if (reserving) toReserve(out, out0, p, unit.uid, target, t, bestRes);
       }
     }
   }
+  for (const c of bestRes.values()) out.push(c);
   return out;
+}
+
+/** attackCandidates が作った直後の攻撃候補（out0 以降）を取り除き、予約の候補としてユニットごとに最良の 1 つだけ残す。 */
+function toReserve(out: Candidate[], out0: number, p: PlayerIndex, uid: number, target: Target, t: Tuning, best: Map<number, Candidate>): void {
+  const c = out.splice(out0)[0];
+  if (!c) return;
+  // すぐ撃てないぶん少し割り引く。とどめの加点は引き継がない
+  const score = Math.min(c.score, 4) * t.reserve - 0.5;
+  const cur = best.get(uid);
+  if (!cur || cur.score < score) best.set(uid, { action: { type: 'reserve', p, uid, target }, score, lethal: false });
 }
 
 /** 溜め中の行動で、各ユニットがこれから受ける実ダメージの合計（owner 側の溜めが victim 側のユニットへ与える分）。 */

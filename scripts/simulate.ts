@@ -149,7 +149,7 @@ function match(a: CpuLevel, b: CpuLevel, n: number, collect: boolean): Stat {
 const args = process.argv.slice(2);
 const n = Number(args.find((x) => /^\d+$/.test(x)) ?? 200);
 const cds = (args.find((x) => x.startsWith('cdx='))?.slice(4) ?? '').split(',').filter(Boolean).map(Number);
-const cardLevel = (args.find((x) => x.startsWith('cards='))?.slice(6) ?? 'normal') as CpuLevel;
+const cardLevel = (args.find((x) => x.startsWith('cards='))?.slice(6) ?? 'hard') as CpuLevel;
 const pct = (x: number, d = n) => `${((x / d) * 100).toFixed(1)}%`;
 const rate = (o: Tally) => (o.n ? ((o.w + o.d / 2) / o.n) * 100 : NaN);
 const f1 = (x: number) => (Number.isNaN(x) ? '-' : x.toFixed(1));

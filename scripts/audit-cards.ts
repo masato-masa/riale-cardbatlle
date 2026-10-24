@@ -28,7 +28,7 @@ for (let g = 0; g < N; g++) {
     state = step(state, { type: 'tick', dt: 50 });
     for (const p of [0, 1] as PlayerIndex[]) {
       if (state.result) break;
-      const r = cpuStep(state, p, brains[p]!, 'normal', rands[p]!);
+      const r = cpuStep(state, p, brains[p]!, 'hard', rands[p]!);
       brains[p] = r.brain;
       for (const a of r.actions as Action[]) state = step(state, a);
     }
