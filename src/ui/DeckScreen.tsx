@@ -7,7 +7,7 @@ import { ARENAS, arenaForCost, arenaIndex, loadTrophies } from '@/storage/trophy
 import { applyPreset, averageCost, COLLECTION, DECK_SLOTS, deckCode, loadBook, parseDeckCode, saveBook, saveDeck } from '@/storage/deck';
 
 import { CardFace } from './CardFace';
-import { DECK_BG_URL, foePortrait } from './art';
+import { DECK_BG_URL, foePersona, foePortrait } from './art';
 import { CardDetail } from './GameParts';
 import { Sheet } from './Sheets';
 import { playSelect, playUiTap } from './sound';
@@ -18,7 +18,7 @@ const TYPE_ORDER: CardType[] = ['unit', 'building', 'spell'];
 /** コンセプトデッキ（選ぶと、いまのデッキに入る）。 */
 const PRESETS: { name: string; deck: CardId[]; face?: string }[] = [
   { name: 'はじめてのデッキ', deck: STARTER_DECK },
-  ...RIVAL_DECKS.map((d) => ({ name: `${d.name}デッキ`, deck: d.deck, face: foePortrait(d.name) })),
+  ...RIVAL_DECKS.map((d) => ({ name: `${foePersona(d.name).name}の${d.name}デッキ`, deck: d.deck, face: foePortrait(d.name) })),
 ];
 
 /** 一覧の並び: 種類ごと、コストの安い順。 */

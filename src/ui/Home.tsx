@@ -10,7 +10,7 @@ import { loadDaily, MISSIONS } from '@/storage/daily';
 import { loadHistory, suggestLevel, summarize } from '@/storage/history';
 import { ARENAS, arenaIndex, loadArenaSeen, loadTrophies, saveArenaSeen } from '@/storage/trophy';
 
-import { ARENA_FLOOR_URLS, CHEST_URL, COIN_URL, foePortrait, HERO_ME_URL, ICON_URL } from './art';
+import { ARENA_FLOOR_URLS, CHEST_URL, COIN_URL, foePersona, foePortrait, HERO_ME_URL, ICON_URL } from './art';
 import { CardFace } from './CardFace';
 import { Sheet } from './Sheets';
 import { playUiTap, primeAudio } from './sound';
@@ -168,7 +168,7 @@ export function Home({ deck, onStart, onDeck }: { deck: CardId[]; onStart: (leve
                   <div className="stat-head">相手デッキ別</div>
                   {s.byRival.slice(0, 6).map((r) => (
                     <div key={r.label} className="stat-row">
-                      <span>{r.label}</span>
+                      <span title={`${r.label}デッキ`}>{foePersona(r.label).name}</span>
                       <span className="mission-bar" aria-hidden="true"><i style={{ width: `${r.pct}%` }} /></span>
                       <b>{r.pct}%</b>
                       <small>{r.n} 試合</small>
