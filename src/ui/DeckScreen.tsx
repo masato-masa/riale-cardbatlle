@@ -199,6 +199,17 @@ export function DeckScreen({ deck, onChange, onBack }: { deck: CardId[]; onChang
           {!deck.some((c) => CARDS[c].ab.blocker) ? <p className="deck-hint">ブロッカーが 0 枚です。相手の攻撃に割り込めず、プレイヤーを守れません。</p> : null}
         </section>
 
+        {/* 集めたカードの進み具合（クラロワのコレクションの「見つけたカード」） */}
+        <div className="collect-progress" aria-label={`集めたカード ${Math.min(unlocked.size, COLLECTION.length)} / ${COLLECTION.length}`}>
+          <span>集めたカード</span>
+          <span className="mission-bar" aria-hidden="true">
+            <i style={{ width: `${(Math.min(unlocked.size, COLLECTION.length) / COLLECTION.length) * 100}%` }} />
+          </span>
+          <b>
+            {Math.min(unlocked.size, COLLECTION.length)}/{COLLECTION.length}
+          </b>
+        </div>
+
         <div className="band-chips" role="tablist" aria-label="コストで絞る">
           {['すべて', '1〜2', '3〜4', '5〜6', '7〜'].map((label, i) => (
             <button

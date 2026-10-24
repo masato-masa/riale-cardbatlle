@@ -3384,3 +3384,22 @@ img.result-star.is-lit {
     animation: none;
   }
 }
+
+/* デッキ画面: 集めたカードの進み具合 */
+.collect-progress {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  min-height: 24px;
+  color: #e9e1ff;
+  font-size: 12px;
+  font-weight: 800;
+  -webkit-text-stroke: 3px rgb(18 8 30 / 0.85);
+  paint-order: stroke fill;
+}
+
+.collect-progress b {
+  color: var(--gold-1);
+  font-size: 13px;
+}
