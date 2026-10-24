@@ -10,7 +10,7 @@ import { loadDaily, MISSIONS } from '@/storage/daily';
 import { loadHistory, suggestLevel, summarize } from '@/storage/history';
 import { ARENAS, arenaIndex, loadTrophies } from '@/storage/trophy';
 
-import { ARENA_FLOOR_URLS, HERO_ME_URL } from './art';
+import { ARENA_FLOOR_URLS, HERO_ME_URL, ICON_URL } from './art';
 import { CardFace } from './CardFace';
 import { Sheet } from './Sheets';
 import { playUiTap, primeAudio } from './sound';
@@ -173,9 +173,12 @@ export function Home({ deck, onStart, onDeck }: { deck: CardId[]; onStart: (leve
           </span>
         </div>
         <div className="ts-arena" aria-label={`トロフィー ${trophies}、${ARENAS[ai]!.name}`}>
-          <span className="ts-arena-name">{ARENAS[ai]!.name}</span>
+          <span className="ts-arena-name">
+            <img src={ICON_URL.arena} alt="" draggable={false} />
+            {ARENAS[ai]!.name}
+          </span>
           <span className="ts-trophy">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h12v3c0 3.2-1.8 5.6-4.5 6.3V15H16v2H8v-2h2.5v-2.7C7.8 11.6 6 9.2 6 6V3zm-2 1h2v2c0 1 .3 1.8.8 2.5C5.5 8 4 6.6 4 5V4zm16 0v1c0 1.6-1.5 3-2.8 3.5.5-.7.8-1.5.8-2.5V4h2zM9 19h6v2H9v-2z" /></svg>
+            <img src={ICON_URL.trophy} alt="" draggable={false} />
             <b>{trophies}</b>
           </span>
           {nextArena ? <span className="ts-arena-bar" aria-hidden="true"><i style={{ width: `${Math.max(4, arenaPct)}%` }} /></span> : null}
@@ -186,6 +189,7 @@ export function Home({ deck, onStart, onDeck }: { deck: CardId[]; onStart: (leve
               setDailyOpen(true);
             }}
           >
+            <img src={ICON_URL.mission} alt="" draggable={false} />
             ミッション {dailyDone}/{daily.missions.length}
           </button>
           <button
@@ -195,6 +199,7 @@ export function Home({ deck, onStart, onDeck }: { deck: CardId[]; onStart: (leve
               setStatsOpen(true);
             }}
           >
+            <img src={ICON_URL.stats} alt="" draggable={false} />
             戦績
           </button>
         </div>

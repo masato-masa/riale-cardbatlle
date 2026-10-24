@@ -960,3 +960,36 @@ body {
     animation: none;
   }
 }
+
+/* ChatGPT 製のアイコン（トロフィー・アリーナの紋章・巻物・本） */
+.ts-trophy img {
+  width: 24px;
+  height: 24px;
+  margin: -4px 0 -4px -4px;
+  filter: drop-shadow(0 1px 1px rgb(0 0 0 / 0.5));
+}
+
+.ts-arena-name {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.ts-arena-name img {
+  width: 18px;
+  height: 18px;
+  filter: drop-shadow(0 1px 1px rgb(0 0 0 / 0.5));
+}
+
+.ts-daily {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.ts-daily img {
+  width: 18px;
+  height: 18px;
+  margin: -3px 0 -3px -4px;
+  filter: drop-shadow(0 1px 1px rgb(0 0 0 / 0.5));
+}

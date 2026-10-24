@@ -9,12 +9,18 @@ import coinUrl from '@/assets/art/ui/coin.webp';
 import deckBgUrl from '@/assets/art/deck-bg.webp';
 import heroFoeUrl from '@/assets/art/ui/hero-foe.webp';
 import heroMeUrl from '@/assets/art/ui/hero-me.webp';
+import iconArenaUrl from '@/assets/art/ui/icon-arena.webp';
+import iconMissionUrl from '@/assets/art/ui/icon-mission.webp';
+import iconStatsUrl from '@/assets/art/ui/icon-stats.webp';
+import iconTrophyUrl from '@/assets/art/ui/icon-trophy.webp';
 
 /** 盤面の地（ChatGPT で作成。赤い敵陣・青い自陣・金の帯。scripts/slice-arena.mjs）。 */
 export const FIELD_URL: string = fieldUrl;
 /** アリーナごとの盤面の地（床だけ差し替え。scripts/build-arena-floors.mjs）。添字はアリーナの番号。 */
 export const ARENA_FLOOR_URLS: string[] = [fieldUrl, arena2Url, arena3Url, arena4Url, arena5Url];
 export const COIN_URL: string = coinUrl;
+/** ホームの UI アイコン（ChatGPT で作成。scripts/slice-icons.mjs）。 */
+export const ICON_URL = { trophy: iconTrophyUrl, mission: iconMissionUrl, stats: iconStatsUrl, arena: iconArenaUrl };
 /** デッキ編成画面の背景（軍の作戦室。ChatGPT で作成。scripts/slice-arena.mjs の deck-bg と同じ要領）。 */
 export const DECK_BG_URL: string = deckBgUrl;
 /** プレイヤーの肖像（ChatGPT で作成。scripts/slice-portraits.mjs で切り出し）。 */
