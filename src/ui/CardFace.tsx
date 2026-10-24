@@ -60,16 +60,7 @@ function CardFaceView({
       </div>
       {blocker ? (
         <span className="blocker-badge" aria-label="ブロッカー" title="ブロッカー">
-          <svg viewBox="0 0 24 28" aria-hidden="true">
-            <path d="M12 1.5 L22 5 V13 C22 19.5 17.5 24.5 12 26.5 C6.5 24.5 2 19.5 2 13 V5 Z" fill="url(#bb-grad)" stroke="#fff" strokeWidth="1.6" strokeLinejoin="round" />
-            <path d="M12 5.5 V22 M6 11 H18" stroke="#fff" strokeWidth="2.2" strokeLinecap="round" opacity="0.9" />
-            <defs>
-              <linearGradient id="bb-grad" x1="0" y1="0" x2="1" y2="1">
-                <stop offset="0" stopColor="#7fc0ff" />
-                <stop offset="1" stopColor="#1f5fc4" />
-              </linearGradient>
-            </defs>
-          </svg>
+          <img src={STATE_ICON.blocker} alt="" draggable={false} />
         </span>
       ) : null}
       {states.length > 0 ? (
@@ -120,66 +111,29 @@ export const CardFace = memo(CardFaceView, (a: CardFaceProps, b: CardFaceProps) 
   return x.length === y.length && x.every((v, i) => v === y[i]);
 });
 
+/** 状態のアイコン（ChatGPT で作成。scripts/slice-icons.mjs の states-sheet）。 */
 function StateIcon({ state }: { state: CardState }) {
-  if (state === 'blocker') {
-    return (
-      <svg viewBox="0 0 24 24" aria-hidden="true">
-        <path d="M12 3 L19.5 5.8 V11.5 C19.5 16.2 16.3 19.5 12 21 C7.7 19.5 4.5 16.2 4.5 11.5 V5.8 Z" fill="#fff" />
-      </svg>
-    );
-  }
-  if (state === 'barrier') {
-    return (
-      <svg viewBox="0 0 24 24" aria-hidden="true">
-        <circle cx="12" cy="12" r="8" fill="none" stroke="#fff" strokeWidth="2.6" />
-        <path d="M8.5 10.5 A4 4 0 0 1 12 8" fill="none" stroke="#fff" strokeWidth="2.2" strokeLinecap="round" />
-      </svg>
-    );
-  }
-  if (state === 'stealth') {
-    return (
-      <svg viewBox="0 0 24 24" aria-hidden="true">
-        <path d="M2.5 12 C5.5 7 9 5.5 12 5.5 C15 5.5 18.5 7 21.5 12 C18.5 17 15 18.5 12 18.5 C9 18.5 5.5 17 2.5 12 Z" fill="none" stroke="#fff" strokeWidth="2.2" />
-        <circle cx="12" cy="12" r="2.8" fill="#fff" />
-        <path d="M4 20 L20 4" stroke="#fff" strokeWidth="2.6" strokeLinecap="round" />
-      </svg>
-    );
-  }
-  if (state === 'seal') {
-    return (
-      <svg viewBox="0 0 24 24" aria-hidden="true">
-        <circle cx="12" cy="12" r="8" fill="none" stroke="#fff" strokeWidth="2.4" />
-        <path d="M6.5 6.5 L17.5 17.5" stroke="#fff" strokeWidth="2.6" strokeLinecap="round" />
-      </svg>
-    );
-  }
-  if (state === 'poison') {
-    return (
-      <svg viewBox="0 0 24 24" aria-hidden="true">
-        <path d="M12 3 C12 3 5 11 5 15 A7 7 0 0 0 19 15 C19 11 12 3 12 3 Z" fill="#fff" />
-        <circle cx="9.5" cy="15.5" r="1.6" fill="#7a2fb0" />
-        <circle cx="14.5" cy="15.5" r="1.6" fill="#7a2fb0" />
-      </svg>
-    );
-  }
-  if (state === 'disarm') {
-    return (
-      <svg viewBox="0 0 24 24" aria-hidden="true">
-        <path d="M5 19 L16 8 M14 6 L18 10" stroke="#fff" strokeWidth="2.6" strokeLinecap="round" />
-        <path d="M4 4 L20 20" stroke="#fff" strokeWidth="2.6" strokeLinecap="round" />
-      </svg>
-    );
-  }
-  return (
-    <svg viewBox="0 0 24 24" aria-hidden="true">
-      <rect x="3" y="9" width="8" height="6" rx="3" fill="none" stroke="#fff" strokeWidth="2.4" />
-      <rect x="13" y="9" width="8" height="6" rx="3" fill="none" stroke="#fff" strokeWidth="2.4" />
-      <path d="M9 12 H15" stroke="#fff" strokeWidth="2.4" />
-    </svg>
-  );
+  return <img src={STATE_ICON[state]} alt="" draggable={false} />;
 }
 
+import stateBarrierUrl from '../assets/art/ui/state-barrier.webp';
+import stateBlockerUrl from '../assets/art/ui/state-blocker.webp';
+import stateDisarmUrl from '../assets/art/ui/state-disarm.webp';
+import statePoisonUrl from '../assets/art/ui/state-poison.webp';
+import stateSealUrl from '../assets/art/ui/state-seal.webp';
+import stateStealthUrl from '../assets/art/ui/state-stealth.webp';
+import stateStunUrl from '../assets/art/ui/state-stun.webp';
 import coinUrl from '../assets/art/ui/pip-coin.webp';
+
+const STATE_ICON: Record<CardState, string> = {
+  blocker: stateBlockerUrl,
+  barrier: stateBarrierUrl,
+  stealth: stateStealthUrl,
+  stun: stateStunUrl,
+  seal: stateSealUrl,
+  poison: statePoisonUrl,
+  disarm: stateDisarmUrl,
+};
 import atkUrl from '../assets/art/ui/pip-atk.webp';
 import hpUrl from '../assets/art/ui/pip-hp.webp';
 import cdUrl from '../assets/art/ui/pip-cd.webp';
