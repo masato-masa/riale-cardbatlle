@@ -3651,3 +3651,9 @@ img.result-star.is-lit {
 .collection[hidden] {
   display: none !important;
 }
+
+/* コレクションの画面外のカードは描画を後回し（「すべて」で 101 枚を一度に描くのが重い） */
+.collection .deck-card {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 120px;
+}
