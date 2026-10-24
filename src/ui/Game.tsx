@@ -207,12 +207,23 @@ function CrossMask({ id, x0, y0, x1, y1 }: { id: string; x0: number; y0: number;
 /** 確認用: URL の ?speed=N で時間を N 倍速にする（結果画面などを早く見るため）。 */
 const DEV_SPEED = Math.min(10, Math.max(1, Number(new URLSearchParams(location.search).get('speed')) || 1));
 
+/** 確認用: URL の ?result=win|lose|draw で、試合をせずに結果画面を出す（保存は書き換えない）。 */
+const DEV_RESULT = ((): 0 | 1 | null | undefined => {
+  const v = new URLSearchParams(location.search).get('result');
+  return v === 'win' ? 0 : v === 'lose' ? 1 : v === 'draw' ? null : undefined;
+})();
+
 export function Game({ level, deck, onExit }: { level: CpuLevel; deck: CardId[]; onExit: () => void }) {
   const [seed, setSeed] = useState(() => (Date.now() & 0x7fffffff) >>> 0);
   // 相手のデッキはテーマ別に、試合ごと（シードごと）に選ぶ。出てくる幅はアリーナ（トロフィー）で変わる
   const [rival, setRival] = useState(() => rivalFor(seed, loadTrophies()));
   const decks: [CardId[], CardId[]] = [deck, rival.deck];
-  const [game, setGame] = useState<GameState>(() => createGame(decks, seed));
+  const [game, setGame] = useState<GameState>(() => {
+    const g = createGame(decks, seed);
+    if (DEV_RESULT === undefined) return g;
+    const hp = (p: 0 | 1) => (DEV_RESULT === p ? 14 : DEV_RESULT === null ? 9 : 0);
+    return { ...g, time: 200_000, players: [{ ...g.players[0], hp: hp(0) }, { ...g.players[1], hp: hp(1) }], result: { winner: DEV_RESULT, reason: DEV_RESULT === null ? 'time' : 'hp' } };
+  });
   const gameRef = useRef(game);
   const brainRef = useRef(createBrain());
   const randRef = useRef(makeRng(seed ^ 0x9e3779b9));
@@ -418,8 +429,22 @@ export function Game({ level, deck, onExit }: { level: CpuLevel; deck: CardId[];
     return () => window.removeEventListener('resize', fit);
   }, []);
 
-  const [intro, setIntro] = useState(true);
+  // 確認用の結果画面: 報酬・トロフィー・ミッション・振り返りに見本を入れて、すぐ出す
   useEffect(() => {
+    if (DEV_RESULT === undefined) return;
+    const won = DEV_RESULT === 0;
+    setTrophy(won ? { before: 285, after: 310, arenaBefore: 0, arenaAfter: 1 } : { before: 310, after: 300, arenaBefore: 1, arenaAfter: 1 });
+    setMissionsDone(won ? ['win1', 'summon15'] : ['play3']);
+    setHints(
+      hintsFor({ won, coinCapMs: won ? 2000 : 40_000, matchMs: 200_000, myAttacksBlocked: 4, interrupts: won ? 3 : 0, interruptChances: 3, faceTaken: 16, faceDealt: 6, reserves: 0 }),
+    );
+    setReward({ gained: won ? 4 : 2, cards: ['reaper'], points: 0 });
+    setResultShown(true);
+  }, []);
+
+  const [intro, setIntro] = useState(DEV_RESULT === undefined);
+  useEffect(() => {
+    if (DEV_RESULT !== undefined) return;
     setIntro(true);
     introRef.current = true;
     playBattleStart();

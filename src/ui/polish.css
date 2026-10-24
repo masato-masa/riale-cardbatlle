@@ -2876,3 +2876,91 @@
 .face-name {
   font-size: max(10px, 14cqw);
 }
+
+/* 結果画面: 背の低い画面（〜720px）では詰める。トロフィー・振り返り・ミッション・宝箱が増えて 1 画面に収まらなかった */
+@media (max-height: 720px) {
+  .result-ribbon {
+    padding: 8px 0 10px;
+  }
+
+  .result-stars {
+    margin: 0;
+  }
+
+  .result-star {
+    width: 30px;
+    height: 30px;
+  }
+
+  .result-star:nth-child(2) {
+    width: 38px;
+    height: 38px;
+  }
+
+  .result-medal {
+    width: 44px;
+    height: 44px;
+  }
+
+  .result-duel {
+    margin: 0;
+  }
+
+  .result-trophy {
+    margin-top: 2px;
+  }
+
+  .trophy-delta {
+    font-size: 17px;
+  }
+
+  .result-hints {
+    margin-top: 4px;
+    padding: 6px 10px;
+  }
+
+  .result-missions {
+    margin-top: 4px;
+  }
+
+  .chest {
+    min-height: 150px;
+  }
+
+  .chest-img {
+    width: 96px;
+    margin-top: 16px;
+  }
+
+  .result-buttons {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+
+  .res-btn,
+  .res-btn.is-gold {
+    height: 46px;
+  }
+
+  /* 背の低い画面では、HP の見比べは省き（対戦中に見えていた）、ミッションは横並び、振り返りは 1 つだけ */
+  .result-duel {
+    display: none;
+  }
+
+  .result-missions {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 4px;
+  }
+
+  .result-missions span {
+    font-size: 11px;
+    padding: 2px 8px;
+  }
+
+  .result-hints p:nth-of-type(2) {
+    display: none;
+  }
+}
