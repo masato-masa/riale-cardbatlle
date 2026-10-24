@@ -27,7 +27,19 @@ function playerOf(song: SongId): { el: HTMLAudioElement; node: MediaElementAudio
   }
   return p;
 }
-if (typeof window !== 'undefined') for (const song of ['home', 'battle'] as const) playerOf(song);
+// ホームの曲を先に読み、対戦の曲はホームの曲が読み終わってから（または 4 秒後に）読み始める。
+// 2 曲で約 9MB あり、同時に読むとホームの曲が始まるのが遅れるため。
+if (typeof window !== 'undefined') {
+  const home = playerOf('home');
+  let started = false;
+  const startBattle = () => {
+    if (started) return;
+    started = true;
+    playerOf('battle');
+  };
+  home?.el.addEventListener('canplaythrough', startBattle, { once: true });
+  window.setTimeout(startBattle, 4000);
+}
 
 /** 確認用の数（開発中だけ window.__cbBgm で見る）。 */
 const stats = { starts: 0, stops: 0 };
