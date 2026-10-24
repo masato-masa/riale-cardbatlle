@@ -6,10 +6,11 @@ import { fileURLToPath } from 'node:url';
 import sharp from 'sharp';
 
 const root = fileURLToPath(new URL('..', import.meta.url));
-/** シートと並び。foes-sheet-2（2×2）: 城塞の将軍・呪術師・死霊使い・聖騎士。 */
+/** シートと並び。foes-sheet-2（2×2）: 城塞の将軍・呪術師・死霊使い・聖騎士。foes-sheet-3（2×2）: 盗賊・守護者・工房の親方・商人。 */
 const SHEETS = {
   'foes-sheet': { cols: 3, names: ['poison', 'giant', 'combo', 'sniper', 'guard', 'sacrifice', 'hunter', 'clan', 'seal'] },
   'foes-sheet-2': { cols: 2, names: ['fortress', 'sorcerer', 'necro', 'paladin'] },
+  'foes-sheet-3': { cols: 2, names: ['ambush', 'bulwark', 'workshop', 'merchant'] },
 };
 for (const [sheet, { cols, names }] of Object.entries(SHEETS)) {
 const src = `${root}art-src/${sheet}.png`;
