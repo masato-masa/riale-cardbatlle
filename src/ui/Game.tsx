@@ -1823,6 +1823,13 @@ export function Game({ level, deck, challenge, onExit }: { level: CpuLevel; deck
                           トロフィー {trophy.after >= trophy.before ? '+' : ''}{trophy.after - trophy.before}
                         </span>
                         <small>{trophy.before} → {trophy.after}</small>
+                        {game.result.winner === 1 && trophy.after === trophy.before ? (
+                          <small>
+                            {ARENAS[trophy.arenaBefore]!.lossScale === 0
+                              ? `${ARENAS[trophy.arenaBefore]!.name}では、負けてもトロフィーは減りません`
+                              : 'アリーナの下限なので、これ以上は減りません'}
+                          </small>
+                        ) : null}
                         {trophy.arenaAfter > trophy.arenaBefore ? (
                           <>
                             <b className="arena-up">アリーナ昇格！ {ARENAS[trophy.arenaAfter]!.name}</b>
