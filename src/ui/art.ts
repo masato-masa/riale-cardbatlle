@@ -72,7 +72,7 @@ const FOE_KEY: Record<string, string> = {
 };
 /** 相手デッキの使い手（顔絵に合わせた名前と肩書き）。ライバルズのように、相手を人物として見せる。カード名と重ねない。 */
 const FOE_PERSONA: Record<string, { name: string; title: string }> = {
-  商人: { name: 'マモン', title: '大商人' },
+  商人: { name: 'コガネ', title: '大商人' },
   毒: { name: 'ヴィオラ', title: '毒の魔女' },
   巨人: { name: 'ガンド', title: '巨人の親方' },
   連撃: { name: 'アカネ', title: '二刀の剣士' },

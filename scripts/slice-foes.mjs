@@ -12,6 +12,8 @@ const SHEETS = {
   'foes-sheet-2': { cols: 2, names: ['fortress', 'sorcerer', 'necro', 'paladin'] },
   'foes-sheet-3': { cols: 2, names: ['ambush', 'bulwark', 'workshop', 'merchant'] },
 };
+// 1 人ずつ描き直した肖像（シートより後に処理して上書きする）。商人は自分の顔と似ていたので女性の商人に描き直した
+const SINGLES = { merchant: 'foe-merchant-2' };
 for (const [sheet, { cols, names }] of Object.entries(SHEETS)) {
 const src = `${root}art-src/${sheet}.png`;
 const { width } = await sharp(src).metadata();
@@ -24,4 +26,8 @@ for (const [i, name] of names.entries()) {
     .toFile(`${root}src/assets/art/ui/foe-${name}.webp`);
   console.log(`foe-${name}.webp`);
 }
+}
+for (const [name, file] of Object.entries(SINGLES)) {
+  await sharp(`${root}art-src/${file}.png`).resize(240, 240).webp({ quality: 88 }).toFile(`${root}src/assets/art/ui/foe-${name}.webp`);
+  console.log(`foe-${name}.webp（${file}）`);
 }
