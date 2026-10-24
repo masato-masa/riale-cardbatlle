@@ -3508,3 +3508,40 @@ img.result-star.is-lit {
   white-space: nowrap;
   text-overflow: ellipsis;
 }
+
+/* 幅 360px 未満（初代 SE など）: デッキ画面の 1 行目と絞り込みを詰める。1 行目の最小幅で入れ物が 330px に押し広げられ、右が切れていた */
+@media (max-width: 359px) {
+  .dk .deck-main > * {
+    min-width: 0;
+  }
+
+  .slot-chips {
+    gap: 4px;
+  }
+
+  .slot-chip {
+    width: 30px;
+    height: 34px;
+    font-size: 15px;
+  }
+
+  .preset-btn {
+    height: 34px;
+    padding: 0 8px;
+    font-size: 11px;
+  }
+
+  .dk .band-chips {
+    gap: 3px;
+  }
+
+  .dk .band-chip {
+    padding: 0 5px;
+    font-size: 11px;
+  }
+
+  .dk .band-chip .band-coin {
+    width: 10px;
+    height: 10px;
+  }
+}
