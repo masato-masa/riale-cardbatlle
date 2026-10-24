@@ -2687,3 +2687,56 @@
   padding-left: 8px;
   box-sizing: border-box;
 }
+
+/* ---- 手札・一覧・デッキ編成・説明: 4 つの台座を同じ大きさに（攻撃・HP だけ目立たせるのは対戦の場だけ）。コストだけ少し大きい ---- */
+.face:not(.is-flip):not(.is-foe) .pip-summon {
+  top: -12cqw;
+  left: -12cqw;
+  width: 40cqw;
+  height: 40cqw;
+}
+
+.face:not(.is-flip):not(.is-foe) .pip-cd,
+.face:not(.is-flip):not(.is-foe) .pip-atk,
+.face:not(.is-flip):not(.is-foe) .pip-hp {
+  width: 34cqw;
+  height: 34cqw;
+  min-width: 0;
+  min-height: 0;
+}
+
+.face:not(.is-flip):not(.is-foe) .pip-cd {
+  top: -9cqw;
+  right: -9cqw;
+}
+
+.face:not(.is-flip):not(.is-foe) .pip-atk {
+  bottom: -9cqw;
+  left: -9cqw;
+}
+
+.face:not(.is-flip):not(.is-foe) .pip-hp {
+  bottom: -9cqw;
+  right: -9cqw;
+}
+
+.face:not(.is-flip):not(.is-foe) .pip-cd > i,
+.face:not(.is-flip):not(.is-foe) .pip-atk > i,
+.face:not(.is-flip):not(.is-foe) .pip-hp > i {
+  font-size: max(11px, 22cqw);
+  -webkit-text-stroke-width: 2.6px;
+}
+
+.face:not(.is-flip):not(.is-foe) .pip-summon > i {
+  font-size: max(12px, 25cqw);
+}
+
+/* デッキ編成・一覧: 余白と間を詰めて、カードを大きく（台座の張り出しは小さくしたので重ならない） */
+.dk .deck-main {
+  padding-inline: 10px;
+}
+
+.dk .deck-grid,
+.dk .collection-grid {
+  gap: 22px 12px;
+}
