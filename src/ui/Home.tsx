@@ -347,6 +347,11 @@ export function Home({ deck, onStart, onDeck }: { deck: CardId[]; onStart: (leve
                 <span>サウンド・BGM の調整</span>
                 <span aria-hidden="true">›</span>
               </button>
+              {/* 自走ループの感想箱（遊んで気づいたことを送ると、次の周で読まれる） */}
+              <a className="sheet-row" href="https://claude.ai/artifact/Um54dYbv9eUVcsTD2XyioL" target="_blank" rel="noreferrer">
+                <span>感想を送る（感想箱）</span>
+                <span aria-hidden="true">›</span>
+              </a>
               <button
                 className={`sheet-row reset-row${resetArmed ? ' is-armed' : ''}`}
                 onClick={() => {
