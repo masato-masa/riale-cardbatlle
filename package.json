@@ -11,7 +11,8 @@
     "typecheck": "tsc --noEmit",
     "simulate": "tsx scripts/simulate.ts",
     "audit": "tsx scripts/audit-cards.ts",
-    "deploy": "npm test && npm run build && node scripts/deploy.mjs"
+    "deploy": "npm test && npm run build && node scripts/deploy.mjs",
+    "fuzz": "tsx scripts/fuzz.ts"
   },
   "dependencies": {
     "motion": "^12.0.0",
