@@ -97,9 +97,17 @@ async (page) => {
     await page.getByText('あそびかた', { exact: true }).click({ force: true, timeout: 5000 });
     await page.waitForTimeout(600);
     if ((await over()) !== 0) inBad.push('あそびかた');
+    // 結果画面: もう一度・ホームへのボタンが、スクロールせずに画面内に見えるか
+    await page.goto(BASE + '&result=win');
+    await page.waitForTimeout(900);
+    await page.getByText('バトル！', { exact: true }).click({ force: true, timeout: 5000 });
+    await page.waitForTimeout(6000);
+    await page.mouse.click(w / 2, 200);
+    await page.waitForTimeout(900);
+    const resultOk = await page.evaluate(() => (document.querySelector('.result-buttons')?.getBoundingClientRect().bottom ?? 1e9) <= innerHeight + 1);
     const fmt = (m) => (m.tall || m.wide || m.over ? `NG(高さ${m.tall ? '×' : '○'} 幅${m.wide ? '×' : '○'} はみ出し${m.over})` : 'OK');
     // デッキ画面は縦にスクロールする画面なので、高さは見ない
-    out.push(`${w}×${h}: ホーム ${fmt(home)} / ホームのシート ${sheetBad.length ? `NG(${sheetBad.join(',')})` : 'OK'} / デッキ ${fmt({ ...deck, tall: false })} / 説明シート ${sheetOver === 0 ? 'OK' : `NG(${sheetOver})`} / 対戦 ${fmt(battle)} / 対戦のシート ${inBad.length ? `NG(${inBad.join(',')})` : 'OK'}`);
+    out.push(`${w}×${h}: ホーム ${fmt(home)} / ホームのシート ${sheetBad.length ? `NG(${sheetBad.join(',')})` : 'OK'} / デッキ ${fmt({ ...deck, tall: false })} / 説明シート ${sheetOver === 0 ? 'OK' : `NG(${sheetOver})`} / 対戦 ${fmt(battle)} / 対戦のシート ${inBad.length ? `NG(${inBad.join(',')})` : 'OK'} / 結果のボタン ${resultOk ? 'OK' : 'NG'}`);
   }
   return out.join('\n');
 }

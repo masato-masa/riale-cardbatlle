@@ -3635,3 +3635,13 @@ img.result-star.is-lit {
   min-height: 0;
   overflow-y: auto;
 }
+
+/* 結果のボタン（もう一度・ホームへ）は、報酬の欄が長くても画面の下に見えたままにする（クラロワの結果の「OK」と同じ） */
+.result-buttons {
+  position: sticky;
+  bottom: 0;
+  z-index: 2;
+  margin-inline: -12px;
+  padding: 10px 12px calc(10px + env(safe-area-inset-bottom));
+  background: linear-gradient(rgb(28 18 60 / 0), rgb(28 18 60 / 0.95) 30%);
+}
