@@ -3,7 +3,7 @@ import { createBrain, cpuStep } from '../src/ai/cpu';
 import { RIVAL_DECKS, STARTER_DECK } from '../src/game/cards';
 import { createGame, step, type Action, type PlayerIndex } from '../src/game/engine';
 import { makeRng } from '../src/game/rng';
-const N = 120;
+const N = Number(process.argv[2] ?? 120);
 for (const { name, deck } of RIVAL_DECKS) {
   let w = 0;
   for (let g = 0; g < N; g++) {

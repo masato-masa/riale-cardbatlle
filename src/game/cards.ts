@@ -596,7 +596,7 @@ export const CARDS: Record<CardId, CardDef> = {
   banker: unit('banker', 'ミレーヌ', 3, 3, 3, CD_STD, { coinBoost: 0.18 }),
   informer: unit('informer', 'シオ', 2, 2, 2, CD_FAST, { onSummon: { kind: 'stun', ms: 6000 } }),
   taxman: unit('taxman', 'リオ', 4, 3, 3, CD_STD, { onSummon: { kind: 'strike', amount: 2 } }),
-  double: unit('double', 'ジーク', 3, 3, 2, CD_STD, { barrier: true }),
+  double: unit('double', 'ジーク', 3, 3, 2, CD_SLOW, { barrier: true }),
   inspector: unit('inspector', 'アリア', 4, 3, 3, CD_STD, { ranged: true }),
   blockader: unit('blockader', 'ガストン', 4, 2, 3, CD_STD, { blocker: true, armor: 1 }),
   architect: unit('architect', 'セラ', 5, 4, 5, CD_STD, { onSummon: { kind: 'heal', amount: 3 } }),
@@ -722,12 +722,12 @@ export const RIVAL_DECKS: { name: string; deck: CardId[] }[] = [
   { name: '毒', deck: ['needle', 'creeper', 'champion', 'poisoner', 'knight', 'raider', 'stalwart', 'captain'] },
   { name: '巨人', deck: ['recruit', 'bulwark', 'stalwart', 'captain', 'taxman', 'champion', 'ogre', 'forge'] },
   { name: '連撃', deck: ['herald', 'twin', 'bloody', 'duelist', 'knight', 'bloodknight', 'raider', 'stalwart'] },
-  { name: '狙撃', deck: ['guard', 'marksman', 'craftsman', 'sniper', 'priest', 'wall', 'festival', 'recruit'] },
-  { name: '割り込み', deck: ['guard', 'shieldmaid', 'warder', 'diehard', 'ambusher', 'knight', 'oldguard', 'ambush'] },
-  { name: '生贄', deck: ['offering', 'tactician', 'heir', 'footman', 'usurper', 'sniper', 'conqueror', 'knight'] },
-  { name: '討伐', deck: ['herald', 'hunter', 'avenger', 'kdera', 'slayer', 'riposte', 'trickster', 'monarch'] },
+  { name: '狙撃', deck: ['guard', 'marksman', 'herald', 'sniper', 'priest', 'wall', 'festival', 'recruit'] },
+  { name: '割り込み', deck: ['sniper', 'shieldmaid', 'warder', 'diehard', 'ambusher', 'knight', 'oldguard', 'ambush'] },
+  { name: '生贄', deck: ['offering', 'tactician', 'heir', 'footman', 'usurper', 'sniper', 'conqueror', 'craftsman'] },
+  { name: '討伐', deck: ['herald', 'hunter', 'avenger', 'scout', 'slayer', 'riposte', 'trickster', 'monarch'] },
   { name: 'T一族', deck: ['kleen', 'kvav', 'kboyan', 'kroda', 'kdera', 'tmassa', 'tzarashi', 'tkisuke'] },
-  { name: '封印', deck: ['informer', 'warder', 'binder', 'blockader', 'knight', 'stalwart', 'shieldmaid', 'quarry'] },
+  { name: '封印', deck: ['informer', 'warder', 'binder', 'blockader', 'knight', 'herald', 'shieldmaid', 'quarry'] },
 ];
 
 export function isBlocker(card: CardId): boolean {
