@@ -40,7 +40,7 @@ import { pushHistory } from '@/storage/history';
 import { ARENAS, arenaIndex, loadTrophies, recordTrophies, rivalFor, type TrophyChange } from '@/storage/trophy';
 import { COIN_MAX, FAST_COOLDOWN_FROM_MS, MATCH_MS, PLAYER_HP, SUMMON_WINDUP_MS, WINDUP_MS } from '@/game/rules';
 
-import { COIN_URL, FIELD_URL, HERO_FOE_URL, HERO_ME_URL, preloadFx } from './art';
+import { ARENA_FLOOR_URLS, COIN_URL, HERO_FOE_URL, HERO_ME_URL, preloadFx } from './art';
 import { setBgmTension, startBgm, stopBgm } from './bgm';
 import { CardFace, type CardState } from './CardFace';
 import { RewardChest } from './RewardChest';
@@ -426,6 +426,7 @@ export function Game({ level, deck, onExit }: { level: CpuLevel; deck: CardId[];
   const [floorBg, setFloorBg] = useState<{ size: string; pos: string } | null>(null);
   /** 床の色味はアリーナで変わる（試合の始めに決める）。 */
   const [floorTint] = useState(() => ARENAS[arenaIndex(loadTrophies())]!.tint);
+  const [floorUrl] = useState(() => ARENA_FLOOR_URLS[arenaIndex(loadTrophies())] ?? ARENA_FLOOR_URLS[0]!);
   useLayoutEffect(() => {
     const fit = () => {
       const mid = document.querySelector('.midline')?.getBoundingClientRect();
@@ -1339,12 +1340,12 @@ export function Game({ level, deck, onExit }: { level: CpuLevel; deck: CardId[];
         if ((e.target as Element).closest('[data-pickable], .pick-bar')) return;
         cancelPick();
       }}
-      style={{ backgroundImage: `url(${FIELD_URL})`, backgroundSize: floorBg?.size, backgroundPosition: floorBg?.pos }}
+      style={{ backgroundImage: `url(${floorUrl})`, backgroundSize: floorBg?.size, backgroundPosition: floorBg?.pos }}
     >
       <div
         className="arena-floor"
         aria-hidden="true"
-        style={{ backgroundImage: `url(${FIELD_URL})`, backgroundSize: floorBg?.size, backgroundPosition: floorBg?.pos, filter: floorTint }}
+        style={{ backgroundImage: `url(${floorUrl})`, backgroundSize: floorBg?.size, backgroundPosition: floorBg?.pos, filter: floorTint }}
       />
       <main className={`battle${castReady ? ' is-casting' : ''}${me.hp <= PLAYER_HP * 0.3 && !game.result ? ' is-danger' : ''}`}>
         <div className="arena">

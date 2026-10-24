@@ -10,7 +10,7 @@ import { loadDaily, MISSIONS } from '@/storage/daily';
 import { loadHistory, suggestLevel, summarize } from '@/storage/history';
 import { ARENAS, arenaIndex, loadTrophies } from '@/storage/trophy';
 
-import { FIELD_URL, HERO_ME_URL } from './art';
+import { ARENA_FLOOR_URLS, HERO_ME_URL } from './art';
 import { CardFace } from './CardFace';
 import { Sheet } from './Sheets';
 import { playUiTap, primeAudio } from './sound';
@@ -47,8 +47,8 @@ export function Home({ deck, onStart, onDeck }: { deck: CardId[]; onStart: (leve
     onStart(level);
   };
   return (
-    <div className="ts" style={{ backgroundImage: `url(${FIELD_URL})` }}>
-      <div className="arena-floor" aria-hidden="true" style={{ backgroundImage: `url(${FIELD_URL})`, filter: ARENAS[ai]!.tint }} />
+    <div className="ts" style={{ backgroundImage: `url(${ARENA_FLOOR_URLS[ai]})` }}>
+      <div className="arena-floor" aria-hidden="true" style={{ backgroundImage: `url(${ARENA_FLOOR_URLS[ai]})`, filter: ARENAS[ai]!.tint }} />
       <button
         className="ts-dev"
         onClick={() => {

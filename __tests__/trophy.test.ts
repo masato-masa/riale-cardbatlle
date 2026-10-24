@@ -51,10 +51,7 @@ describe('アリーナの解放カード', () => {
     expect(c === null || CARDS[c].summon > 4).toBe(true);
   });
 
-  it('アリーナが上がるほど上限が上がり、色味が違う', () => {
-    for (let i = 1; i < ARENAS.length; i++) {
-      expect(ARENAS[i]!.cardCap).toBeGreaterThanOrEqual(ARENAS[i - 1]!.cardCap);
-      expect(ARENAS[i]!.tint).not.toBe(ARENAS[i - 1]!.tint);
-    }
+  it('アリーナが上がるほど上限が上がる', () => {
+    for (let i = 1; i < ARENAS.length; i++) expect(ARENAS[i]!.cardCap).toBeGreaterThanOrEqual(ARENAS[i - 1]!.cardCap);
   });
 });

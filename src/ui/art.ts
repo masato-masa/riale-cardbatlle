@@ -1,6 +1,10 @@
 import type { CardId } from '@/game/cards';
 
 import fieldUrl from '@/assets/art/arena.webp';
+import arena2Url from '@/assets/art/arena-2.webp';
+import arena3Url from '@/assets/art/arena-3.webp';
+import arena4Url from '@/assets/art/arena-4.webp';
+import arena5Url from '@/assets/art/arena-5.webp';
 import coinUrl from '@/assets/art/ui/coin.webp';
 import deckBgUrl from '@/assets/art/deck-bg.webp';
 import heroFoeUrl from '@/assets/art/ui/hero-foe.webp';
@@ -8,6 +12,8 @@ import heroMeUrl from '@/assets/art/ui/hero-me.webp';
 
 /** 盤面の地（ChatGPT で作成。赤い敵陣・青い自陣・金の帯。scripts/slice-arena.mjs）。 */
 export const FIELD_URL: string = fieldUrl;
+/** アリーナごとの盤面の地（床だけ差し替え。scripts/build-arena-floors.mjs）。添字はアリーナの番号。 */
+export const ARENA_FLOOR_URLS: string[] = [fieldUrl, arena2Url, arena3Url, arena4Url, arena5Url];
 export const COIN_URL: string = coinUrl;
 /** デッキ編成画面の背景（軍の作戦室。ChatGPT で作成。scripts/slice-arena.mjs の deck-bg と同じ要領）。 */
 export const DECK_BG_URL: string = deckBgUrl;
