@@ -3216,3 +3216,8 @@ img.result-star.is-lit {
   font-size: 12px;
   font-weight: 700;
 }
+
+/* 「コインが足りません」などの一言が自分の札の下に潜って読めなかった。札より前に出す */
+.hint {
+  z-index: 45;
+}
