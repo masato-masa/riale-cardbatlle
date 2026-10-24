@@ -72,7 +72,7 @@ interface Tuning {
 const TUNING: Record<CpuLevel, Tuning> = {
   easy: { thinkMin: 1600, thinkSpan: 800, noise: 5.5, second: 0.1, missLethal: 0.35, random: 0.25, idle: 0.5, face: 0.6, trade: 0.4, defend: 0.3, skill: 0.6, save: 0, spellBias: 9, foresee: 0, react: 0.3, reserve: 0 },
   normal: { thinkMin: 600, thinkSpan: 400, noise: 2.0, second: 0.6, missLethal: 0.05, random: 0.04, idle: 0.4, face: 1.0, trade: 0.9, defend: 0.8, skill: 0.8, save: 0.5, spellBias: 0, foresee: 0.6, react: 0.9, reserve: 0.6 },
-  hard: { thinkMin: 200, thinkSpan: 100, noise: 0.5, second: 0.7, missLethal: 0, random: 0, idle: 0.0, face: 1.0, trade: 1.0, defend: 1.2, skill: 0.2, save: 1.0, spellBias: -1, foresee: 1.0, react: 1.3, reserve: 1.0 },
+  hard: { thinkMin: 200, thinkSpan: 100, noise: 0.5, second: 0.7, missLethal: 0, random: 0, idle: 0.0, face: 1.0, trade: 1.0, defend: 1.2, skill: 0.9, save: 1.0, spellBias: -1, foresee: 1.0, react: 1.3, reserve: 1.0 },
 };
 
 /** カードの価値を測る基準のクールタイム（ms）。ユニットの平均あたり。 */
