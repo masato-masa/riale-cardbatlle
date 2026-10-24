@@ -3270,3 +3270,10 @@ img.result-star.is-lit {
   font-size: 11.5px;
   line-height: 1.45;
 }
+
+/* 操作のお知らせ（コインが足りない等）は川の少し下に出す。以前は自分の HP の帯に重なって数字が隠れた */
+.hint {
+  top: 47%;
+  bottom: auto;
+  translate: -50% -50%;
+}

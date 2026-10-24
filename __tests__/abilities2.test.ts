@@ -341,6 +341,17 @@ describe('建築物の定期効果', () => {
     expect(attackOf(s.players[0], unitOf(s, 0, lo.uid)!)).toBe(CARDS.lancer.atk + 1);
   });
 
+  it('鍛冶場: 攻撃できないユニットは飛ばす', () => {
+    let [s] = place(withHand(['herald', 'herald', 'herald', 'herald']), 0, 0, 'forge');
+    let wall: Unit;
+    let lo: Unit;
+    [s, wall] = place(s, 0, 1, 'bulwark');
+    [s, lo] = place(s, 0, 2, 'lancer');
+    s = tick(s, CARDS.forge.ab.pulse!.everyMs);
+    expect(attackOf(s.players[0], unitOf(s, 0, wall.uid)!)).toBe(CARDS.bulwark.atk);
+    expect(attackOf(s.players[0], unitOf(s, 0, lo.uid)!)).toBe(CARDS.lancer.atk + 1);
+  });
+
   it('封印された建築物は、定期効果が止まる', () => {
     let [s] = place(withHand(['herald', 'herald', 'herald', 'herald']), 0, 0, 'infirmary', { sealed: true, pulseAt: null });
     s = { ...s, players: [{ ...s.players[0], hp: 10 }, s.players[1]] };

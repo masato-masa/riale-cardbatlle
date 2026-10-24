@@ -688,7 +688,8 @@ function pulses(state: GameState): GameState {
           const top = foeUnits.filter((u) => !u.poison).reduce<Unit | null>((m, u) => (!m || attackOf(d.players[q], u) > attackOf(d.players[q], m) ? u : m), null);
           if (top) poisonUnit(d, q, top, pulse.amount);
         } else {
-          const low = mineUnits.reduce<Unit | null>((m, u) => (!m || attackOf(pl, u) < attackOf(pl, m) ? u : m), null);
+          // 攻撃できないユニット（モルドなど）に重ねても空振りなので、攻撃できるものから選ぶ
+          const low = mineUnits.filter((u) => !abOf(u).cannotAttack).reduce<Unit | null>((m, u) => (!m || attackOf(pl, u) < attackOf(pl, m) ? u : m), null);
           if (low) buffUnit(d, p, low, pulse.atk, 0);
         }
       }
