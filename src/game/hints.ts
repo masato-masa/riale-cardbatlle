@@ -35,14 +35,14 @@ export function hintsFor(log: MatchLog): Hint[] {
     if (log.interruptChances >= 2 && log.interrupts === 0)
       out.push({ id: 'interrupt', text: '相手が攻撃を溜めている間に、手札のブロッカーを出せば割り込んで止められる場面がありました。' });
     if (log.myAttacksBlocked >= 3)
-      out.push({ id: 'blocked', text: `自分の攻撃が ${log.myAttacksBlocked} 回割り込まれました。相手のコインと手札に注意し、ブロッカーを先に倒しましょう。` });
+      out.push({ id: 'blocked', text: `自分の攻撃が ${log.myAttacksBlocked} 回妨害されました。相手のコインと手札に注意し、ブロッカーを先に倒しましょう。` });
     if (log.faceTaken >= 14 && log.faceDealt < log.faceTaken / 2)
       out.push({ id: 'defend', text: 'プレイヤーへのダメージを多く受けました。ブロッカーや壁で守りを固めましょう。' });
     if (log.reserves === 0)
       out.push({ id: 'reserve', text: 'クールタイム中のカードも、相手へドラッグしておくと予約になり、明けた瞬間に攻撃します。' });
-    if (out.length === 0) out.push({ id: 'close', text: 'あと一歩でした。相手の攻撃の溜め（線の「！」）を見て、割り込みを狙いましょう。' });
+    if (out.length === 0) out.push({ id: 'close', text: 'あと一歩でした。相手の攻撃の溜め（線の「！」）を見て、ブロッカーでの妨害を狙いましょう。' });
   } else {
-    if (log.interrupts >= 2) out.push({ id: 'good-interrupt', text: `割り込みを ${log.interrupts} 回成功させました。読み合いの勝ちです。` });
+    if (log.interrupts >= 2) out.push({ id: 'good-interrupt', text: `相手の攻撃を ${log.interrupts} 回妨害しました。読み合いの勝ちです。` });
     if (capRate < 0.05) out.push({ id: 'good-coins', text: 'コインをむだなく使えていました。' });
     if (out.length === 0) out.push({ id: 'good', text: 'いい試合でした。次はもっと強い相手に挑戦してみましょう。' });
   }
