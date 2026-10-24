@@ -173,3 +173,43 @@ describe('CPU とステルス', () => {
     expect(atk.length).toBeGreaterThan(0);
   });
 });
+
+describe('CPU の場面テスト（hard。20 通りの乱数で、正しい手を選ぶ割合）', () => {
+  const rate = (acts: ReturnType<typeof firstActions>, ok: (a: (typeof acts)[number]) => boolean) => acts.filter(ok).length / 20;
+
+  it('とどめ: 相手の HP が攻撃力以下なら、プレイヤーを殴る', () => {
+    let s = setup(['herald', 'herald', 'herald', 'herald'], ['knight'], [['herald', 1]]);
+    s = { ...s, players: [s.players[0], { ...s.players[1], hp: 3 }] };
+    expect(rate(firstActions(s, 0), (a) => a.type === 'attack' && a.target.kind === 'player')).toBeGreaterThanOrEqual(0.95);
+  });
+
+  it('割り込み: 相手が自分のカードへ攻撃を溜めていて間に合うなら、ブロッカーを出す', () => {
+    let s = setup(['guard', 'herald', 'herald', 'herald'], ['craftsman'], [['knight']]);
+    const me0 = s.players[0].field[0]!;
+    const foe0 = s.players[1].field[0]!;
+    s = {
+      ...s,
+      players: [{ ...s.players[0], field: s.players[0].field.map((u) => (u ? { ...u, readyAt: 60_000 } : u)) }, s.players[1]],
+      pending: [{ id: 1, kind: 'attack', p: 1, uid: foe0.uid, target: { kind: 'unit', uid: me0.uid }, at: s.time + 900, readyBefore: 0, readyAfter: 30_000, secondBefore: false }],
+    };
+    expect(rate(firstActions(s, 0), (a) => a.type === 'summon' && a.handIndex === 0)).toBeGreaterThanOrEqual(0.8);
+  });
+
+  it('予約: クールタイム中のユニットは、狙う相手を予約しておく', () => {
+    let s = setup(['herald', 'herald', 'herald', 'herald'], ['knight'], [['craftsman', 2]]);
+    s = { ...s, players: [{ ...s.players[0], coins: 0, field: s.players[0].field.map((u) => (u ? { ...u, readyAt: 20_000 } : u)) }, s.players[1]] };
+    expect(rate(firstActions(s, 0), (a) => a.type === 'reserve')).toBeGreaterThanOrEqual(0.8);
+  });
+  it('割り込み: プレイヤーへの攻撃でも、間に合うならブロッカーを出す', () => {
+    let s = setup(['guard', 'herald', 'herald', 'herald'], [], [['knight']]);
+    const foe0 = s.players[1].field[0]!;
+    s = { ...s, pending: [{ id: 1, kind: 'attack', p: 1, uid: foe0.uid, target: { kind: 'player' }, at: s.time + 900, readyBefore: 0, readyAfter: 30_000, secondBefore: false }] };
+    expect(rate(firstActions(s, 0), (a) => a.type === 'summon' && a.handIndex === 0)).toBeGreaterThanOrEqual(0.8);
+  });
+
+  it('一族: 場に T 一族がいるなら、一族を強くするヴァヴを優先する', () => {
+    let s = setup(['kvav', 'herald', 'recruit', 'needle'], ['kleen', 'kboyan'], []);
+    s = { ...s, players: [{ ...s.players[0], coins: 3 }, s.players[1]] };
+    expect(rate(firstActions(s, 0), (a) => a.type === 'summon' && a.handIndex === 0)).toBeGreaterThanOrEqual(0.7);
+  });
+});
