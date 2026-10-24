@@ -207,6 +207,9 @@ function CrossMask({ id, x0, y0, x1, y1 }: { id: string; x0: number; y0: number;
 /** 確認用: URL の ?speed=N で時間を N 倍速にする（結果画面などを早く見るため）。 */
 const DEV_SPEED = Math.min(10, Math.max(1, Number(new URLSearchParams(location.search).get('speed')) || 1));
 
+/** 端末の「動きを減らす」設定。 */
+const REDUCED_MOTION = typeof matchMedia !== 'undefined' && matchMedia('(prefers-reduced-motion: reduce)').matches;
+
 /** 結果画面の項目（トロフィー→振り返り→ミッション→宝箱）を順に出す間隔。星が出そろう 1.3 秒後から始める。 */
 const RESULT_STEP_START_MS = 1400;
 const RESULT_STEP_MS = 450;
@@ -484,6 +487,8 @@ export function Game({ level, deck, onExit }: { level: CpuLevel; deck: CardId[];
 
   /** 本体が受けたとき盤面を揺らす（レイアウトは揺れの後で元に戻る）。 */
   const shake = useCallback((power: number) => {
+    // 端末で「動きを減らす」を選んでいる人には、画面を揺らさない（酔いやすい人への配慮）
+    if (REDUCED_MOTION) return;
     const el = document.querySelector('.arena');
     if (el) animate(el, { x: [0, -power, power, -power * 0.6, power * 0.6, 0], y: [0, power * 0.5, -power * 0.5, 0, 0, 0] }, { duration: 0.38 });
   }, []);

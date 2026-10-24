@@ -3161,3 +3161,13 @@ img.result-star.is-lit {
   font-size: 12px;
   font-weight: 700;
 }
+
+/* 端末の「動きを減らす」設定では、瀕死の画面の縁の脈動や紙吹雪を止める */
+@media (prefers-reduced-motion: reduce) {
+  .battle.is-danger,
+  .battle.is-danger::after,
+  .confetti i,
+  .hero-badge.is-low {
+    animation: none !important;
+  }
+}
