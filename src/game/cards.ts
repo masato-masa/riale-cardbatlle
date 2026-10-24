@@ -736,6 +736,12 @@ export const RIVAL_DECKS: { name: string; deck: CardId[] }[] = [
   { name: '死霊', deck: ['martyr', 'bloodknight', 'warden', 'shieldmaid', 'recruit', 'herald', 'veteran', 'knight'] },
   // 回復と強化、ブロッカー 3 枚で守り抜く
   { name: '聖騎士', deck: ['priest', 'bard', 'guard', 'warder', 'shieldmaid', 'knight', 'veteran', 'herald'] },
+  // ステルスで隠れ、入れ替えで顔に当てる（レイヴ・カゲマル・ガイ）
+  { name: '奇襲', deck: ['swindler', 'spy', 'bomber', 'guard', 'shieldmaid', 'steadfast', 'knight', 'veteran'] },
+  // ブロッカー 3 枚（ブロム・ホルス・ドミニク）と割り込みの反撃で受けきる。ミーアを入れると hard 相手に 66% になったのでララに
+  { name: '鉄壁', deck: ['wallguard', 'sentinel', 'gatekeeper', 'medic', 'lancer', 'knight', 'veteran', 'taxman'] },
+  // 兵舎で歩兵を出し続けて、ガイウスで押す。建築を増やすと hard 相手に 0〜7% まで落ちた
+  { name: '工房', deck: ['factory', 'guard', 'shieldmaid', 'lancer', 'taxman', 'knight', 'veteran', 'warlord'] },
 ];
 
 export function isBlocker(card: CardId): boolean {
