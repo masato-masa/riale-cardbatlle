@@ -30,6 +30,12 @@ export function Home({ deck, onStart, onDeck }: { deck: CardId[]; onStart: (leve
   const ai = arenaIndex(trophies);
   const nextArena = ARENAS[ai + 1];
   const arenaPct = nextArena ? ((trophies - ARENAS[ai]!.from) / (nextArena.from - ARENAS[ai]!.from)) * 100 : 100;
+  // 扇に出すのは、いまのデッキのユニットのうちコストの高い 3 枚（クラロワのホームのように、自分のデッキが見える）
+  const fan = (() => {
+    const units = [...deck].filter((c) => CARDS[c].type === 'unit').sort((a, b) => CARDS[b].summon - CARDS[a].summon);
+    const pick = [...units, ...deck].filter((c, i, arr) => arr.indexOf(c) === i);
+    return [pick[0] ?? 'boss', pick[1] ?? 'guard', pick[2] ?? 'inspector'] as const;
+  })();
   const [dev, setDev] = useState(false);
   const [dailyOpen, setDailyOpen] = useState(false);
   const [statsOpen, setStatsOpen] = useState(false);
@@ -208,13 +214,13 @@ export function Home({ deck, onStart, onDeck }: { deck: CardId[]; onStart: (leve
       <main className="ts-main">
         <div className="ts-fan" aria-hidden="true">
           <div className="ts-card ts-card-l">
-            <CardFace card="guard" />
+            <CardFace card={fan[1]} />
           </div>
           <div className="ts-card ts-card-r">
-            <CardFace card="inspector" />
+            <CardFace card={fan[2]} />
           </div>
           <div className="ts-card ts-card-c">
-            <CardFace card="boss" />
+            <CardFace card={fan[0]} />
           </div>
         </div>
         <h1 className="ts-logo">リアルカードバトル</h1>
