@@ -303,9 +303,10 @@ describe('砲撃（砦）', () => {
     let [t] = place(withHand(HAND4), 0, 0, 'fortress');
     let k: Unit;
     [t, k] = place(t, 1, 0, 'blockader', 2);
-    const m = tick(t, every); // 1 - 鉄壁 1 = 0
-    expect(hpOf(m, 1, k.uid)).toBe(2);
-    expect(m.events.find((e) => e.kind === 'damage')).toMatchObject({ amount: 0, guard: 'armor' });
+    const m = tick(t, every); // 砲撃 - 鉄壁 1
+    const shot = (CARDS.fortress.ab.pulse as { amount: number }).amount - 1;
+    expect(hpOf(m, 1, k.uid)).toBe(2 - shot);
+    expect(m.events.find((e) => e.kind === 'damage')).toMatchObject({ amount: shot, guard: 'armor' });
   });
 
   it('的が無ければ何も起きない。倒した遺言は相手プレイヤーに飛ぶ', () => {
