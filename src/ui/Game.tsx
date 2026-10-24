@@ -207,6 +207,14 @@ function CrossMask({ id, x0, y0, x1, y1 }: { id: string; x0: number; y0: number;
 /** 確認用: URL の ?speed=N で時間を N 倍速にする（結果画面などを早く見るため）。 */
 const DEV_SPEED = Math.min(10, Math.max(1, Number(new URLSearchParams(location.search).get('speed')) || 1));
 
+/** 結果画面の項目（トロフィー→振り返り→ミッション→宝箱）を順に出す間隔。星が出そろう 1.3 秒後から始める。 */
+const RESULT_STEP_START_MS = 1400;
+const RESULT_STEP_MS = 450;
+const resultStep = (i: number) => ({
+  initial: { opacity: 0, y: 12 },
+  animate: { opacity: 1, y: 0, transition: { delay: (RESULT_STEP_START_MS + i * RESULT_STEP_MS) / 1000, type: 'spring' as const, stiffness: 320, damping: 24 } },
+});
+
 /** 確認用: URL の ?result=win|lose|draw で、試合をせずに結果画面を出す（保存は書き換えない）。 */
 const DEV_RESULT = ((): 0 | 1 | null | undefined => {
   const v = new URLSearchParams(location.search).get('result');
@@ -239,6 +247,13 @@ export function Game({ level, deck, onExit }: { level: CpuLevel; deck: CardId[];
   const [reward, setReward] = useState<MatchReward | null>(null);
   /** 試合のトロフィーの増減。 */
   const [trophy, setTrophy] = useState<TrophyChange | null>(null);
+  /** 結果画面の宝箱は、ほかの項目が順に出たあとに出す（箱の揺れが始まるのもそこから）。 */
+  const [chestReady, setChestReady] = useState(false);
+  useEffect(() => {
+    if (!resultShown) return setChestReady(false);
+    const t = window.setTimeout(() => setChestReady(true), RESULT_STEP_START_MS + 3 * RESULT_STEP_MS + 200);
+    return () => window.clearTimeout(t);
+  }, [resultShown]);
   /** この試合で達成したデイリーミッション。 */
   const [missionsDone, setMissionsDone] = useState<MissionId[]>([]);
   /** デイリーミッション用の、この試合の記録（自分の行動）。 */
@@ -1738,7 +1753,7 @@ export function Game({ level, deck, onExit }: { level: CpuLevel; deck: CardId[];
                       </span>
                     </div>
                     {trophy ? (
-                      <div className="result-trophy">
+                      <motion.div className="result-trophy" {...resultStep(0)}>
                         <span className={`trophy-delta${trophy.after > trophy.before ? ' is-up' : trophy.after < trophy.before ? ' is-down' : ''}`}>
                           トロフィー {trophy.after >= trophy.before ? '+' : ''}{trophy.after - trophy.before}
                         </span>
@@ -1749,33 +1764,33 @@ export function Game({ level, deck, onExit }: { level: CpuLevel; deck: CardId[];
                             <small>宝箱からコスト {ARENAS[trophy.arenaAfter]!.cardCap} までのカードが出るように</small>
                           </>
                         ) : null}
-                      </div>
+                      </motion.div>
                     ) : null}
                     {hints.length > 0 ? (
-                      <div className={`result-hints${game.result.winner === 0 ? ' is-good' : ''}`}>
+                      <motion.div className={`result-hints${game.result.winner === 0 ? ' is-good' : ''}`} {...resultStep(1)}>
                         <b>{game.result.winner === 0 ? 'よかった点' : 'ふりかえり'}</b>
                         {hints.map((h) => (
                           <p key={h.id}>{h.text}</p>
                         ))}
-                      </div>
+                      </motion.div>
                     ) : null}
                     {missionsDone.length > 0 ? (
-                      <div className="result-missions">
+                      <motion.div className="result-missions" {...resultStep(2)}>
                         {missionsDone.map((id) => (
                           <span key={id}>ミッション達成！ {MISSIONS[id].text}（宝箱ゲージ +1）</span>
                         ))}
-                      </div>
+                      </motion.div>
                     ) : null}
                     {reward ? (
-                      <div className="result-reward">
+                      <motion.div className="result-reward" {...resultStep(3)}>
                         <div className="reward-meter" aria-label={`宝箱ゲージ ${reward.points}/${CHEST_POINTS}`}>
                           <span className="reward-label">宝箱ゲージ +{reward.gained}</span>
                           {Array.from({ length: CHEST_POINTS }, (_, i) => (
                             <i key={i} className={i < reward.points || reward.cards.length > 0 ? 'is-on' : ''} />
                           ))}
                         </div>
-                        {reward.cards.length > 0 ? <RewardChest cards={reward.cards} /> : null}
-                      </div>
+                        {reward.cards.length > 0 ? chestReady ? <RewardChest cards={reward.cards} /> : <div className="chest" aria-hidden="true" /> : null}
+                      </motion.div>
                     ) : null}
                   </>
                 );
