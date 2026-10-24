@@ -33,7 +33,7 @@ import {
 } from '@/game/engine';
 import { makeRng } from '@/game/rng';
 import { awardMatch, CHEST_POINTS, type MatchReward } from '@/storage/collection';
-import { addResult, isTutorialDone, markTip, seenTips, setTutorialDone } from '@/storage/profile';
+import { addResult, isTutorialDone, loadRecord, markTip, seenTips, setTutorialDone } from '@/storage/profile';
 import { hintsFor, type Hint } from '@/game/hints';
 import { MISSIONS, recordDaily, type MissionId } from '@/storage/daily';
 import { pushHistory } from '@/storage/history';
@@ -148,6 +148,8 @@ interface Zone {
 const PICK_LIMIT_MS = 6000;
 /** 決着から結果のポップアップまでの時間（ms）。やられた演出と勝敗の文字を見せる。 */
 const RESULT_DELAY_MS = 4200;
+/** この連勝数から、勝つたびに宝箱ゲージ +1。 */
+const STREAK_BONUS_FROM = 3;
 
 const SUMMON_REASON = {
   coins: 'コインが足りません',
@@ -259,6 +261,8 @@ export function Game({ level, deck, onExit }: { level: CpuLevel; deck: CardId[];
   }, [resultShown]);
   /** この試合で達成したデイリーミッション。 */
   const [missionsDone, setMissionsDone] = useState<MissionId[]>([]);
+  /** 連勝ボーナスが付いたときの連勝数（付かなければ 0）。 */
+  const [streakBonus, setStreakBonus] = useState(0);
   /** デイリーミッション用の、この試合の記録（自分の行動）。 */
   const freshStats = () => ({ summons: 0, interrupts: 0, spells: 0, faceDamage: 0, myAttacksBlocked: 0, interruptChances: 0, faceTaken: 0, reserves: 0, coinCapMs: 0, lastTime: 0, played: {} as Partial<Record<CardId, number>> });
   const statsRef = useRef(freshStats());
@@ -454,10 +458,11 @@ export function Game({ level, deck, onExit }: { level: CpuLevel; deck: CardId[];
     const won = DEV_RESULT === 0;
     setTrophy(won ? { before: 285, after: 310, arenaBefore: 0, arenaAfter: 1 } : { before: 310, after: 300, arenaBefore: 1, arenaAfter: 1 });
     setMissionsDone(won ? ['win1', 'summon15'] : ['play3']);
+    setStreakBonus(won ? 3 : 0);
     setHints(
       hintsFor({ won, coinCapMs: won ? 2000 : 40_000, matchMs: 200_000, myAttacksBlocked: 4, interrupts: won ? 3 : 0, interruptChances: 3, faceTaken: 16, faceDealt: 6, reserves: 0 }),
     );
-    setReward({ gained: won ? 4 : 2, cards: ['reaper'], points: 0 });
+    setReward({ gained: won ? 5 : 2, cards: ['reaper'], points: 1 });
     setResultShown(true);
   }, []);
 
@@ -693,6 +698,10 @@ export function Game({ level, deck, onExit }: { level: CpuLevel; deck: CardId[];
       if (e.kind === 'end') {
         const r = gameRef.current.result;
         addResult(r?.winner ?? null);
+        // 連勝ボーナス: 3 連勝目から、勝つたびに宝箱ゲージ +1（もう 1 戦の動機）
+        const streak = r?.winner === 0 ? loadRecord().streak : 0;
+        const streakPts = streak >= STREAK_BONUS_FROM ? 1 : 0;
+        setStreakBonus(streakPts > 0 ? streak : 0);
         const tc = recordTrophies(level, r?.winner ?? null);
         setTrophy(tc);
         const done = recordDaily({ won: r?.winner === 0, ...statsRef.current });
@@ -720,7 +729,7 @@ export function Game({ level, deck, onExit }: { level: CpuLevel; deck: CardId[];
         );
         // アリーナ昇格のごほうび: 宝箱ゲージ +2（宝箱 1 つぶん）
         const arenaBonus = tc.arenaAfter > tc.arenaBefore ? 2 : 0;
-        setReward(awardMatch(r?.winner ?? null, Math.random, done.length + arenaBonus));
+        setReward(awardMatch(r?.winner ?? null, Math.random, done.length + arenaBonus + streakPts));
         // 倒れる演出 → 勝敗の文字 → 余韻のあとに結果のポップアップ
         window.setTimeout(() => setResultShown(true), RESULT_DELAY_MS);
         // 決着の見せ場: 倒れた側のプレイヤー札で連続の爆発・画面の閃光・大きな揺れ
@@ -1783,8 +1792,9 @@ export function Game({ level, deck, onExit }: { level: CpuLevel; deck: CardId[];
                         ))}
                       </motion.div>
                     ) : null}
-                    {missionsDone.length > 0 ? (
+                    {missionsDone.length > 0 || streakBonus > 0 ? (
                       <motion.div className="result-missions" {...resultStep(2)}>
+                        {streakBonus > 0 ? <span className="is-streak">{streakBonus} 連勝ボーナス！（宝箱ゲージ +1）</span> : null}
                         {missionsDone.map((id) => (
                           <span key={id}>ミッション達成！ {MISSIONS[id].text}（宝箱ゲージ +1）</span>
                         ))}

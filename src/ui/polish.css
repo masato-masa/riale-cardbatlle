@@ -3403,3 +3403,10 @@ img.result-star.is-lit {
   color: var(--gold-1);
   font-size: 13px;
 }
+
+/* 結果: 連勝ボーナス（炎の色） */
+.result-missions span.is-streak {
+  background: linear-gradient(#ffb03a, #e0521c);
+  color: #fff;
+  text-shadow: 0 1px 1px rgb(80 20 0 / 0.6);
+}
