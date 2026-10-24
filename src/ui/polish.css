@@ -2819,25 +2819,3 @@
   background-position: center;
   pointer-events: none;
 }
-
-/* カードのレベルの印（手札・一覧）。名前の帯の上、中央に小さく */
-.face-lv {
-  position: absolute;
-  left: 50%;
-  bottom: calc(17cqw + 1.25em);
-  translate: -50% 0;
-  padding: 0 5px;
-  border-radius: 999px;
-  background: linear-gradient(#7f5cff, #4b2bbd);
-  border: 1px solid #d9cfff;
-  color: #fff;
-  font-size: max(8px, 11cqw);
-  font-weight: 800;
-  line-height: 1.35;
-  white-space: nowrap;
-  pointer-events: none;
-}
-
-.face.is-small .face-lv {
-  display: none;
-}

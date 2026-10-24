@@ -60,17 +60,6 @@ export interface PlayerState {
   /** 山札。先頭が「次のカード」。使ったカードは末尾へ戻る。 */
   queue: CardId[];
   field: (Unit | null)[];
-  /** カードのレベル（無ければ 1）。場に出たとき、レベルに応じて攻撃力・HP が上がる。 */
-  levels?: Partial<Record<CardId, number>>;
-}
-
-/** カードの最大レベル。 */
-export const MAX_CARD_LEVEL = 5;
-
-/** レベルによる上乗せ。Lv2 で HP+1、Lv3 で攻撃+1、Lv4 で HP+2、Lv5 で攻撃+2（交互に上がる）。 */
-export function levelBonus(level: number): { atk: number; hp: number } {
-  const lv = Math.max(1, Math.min(MAX_CARD_LEVEL, Math.floor(level)));
-  return { atk: Math.floor((lv - 1) / 2), hp: Math.floor(lv / 2) };
 }
 
 export type CancelReason = 'blocked' | 'target' | 'dodge' | 'attacker' | 'parry';
@@ -169,10 +158,9 @@ export type Action =
 
 const EVENT_KEEP = 60;
 
-function makePlayer(deck: readonly CardId[], rand: () => number, levels?: Partial<Record<CardId, number>>): PlayerState {
+function makePlayer(deck: readonly CardId[], rand: () => number): PlayerState {
   const order = shuffle(deck, rand);
   return {
-    levels,
     hp: PLAYER_HP,
     coins: COIN_START,
     hand: order.slice(0, HAND_SIZE),
@@ -181,15 +169,11 @@ function makePlayer(deck: readonly CardId[], rand: () => number, levels?: Partia
   };
 }
 
-export function createGame(
-  decks: [readonly CardId[], readonly CardId[]],
-  seed: number,
-  levels?: [Partial<Record<CardId, number>>?, Partial<Record<CardId, number>>?],
-): GameState {
+export function createGame(decks: [readonly CardId[], readonly CardId[]], seed: number): GameState {
   const rand = makeRng(seed);
   return {
     time: 0,
-    players: [makePlayer(decks[0], rand, levels?.[0]), makePlayer(decks[1], rand, levels?.[1])],
+    players: [makePlayer(decks[0], rand), makePlayer(decks[1], rand)],
     nextUid: 1,
     nextEventId: 1,
     events: [],
@@ -596,15 +580,10 @@ function sweepCore(d: Draft): void {
 
 function place(d: Draft, p: PlayerIndex, card: CardId, slot: number, token: boolean): Unit {
   const ab = CARDS[card].ab;
-  // レベルの上乗せ（見習いなどのトークンは Lv1）。建築物は攻撃しないので HP だけ
-  const bonus = token ? { atk: 0, hp: 0 } : levelBonus(d.players[p].levels?.[card] ?? 1);
-  const isUnit = CARDS[card].type === 'unit';
   const unit: Unit = {
     uid: d.nextUid++,
     card,
-    hp: CARDS[card].hp + bonus.hp,
-    ...(bonus.hp > 0 ? { maxHp: CARDS[card].hp + bonus.hp } : {}),
-    ...(isUnit && bonus.atk > 0 ? { atkBuff: bonus.atk } : {}),
+    hp: CARDS[card].hp,
     // 登場したときのクールタイムは半分（2 回目の攻撃からそのユニットのクールタイム）。速攻はなし
     readyAt: ab.haste ? d.time : d.time + Math.round(cooldownOf(d.players[p], card) / 2),
     barrier: !!ab.barrier,

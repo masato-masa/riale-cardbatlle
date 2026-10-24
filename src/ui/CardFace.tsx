@@ -1,5 +1,4 @@
 import { CARDS, type CardId } from '@/game/cards';
-import { levelBonus } from '@/game/engine';
 
 import { cardArt } from './art';
 
@@ -28,7 +27,6 @@ export function CardFace({
   small,
   states: statesProp,
   mine,
-  level,
 }: {
   card: CardId;
   hp?: number;
@@ -39,13 +37,10 @@ export function CardFace({
   states?: CardState[];
   /** 場のカード（登場待ちの表示も同じ）の持ち主。場に出たカードは召喚コストとクールタイムの台座を出さない（クールタイムは輪で見せる）。自分（true）は攻撃力・HP を上、コスト・クールタイムを下に入れ替える。相手（false）は能力のアイコンを下に出す。 */
   mine?: boolean;
-  /** カードのレベル（手札・一覧）。2 以上なら印を出し、上がった攻撃力・HP を見せる。場のカードは hp・atk を渡す。 */
-  level?: number;
 }) {
   const def = CARDS[card];
-  const lvBonus = level && level > 1 ? levelBonus(level) : { atk: 0, hp: 0 };
-  const shownHp = hp ?? def.hp + (def.type === 'spell' ? 0 : lvBonus.hp);
-  const shownAtk = atk ?? def.atk + (def.type === 'unit' ? lvBonus.atk : 0);
+  const shownHp = hp ?? def.hp;
+  const shownAtk = atk ?? def.atk;
   const states = statesProp ?? [];
   // 場のカードは、いまの状態（封印されたブロッカーは数えない）。手札・一覧は、カードの定義どおり
   const blocker = statesProp ? statesProp.includes('blocker') : !!def.ab.blocker;
@@ -60,7 +55,6 @@ export function CardFace({
       <div className="face-body">
         <img className="face-art" src={cardArt(card, def.type)} alt="" draggable={false} />
         <span className="face-name">{def.name}</span>
-        {level && level > 1 && def.type !== 'spell' ? <span className="face-lv">Lv{level}</span> : null}
       </div>
       {blocker ? (
         <span className="blocker-badge" aria-label="ブロッカー" title="ブロッカー">
