@@ -3545,3 +3545,9 @@ img.result-star.is-lit {
     height: 10px;
   }
 }
+
+/* カードの説明がシートの高さを超えたら説明の部分だけスクロール（低い画面で「とじる」が枠の外へはみ出した） */
+.sheet > .card-detail {
+  min-height: 0;
+  overflow-y: auto;
+}

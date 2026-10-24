@@ -40,6 +40,14 @@ async (page) => {
     await page.getByText('デッキ', { exact: true }).last().click({ force: true, timeout: 5000 });
     await page.waitForTimeout(1000);
     const deck = await measure();
+    // デッキの 1 枚目の説明のシート: 中身（ボタン）がシートの枠の外に出ていないか
+    await page.locator('.deck-box .deck-card').first().click({ force: true, timeout: 5000 });
+    await page.waitForTimeout(700);
+    const sheetOver = await page.evaluate(() => {
+      const s = document.querySelector('.sheet')?.getBoundingClientRect();
+      if (!s) return -1;
+      return [...document.querySelectorAll('.sheet > *')].filter((c) => c.getBoundingClientRect().bottom > s.bottom + 1).length;
+    });
     await page.goto(BASE);
     await page.waitForTimeout(1000);
     await page.getByText('バトル！', { exact: true }).click({ force: true, timeout: 5000 });
@@ -47,7 +55,7 @@ async (page) => {
     const battle = await measure();
     const fmt = (m) => (m.tall || m.wide || m.over ? `NG(高さ${m.tall ? '×' : '○'} 幅${m.wide ? '×' : '○'} はみ出し${m.over})` : 'OK');
     // デッキ画面は縦にスクロールする画面なので、高さは見ない
-    out.push(`${w}×${h}: ホーム ${fmt(home)} / デッキ ${fmt({ ...deck, tall: false })} / 対戦 ${fmt(battle)}`);
+    out.push(`${w}×${h}: ホーム ${fmt(home)} / デッキ ${fmt({ ...deck, tall: false })} / 説明シート ${sheetOver === 0 ? 'OK' : `NG(${sheetOver})`} / 対戦 ${fmt(battle)}`);
   }
   return out.join('\n');
 }
