@@ -1144,7 +1144,7 @@ export function Game({ level, deck, onExit }: { level: CpuLevel; deck: CardId[];
         <AnimatePresence>{u ? renderUnit(u, side) : null}</AnimatePresence>
         {pick && side === 0 && pick.slot === i ? (
           <div className="slot-preview" aria-hidden="true">
-            <CardFace card={pick.card} />
+            <CardFace card={pick.card} mine />
           </div>
         ) : null}
         {game.pending.map((x) =>
@@ -1155,7 +1155,7 @@ export function Game({ level, deck, onExit }: { level: CpuLevel; deck: CardId[];
               style={{ opacity: 0.35 + 0.5 * Math.max(0, Math.min(1, 1 - (x.at - game.time) / SUMMON_WINDUP_MS)), scale: String(0.88 + 0.12 * Math.max(0, Math.min(1, 1 - (x.at - game.time) / SUMMON_WINDUP_MS))) }}
               aria-hidden="true"
             >
-              <CardFace card={x.card} />
+              <CardFace card={x.card} mine={side === 0} />
               <span className="arrive-ring" />
             </div>
           ) : null,
