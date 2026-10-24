@@ -22,7 +22,7 @@ export const ARENAS: Arena[] = [
   { name: 'はじまりの広場', from: 0, pool: ['商人', '毒', '巨人'], tint: 'none', cardCap: 4 },
   { name: '砂の闘技場', from: 300, pool: ['商人', '毒', '巨人', '連撃', '割り込み'], tint: 'none', cardCap: 6 },
   { name: '城門前', from: 700, pool: ['毒', '巨人', '連撃', '割り込み', '狙撃', '生贄', '討伐'], tint: 'none', cardCap: 7 },
-  { name: '王の間', from: 1200, pool: ['巨人', '連撃', '割り込み', '狙撃', '生贄', '討伐', 'T一族', '封印', '城塞'], tint: 'none', cardCap: 8 },
+  { name: '王の間', from: 1200, pool: ['巨人', '連撃', '割り込み', '狙撃', '生贄', '討伐', 'T一族', '封印', '城塞', '呪術'], tint: 'none', cardCap: 8 },
   { name: '伝説の頂', from: 1800, pool: RIVAL_DECKS.map((d) => d.name), tint: 'none', cardCap: 10 },
 ];
 

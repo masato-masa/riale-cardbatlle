@@ -730,6 +730,8 @@ export const RIVAL_DECKS: { name: string; deck: CardId[] }[] = [
   { name: '封印', deck: ['informer', 'warder', 'binder', 'blockader', 'knight', 'herald', 'shieldmaid', 'quarry'] },
   // 砦と鍛冶場を立てて、大型で押す。ブロッカーは 2 枚（ロイ・バーナ）。ブロッカーを減らすと hard 相手に 15% 以下まで落ちた
   { name: '城塞', deck: ['recruit', 'guard', 'fortress', 'forge', 'champion', 'ogre', 'stalwart', 'taxman'] },
+  // 投石・大地割り・戦の号令の呪文 3 枚で場を崩して押す
+  { name: '呪術', deck: ['guard', 'shieldmaid', 'quarry', 'quake', 'warcry', 'captain', 'veteran', 'taxman'] },
 ];
 
 export function isBlocker(card: CardId): boolean {
