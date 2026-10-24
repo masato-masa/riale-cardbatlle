@@ -23,7 +23,7 @@ const SoundLab = lazy(() => import('./ui/SoundLab').then((m) => ({ default: m.So
 /** 別ファイルの画面を読み込む一瞬の間（ほぼ見えない。先読みしているので通常は待たない）。 */
 const Wait = () => <div style={{ position: 'fixed', inset: 0, background: '#1a1338' }} />;
 
-type Screen = { kind: 'home' } | { kind: 'deck' } | { kind: 'game'; level: CpuLevel };
+type Screen = { kind: 'home' } | { kind: 'deck' } | { kind: 'game'; level: CpuLevel; challenge?: string };
 
 export function App() {
   // ?sounds: サウンドテスト（聞き比べ）
@@ -58,7 +58,7 @@ export function App() {
   if (screen.kind === 'game')
     return (
       <Suspense fallback={<Wait />}>
-        <Game level={screen.level} deck={deck} onExit={() => setScreen({ kind: 'home' })} />
+        <Game level={screen.level} deck={deck} challenge={screen.challenge} onExit={() => setScreen({ kind: 'home' })} />
       </Suspense>
     );
   if (screen.kind === 'deck')
@@ -67,5 +67,5 @@ export function App() {
         <DeckScreen deck={deck} onChange={setDeck} onBack={() => setScreen({ kind: 'home' })} />
       </Suspense>
     );
-  return <Home deck={deck} onStart={(level) => setScreen({ kind: 'game', level })} onDeck={() => setScreen({ kind: 'deck' })} />;
+  return <Home deck={deck} onStart={(level, challenge) => setScreen({ kind: 'game', level, challenge })} onDeck={() => setScreen({ kind: 'deck' })} />;
 }

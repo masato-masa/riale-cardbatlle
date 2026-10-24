@@ -6,6 +6,7 @@ import type { CardId } from '@/game/cards';
 import { CHEST_POINTS, isUnlockAll, loadNew, loadPoints, loadUnlocked, pickReward, setUnlockAll } from '@/storage/collection';
 import { loadLevel, loadName, loadRecord, resetProgress, saveLevel } from '@/storage/profile';
 import { CARDS } from '@/game/cards';
+import { CHALLENGE_POINTS, challengeFor, isChallengeCleared } from '@/storage/challenge';
 import { loadDaily, MISSIONS } from '@/storage/daily';
 import { loadHistory, suggestLevel, summarize } from '@/storage/history';
 import { ARENAS, arenaIndex, loadArenaSeen, loadTrophies, saveArenaSeen } from '@/storage/trophy';
@@ -24,7 +25,7 @@ const LEVELS: { id: CpuLevel; label: string }[] = [
 ];
 
 /** ホーム（クラロワ型）。上=自分の札、中央=ロゴとデッキ、下=難易度・大きな「バトル」・タブ。 */
-export function Home({ deck, onStart, onDeck }: { deck: CardId[]; onStart: (level: CpuLevel) => void; onDeck: () => void }) {
+export function Home({ deck, onStart, onDeck }: { deck: CardId[]; onStart: (level: CpuLevel, challenge?: string) => void; onDeck: () => void }) {
   const [level, setLevel] = useState<CpuLevel>(loadLevel);
   const [name, setName] = useState(loadName);
   useEffect(() => {
@@ -47,6 +48,9 @@ export function Home({ deck, onStart, onDeck }: { deck: CardId[]; onStart: (leve
   const [dailyOpen, setDailyOpen] = useState(false);
   const [statsOpen, setStatsOpen] = useState(false);
   const [roadOpen, setRoadOpen] = useState(false);
+  const [chalOpen, setChalOpen] = useState(false);
+  const chal = challengeFor();
+  const chalDone = isChallengeCleared();
   /** アリーナ i で初めて出てくる相手デッキ（それより前のアリーナに無いもの）。 */
   const freshFoes = (i: number) => ARENAS[i]!.pool.filter((n) => !ARENAS.slice(0, i).some((b) => b.pool.includes(n)));
   const newFoes = freshFoes(ai);
@@ -105,6 +109,29 @@ export function Home({ deck, onStart, onDeck }: { deck: CardId[]; onStart: (leve
               }}
             >
               OK
+            </button>
+          </Sheet>
+        ) : null}
+        {chalOpen ? (
+          <Sheet key="challenge" title="きょうのチャレンジ" onClose={() => setChalOpen(false)}>
+            <div className="chal-card">
+              <img className="chal-face" src={foePortrait(chal)} alt="" draggable={false} />
+              <b className="chal-name">{foePersona(chal).name}</b>
+              <small>
+                {foePersona(chal).title}・{chal}デッキ・つよい
+              </small>
+              <p>{chalDone ? 'きょうはもう達成しました。また明日、別の相手が来ます。' : `勝つと宝箱ゲージ +${CHALLENGE_POINTS}（1 日 1 回）。トロフィーは「つよい」と同じだけ増減します。`}</p>
+            </div>
+            <button
+              className="sheet-btn"
+              onClick={() => {
+                primeAudio();
+                playUiTap();
+                setChalOpen(false);
+                onStart('hard', chal);
+              }}
+            >
+              {chalDone ? 'もう一度戦う' : '挑戦する'}
             </button>
           </Sheet>
         ) : null}
@@ -335,6 +362,16 @@ export function Home({ deck, onStart, onDeck }: { deck: CardId[]; onStart: (leve
           >
             <img src={ICON_URL.stats} alt="" draggable={false} />
             戦績
+          </button>
+          <button
+            className={`ts-daily ts-chal${chalDone ? ' is-done' : ''}`}
+            onClick={() => {
+              playUiTap();
+              setChalOpen(true);
+            }}
+          >
+            <img src={foePortrait(chal)} alt="" draggable={false} />
+            チャレンジ{chalDone ? ' ✓' : ''}
           </button>
         </div>
       </header>

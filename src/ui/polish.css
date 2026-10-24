@@ -3494,3 +3494,9 @@ img.result-star.is-lit {
   background: linear-gradient(#e5484d, #9c2a30);
   color: #fff;
 }
+
+/* 結果: きょうのチャレンジ達成（金） */
+.result-missions span.is-challenge {
+  background: linear-gradient(#ffe28a, #d79a06);
+  color: #3a2508;
+}

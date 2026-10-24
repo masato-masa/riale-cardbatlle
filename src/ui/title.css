@@ -1242,3 +1242,41 @@ button.ts-arena-name {
   background: #ff3b3b;
   box-shadow: 0 0 0 2px #fff;
 }
+
+/* きょうのチャレンジ */
+.ts-chal img {
+  border-radius: 50%;
+  box-shadow: 0 0 0 1.5px rgb(246 197 72 / 0.9);
+}
+
+.chal-card {
+  display: grid;
+  justify-items: center;
+  gap: 4px;
+  text-align: center;
+}
+
+.chal-face {
+  width: 104px;
+  height: 104px;
+  border-radius: 50%;
+  box-shadow: 0 0 0 3px var(--gold-2, #f2c14e), 0 0 18px rgb(255 216 74 / 0.45);
+}
+
+.chal-name {
+  margin-top: 4px;
+  color: var(--gold-1);
+  font-size: 20px;
+}
+
+.chal-card small {
+  color: #e9e1ff;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.chal-card p {
+  margin: 6px 0 0;
+  color: #e9e1ff;
+  font-size: 13px;
+}

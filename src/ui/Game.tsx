@@ -8,6 +8,7 @@ import {
   isBlocker,
   needsTarget,
   requiresTarget,
+  RIVAL_DECKS,
   summonSide,
   usageNote,
   type CardId,
@@ -35,6 +36,7 @@ import { makeRng } from '@/game/rng';
 import { awardMatch, CHEST_POINTS, type MatchReward } from '@/storage/collection';
 import { addResult, isTutorialDone, loadName, loadRecord, markTip, seenTips, setTutorialDone } from '@/storage/profile';
 import { hintsFor, type Hint } from '@/game/hints';
+import { CHALLENGE_POINTS, clearChallenge } from '@/storage/challenge';
 import { MISSIONS, recordDaily, type MissionId } from '@/storage/daily';
 import { pushHistory } from '@/storage/history';
 import { ARENAS, arenaIndex, loadTrophies, recordTrophies, rivalFor, type TrophyChange } from '@/storage/trophy';
@@ -228,10 +230,15 @@ const DEV_RESULT = ((): 0 | 1 | null | undefined => {
   return v === 'win' ? 0 : v === 'lose' ? 1 : v === 'draw' ? null : undefined;
 })();
 
-export function Game({ level, deck, onExit }: { level: CpuLevel; deck: CardId[]; onExit: () => void }) {
+/** challenge: きょうのチャレンジの相手デッキの名前（あれば相手を固定する。「もう一度」でも同じ相手）。 */
+export function Game({ level, deck, challenge, onExit }: { level: CpuLevel; deck: CardId[]; challenge?: string; onExit: () => void }) {
   const [seed, setSeed] = useState(() => (Date.now() & 0x7fffffff) >>> 0);
   // 相手のデッキはテーマ別に、試合ごと（シードごと）に選ぶ。出てくる幅はアリーナ（トロフィー）で変わる
-  const [rival, setRival] = useState(() => rivalFor(seed, loadTrophies()));
+  const rivalOf = (s: number) => {
+    const fixed = challenge ? RIVAL_DECKS.find((d) => d.name === challenge) : undefined;
+    return fixed ? { name: fixed.name, deck: fixed.deck } : rivalFor(s, loadTrophies());
+  };
+  const [rival, setRival] = useState(() => rivalOf(seed));
   const decks: [CardId[], CardId[]] = [deck, rival.deck];
   const [game, setGame] = useState<GameState>(() => {
     const g = createGame(decks, seed);
@@ -266,6 +273,8 @@ export function Game({ level, deck, onExit }: { level: CpuLevel; deck: CardId[];
   /** 連勝ボーナスが付いたときの連勝数（付かなければ 0）。 */
   const [streakBonus, setStreakBonus] = useState(0);
   const [myName] = useState(loadName);
+  /** きょうのチャレンジに、この試合で初めて勝った。 */
+  const [challengeWon, setChallengeWon] = useState(false);
   /** 相手が溜め始めた呪文（ライバルズのように、何を使ったかをしばらく見せる）。 */
   const [foeCast, setFoeCast] = useState<{ id: number; card: CardId } | null>(null);
   /** デイリーミッション用の、この試合の記録（自分の行動）。 */
@@ -741,7 +750,10 @@ export function Game({ level, deck, onExit }: { level: CpuLevel; deck: CardId[];
         );
         // アリーナ昇格のごほうび: 宝箱ゲージ +2（宝箱 1 つぶん）
         const arenaBonus = tc.arenaAfter > tc.arenaBefore ? 2 : 0;
-        setReward(awardMatch(r?.winner ?? null, Math.random, done.length + arenaBonus + streakPts));
+        // きょうのチャレンジ: その日初めて勝ったら宝箱ゲージ +2
+        const chal = challenge !== undefined && r?.winner === 0 && clearChallenge();
+        setChallengeWon(chal);
+        setReward(awardMatch(r?.winner ?? null, Math.random, done.length + arenaBonus + streakPts + (chal ? CHALLENGE_POINTS : 0)));
         // 倒れる演出 → 勝敗の文字 → 余韻のあとに結果のポップアップ
         window.setTimeout(() => setResultShown(true), RESULT_DELAY_MS);
         // 決着の見せ場: 倒れた側のプレイヤー札で連続の爆発・画面の閃光・大きな揺れ
@@ -1230,10 +1242,11 @@ export function Game({ level, deck, onExit }: { level: CpuLevel; deck: CardId[];
     setReward(null);
     setTrophy(null);
     setMissionsDone([]);
+    setChallengeWon(false);
     setHints([]);
     statsRef.current = freshStats();
     setResultShown(false);
-    const nextRival = rivalFor(next, loadTrophies());
+    const nextRival = rivalOf(next);
     setRival(nextRival);
     commit(createGame([deck, nextRival.deck], next));
   };
@@ -1824,8 +1837,9 @@ export function Game({ level, deck, onExit }: { level: CpuLevel; deck: CardId[];
                         ))}
                       </motion.div>
                     ) : null}
-                    {missionsDone.length > 0 || streakBonus > 0 ? (
+                    {missionsDone.length > 0 || streakBonus > 0 || challengeWon ? (
                       <motion.div className="result-missions" {...resultStep(2)}>
+                        {challengeWon ? <span className="is-challenge">きょうのチャレンジ達成！（宝箱ゲージ +{CHALLENGE_POINTS}）</span> : null}
                         {streakBonus > 0 ? <span className="is-streak">{streakBonus} 連勝ボーナス！（宝箱ゲージ +1）</span> : null}
                         {missionsDone.map((id) => (
                           <span key={id}>ミッション達成！ {MISSIONS[id].text}（宝箱ゲージ +1）</span>
