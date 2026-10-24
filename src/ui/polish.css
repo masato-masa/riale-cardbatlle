@@ -3277,3 +3277,14 @@ img.result-star.is-lit {
   bottom: auto;
   translate: -50% -50%;
 }
+
+/* デッキ画面の絞り込み: 幅 360px でも 1 段に収める。行は高さの決まったグリッドの中で min-height: 0 だと 0 まで潰れ、「ユニット」の見出しに重なった */
+.dk .band-chips {
+  flex-wrap: nowrap;
+  min-height: 32px;
+  gap: 4px;
+}
+
+.dk .band-chip {
+  padding: 0 7px;
+}
