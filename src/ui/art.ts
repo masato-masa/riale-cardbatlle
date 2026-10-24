@@ -70,6 +70,30 @@ const FOE_KEY: Record<string, string> = {
   工房: 'workshop',
   商人: 'merchant',
 };
+/** 相手デッキの使い手（顔絵に合わせた名前と肩書き）。ライバルズのように、相手を人物として見せる。カード名と重ねない。 */
+const FOE_PERSONA: Record<string, { name: string; title: string }> = {
+  商人: { name: 'マモン', title: '大商人' },
+  毒: { name: 'ヴィオラ', title: '毒の魔女' },
+  巨人: { name: 'ガンド', title: '巨人の親方' },
+  連撃: { name: 'アカネ', title: '二刀の剣士' },
+  狙撃: { name: 'ロビン', title: '森の狙撃手' },
+  割り込み: { name: 'ヘルム', title: '鉄の門番' },
+  生贄: { name: 'ザイン', title: '生贄の司祭' },
+  討伐: { name: 'ボルグ', title: '狩人の頭' },
+  T一族: { name: 'T・ゲン', title: 'T一族の長老' },
+  封印: { name: 'ゲンカイ', title: '封印の僧' },
+  城塞: { name: 'ドルフ', title: '城塞の将軍' },
+  呪術: { name: 'セレナ', title: '星の呪術師' },
+  死霊: { name: 'モルタ', title: '死霊使い' },
+  聖騎士: { name: 'クレア', title: '聖騎士' },
+  奇襲: { name: 'カラス', title: '影の盗賊' },
+  鉄壁: { name: 'ガレス', title: '鉄壁の老騎士' },
+  工房: { name: 'ハモン', title: '工房の親方' },
+};
+export function foePersona(deckName: string): { name: string; title: string } {
+  return FOE_PERSONA[deckName] ?? { name: 'あいて', title: '' };
+}
+
 export function foePortrait(deckName: string): string {
   const key = FOE_KEY[deckName];
   return (key && foeUrl(key)) ?? heroFoeUrl;

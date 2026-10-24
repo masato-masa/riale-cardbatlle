@@ -40,7 +40,7 @@ import { pushHistory } from '@/storage/history';
 import { ARENAS, arenaIndex, loadTrophies, recordTrophies, rivalFor, type TrophyChange } from '@/storage/trophy';
 import { COIN_MAX, FAST_COOLDOWN_FROM_MS, MATCH_MS, PLAYER_HP, SUMMON_WINDUP_MS, WINDUP_MS } from '@/game/rules';
 
-import { ARENA_FLOOR_URLS, CHEST_URL, COIN_URL, foePortrait, ICON_URL, HERO_ME_URL, preloadFx, RESULT_ART } from './art';
+import { ARENA_FLOOR_URLS, CHEST_URL, COIN_URL, foePersona, foePortrait, ICON_URL, HERO_ME_URL, preloadFx, RESULT_ART } from './art';
 import { setBgmTension, startBgm, stopBgm } from './bgm';
 import { CardFace, type CardState } from './CardFace';
 import { RewardChest } from './RewardChest';
@@ -1363,7 +1363,7 @@ export function Game({ level, deck, onExit }: { level: CpuLevel; deck: CardId[];
               {overtime ? <b className="clock-double">×2</b> : null}
             </span>
             <div className={foeCls.join(' ')} data-player={1} data-drop={foeKey}>
-              <HeroBadge hp={foe.hp} label={rival.name.length <= 2 ? `${rival.name}デッキ` : rival.name} portrait={foePortrait(rival.name)} />
+              <HeroBadge hp={foe.hp} label={foePersona(rival.name).name} portrait={foePortrait(rival.name)} />
             </div>
             <span className="hero-coins">
               <img src={COIN_URL} alt="" />
@@ -1603,8 +1603,11 @@ export function Game({ level, deck, onExit }: { level: CpuLevel; deck: CardId[];
                 <span className="intro-medal">
                   <img src={foePortrait(rival.name)} alt="" draggable={false} />
                 </span>
-                <b>あいて</b>
-                <small className="intro-deck">{rival.name}デッキ</small>
+                <b>{foePersona(rival.name).name}</b>
+                <small className="intro-deck">
+                  {foePersona(rival.name).title ? `${foePersona(rival.name).title}・` : ''}
+                  {rival.name}デッキ
+                </small>
               </motion.div>
             </div>
             <motion.div
