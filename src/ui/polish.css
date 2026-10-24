@@ -3288,3 +3288,99 @@ img.result-star.is-lit {
 .dk .band-chip {
   padding: 0 7px;
 }
+
+/* 宝箱から出たカードの見せ場（画面全体。タップで結果画面へ戻る） */
+.card-reveal {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 14px;
+  overflow: hidden;
+  background: radial-gradient(circle at 50% 46%, rgb(80 50 150 / 0.92), rgb(10 6 28 / 0.97) 70%);
+  cursor: pointer;
+}
+
+.card-reveal-rays {
+  position: absolute;
+  left: 50%;
+  top: 46%;
+  width: 180vmax;
+  height: 180vmax;
+  translate: -50% -50%;
+  background: repeating-conic-gradient(rgb(255 226 138 / 0.22) 0deg 9deg, transparent 9deg 24deg);
+  mask: radial-gradient(circle, #000 8%, transparent 45%);
+  animation: card-reveal-spin 14s linear infinite;
+  pointer-events: none;
+}
+
+@keyframes card-reveal-spin {
+  to {
+    rotate: 360deg;
+  }
+}
+
+.card-reveal-title {
+  position: relative;
+  color: #ffe28a;
+  font-size: 30px;
+  font-weight: 900;
+  -webkit-text-stroke: 4px rgb(30 14 50 / 0.95);
+  paint-order: stroke fill;
+}
+
+.card-reveal-cards {
+  position: relative;
+  display: flex;
+  gap: 16px;
+  justify-content: center;
+  perspective: 800px;
+}
+
+.card-reveal-card {
+  display: grid;
+  justify-items: center;
+  gap: 4px;
+}
+
+.card-reveal-face {
+  position: relative;
+  width: min(46vw, 190px);
+  aspect-ratio: 68 / 84;
+  container-type: inline-size;
+  filter: drop-shadow(0 0 22px rgb(255 216 74 / 0.75));
+}
+
+.card-reveal-cards:has(.card-reveal-card + .card-reveal-card) .card-reveal-face {
+  width: min(38vw, 150px);
+}
+
+.card-reveal-card b {
+  color: #fff;
+  font-size: 20px;
+  font-weight: 900;
+  -webkit-text-stroke: 3px rgb(30 14 50 / 0.95);
+  paint-order: stroke fill;
+}
+
+.card-reveal-card small {
+  color: #e9e1ff;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.card-reveal-tap {
+  position: relative;
+  margin-top: 6px;
+  color: rgb(255 255 255 / 0.75);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .card-reveal-rays {
+    animation: none;
+  }
+}

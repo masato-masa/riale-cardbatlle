@@ -1,5 +1,6 @@
-import { motion } from 'motion/react';
+import { AnimatePresence, motion } from 'motion/react';
 import { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 
 import type { CardId } from '@/game/cards';
 import { CARDS } from '@/game/cards';
@@ -9,9 +10,12 @@ import chestOpen from '../assets/art/ui/chest-open.webp';
 import { CardFace } from './CardFace';
 import { playReady, playSelect } from './sound';
 
-/** 結果画面の宝箱。閉じた箱が揺れる → ぱかっと開いて光る → カードが飛び出す（クラロワの宝箱と同じ流れ）。 */
+/** 結果画面の宝箱。閉じた箱が揺れる → ぱかっと開いて光る → カードが飛び出す（クラロワの宝箱と同じ流れ）。
+ *  カードが出た瞬間は画面全体を使って大きく見せ（回る光の筋）、タップで結果画面の小さなカードに戻る。 */
 export function RewardChest({ cards }: { cards: CardId[] }) {
   const [phase, setPhase] = useState<'shake' | 'open' | 'card'>('shake');
+  /** 画面全体で見せている間（タップで閉じる）。 */
+  const [reveal, setReveal] = useState(false);
   useEffect(() => {
     const t1 = window.setTimeout(() => {
       setPhase('open');
@@ -19,6 +23,7 @@ export function RewardChest({ cards }: { cards: CardId[] }) {
     }, 1500);
     const t2 = window.setTimeout(() => {
       setPhase('card');
+      setReveal(true);
       playReady();
     }, 2100);
     return () => {
@@ -58,6 +63,48 @@ export function RewardChest({ cards }: { cards: CardId[] }) {
             </motion.div>
           ))
         : null}
+      {createPortal(
+        <AnimatePresence>
+          {reveal ? (
+            <motion.div
+              key="reveal"
+              className="card-reveal"
+              role="dialog"
+              aria-label="新しいカード"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0, pointerEvents: 'none' }}
+              onClick={() => setReveal(false)}
+            >
+              <span className="card-reveal-rays" aria-hidden="true" />
+              <motion.b className="card-reveal-title" initial={{ y: -20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.15 }}>
+                新しいカード！
+              </motion.b>
+              <div className="card-reveal-cards">
+                {cards.map((c, i) => (
+                  <motion.div
+                    key={c}
+                    className="card-reveal-card"
+                    initial={{ scale: 0.2, rotateY: 180, y: 80 }}
+                    animate={{ scale: 1, rotateY: 0, y: 0 }}
+                    transition={{ type: 'spring', stiffness: 220, damping: 16, delay: i * 0.25 }}
+                  >
+                    <div className="card-reveal-face">
+                      <CardFace card={c} />
+                    </div>
+                    <b>{CARDS[c].name}</b>
+                    {CARDS[c].epithet ? <small>{CARDS[c].epithet}</small> : null}
+                  </motion.div>
+                ))}
+              </div>
+              <motion.small className="card-reveal-tap" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.9 }}>
+                タップでとじる
+              </motion.small>
+            </motion.div>
+          ) : null}
+        </AnimatePresence>,
+        document.body,
+      )}
     </div>
   );
 }
