@@ -13,6 +13,10 @@ import iconArenaUrl from '@/assets/art/ui/icon-arena.webp';
 import iconMissionUrl from '@/assets/art/ui/icon-mission.webp';
 import iconStatsUrl from '@/assets/art/ui/icon-stats.webp';
 import iconTrophyUrl from '@/assets/art/ui/icon-trophy.webp';
+import ribbonLoseUrl from '@/assets/art/ui/ribbon-lose.webp';
+import ribbonWinUrl from '@/assets/art/ui/ribbon-win.webp';
+import starOffUrl from '@/assets/art/ui/star-off.webp';
+import starOnUrl from '@/assets/art/ui/star-on.webp';
 
 /** 盤面の地（ChatGPT で作成。赤い敵陣・青い自陣・金の帯。scripts/slice-arena.mjs）。 */
 export const FIELD_URL: string = fieldUrl;
@@ -20,6 +24,8 @@ export const FIELD_URL: string = fieldUrl;
 export const ARENA_FLOOR_URLS: string[] = [fieldUrl, arena2Url, arena3Url, arena4Url, arena5Url];
 export const COIN_URL: string = coinUrl;
 /** ホームの UI アイコン（ChatGPT で作成。scripts/slice-icons.mjs）。 */
+/** 結果画面の星とリボン（ChatGPT で作成。scripts/slice-result.mjs）。 */
+export const RESULT_ART = { starOn: starOnUrl, starOff: starOffUrl, ribbonWin: ribbonWinUrl, ribbonLose: ribbonLoseUrl };
 export const ICON_URL = { trophy: iconTrophyUrl, mission: iconMissionUrl, stats: iconStatsUrl, arena: iconArenaUrl };
 /** デッキ編成画面の背景（軍の作戦室。ChatGPT で作成。scripts/slice-arena.mjs の deck-bg と同じ要領）。 */
 export const DECK_BG_URL: string = deckBgUrl;

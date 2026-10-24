@@ -40,7 +40,7 @@ import { pushHistory } from '@/storage/history';
 import { ARENAS, arenaIndex, loadTrophies, recordTrophies, rivalFor, type TrophyChange } from '@/storage/trophy';
 import { COIN_MAX, FAST_COOLDOWN_FROM_MS, MATCH_MS, PLAYER_HP, SUMMON_WINDUP_MS, WINDUP_MS } from '@/game/rules';
 
-import { ARENA_FLOOR_URLS, COIN_URL, HERO_FOE_URL, HERO_ME_URL, preloadFx } from './art';
+import { ARENA_FLOOR_URLS, COIN_URL, HERO_FOE_URL, HERO_ME_URL, preloadFx, RESULT_ART } from './art';
 import { setBgmTension, startBgm, stopBgm } from './bgm';
 import { CardFace, type CardState } from './CardFace';
 import { RewardChest } from './RewardChest';
@@ -1722,20 +1722,20 @@ export function Game({ level, deck, onExit }: { level: CpuLevel; deck: CardId[];
                 const stars = w === 0 ? 3 : w === null ? 1 : 0;
                 return (
                   <>
-                    <div className={`result-ribbon is-${tone}`}>
+                    <div className={`result-ribbon is-${tone}`} style={{ backgroundImage: `url(${tone === 'lose' ? RESULT_ART.ribbonLose : RESULT_ART.ribbonWin})` }}>
                       <p className={`result-title is-${tone}`}>{w === 0 ? 'かち！' : w === null ? 'ひきわけ' : 'まけ…'}</p>
                     </div>
                     <div className="result-stars" aria-hidden="true">
                       {[0, 1, 2].map((i) => (
-                        <motion.svg
+                        <motion.img
                           key={i}
-                          viewBox="0 0 32 32"
+                          src={i < stars ? RESULT_ART.starOn : RESULT_ART.starOff}
+                          alt=""
+                          draggable={false}
                           className={`result-star${i < stars ? ' is-lit' : ''}`}
                           initial={{ scale: 0, rotate: -40 }}
                           animate={{ scale: 1, rotate: 0, transition: { delay: 0.9 + i * 0.18, type: 'spring', stiffness: 420, damping: 14 } }}
-                        >
-                          <path d="M16 2.5 L20.2 11.2 L29.6 12.4 L22.7 19 L24.5 28.4 L16 23.8 L7.5 28.4 L9.3 19 L2.4 12.4 L11.8 11.2 Z" />
-                        </motion.svg>
+                        />
                       ))}
                     </div>
                     <div className="result-duel">

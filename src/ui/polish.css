@@ -3014,3 +3014,63 @@
     height: 96px;
   }
 }
+
+/* 結果のリボンと星を ChatGPT 製の絵に（帯の絵の中央に文字を載せる。引き分けは青い帯を緑寄りに） */
+.result-ribbon,
+.result-ribbon.is-lose,
+.result-ribbon.is-draw {
+  clip-path: none;
+  background-color: transparent;
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: contain;
+  min-height: 96px;
+  padding: 6px 0 22px;
+}
+
+.result-ribbon.is-draw {
+  filter: hue-rotate(-75deg) saturate(0.9);
+}
+
+.result-ribbon.is-draw .result-title {
+  filter: hue-rotate(75deg) drop-shadow(0 3px 0 rgb(10 20 60 / 0.8));
+}
+
+.result-ribbon .result-title {
+  font-size: 40px;
+}
+
+img.result-star {
+  width: 44px;
+  height: 44px;
+  fill: none;
+  stroke: none;
+  filter: drop-shadow(0 2px 2px rgb(0 0 0 / 0.5));
+}
+
+img.result-star:nth-child(2) {
+  width: 56px;
+  height: 56px;
+}
+
+img.result-star.is-lit {
+  filter: drop-shadow(0 0 8px rgb(255 216 74 / 0.8)) drop-shadow(0 2px 2px rgb(0 0 0 / 0.5));
+}
+
+@media (max-height: 720px) {
+  .result-ribbon,
+  .result-ribbon.is-lose,
+  .result-ribbon.is-draw {
+    min-height: 76px;
+  }
+
+  img.result-star {
+    width: 32px;
+    height: 32px;
+  }
+
+  img.result-star:nth-child(2) {
+    width: 40px;
+    height: 40px;
+  }
+}
