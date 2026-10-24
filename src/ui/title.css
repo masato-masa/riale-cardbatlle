@@ -568,6 +568,13 @@ body {
   }
 }
 
+/* さらに低い画面（初代 iPhone SE など 568px）: 扇を外してでも、タブとバトルを画面に収める */
+@media (max-height: 620px) {
+  .ts-fan {
+    display: none;
+  }
+}
+
 /* ---- サウンドテスト（?sounds） ---- */
 .lab {
   min-height: 100dvh;
