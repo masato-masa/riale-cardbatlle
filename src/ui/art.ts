@@ -48,6 +48,27 @@ export const DECK_BG_URL: string = deckBgUrl;
 export const HERO_ME_URL: string = heroMeUrl;
 export const HERO_FOE_URL: string = heroFoeUrl;
 
+const foeFiles = import.meta.glob('../assets/art/ui/foe-*.webp', { eager: true, query: '?url', import: 'default' }) as Record<string, string>;
+const foeUrl = (key: string): string | undefined => Object.entries(foeFiles).find(([p]) => p.endsWith(`/foe-${key}.webp`))?.[1];
+/** 相手デッキごとの肖像（ChatGPT で作成。scripts/slice-foes.mjs）。無いデッキは商人の肖像。 */
+const FOE_KEY: Record<string, string> = {
+  毒: 'poison',
+  巨人: 'giant',
+  連撃: 'combo',
+  狙撃: 'sniper',
+  割り込み: 'guard',
+  生贄: 'sacrifice',
+  討伐: 'hunter',
+  T一族: 'clan',
+  封印: 'seal',
+  城塞: 'giant',
+  呪術: 'sacrifice',
+};
+export function foePortrait(deckName: string): string {
+  const key = FOE_KEY[deckName];
+  return (key && foeUrl(key)) ?? heroFoeUrl;
+}
+
 /** カードの絵（ChatGPT で作成。scripts/slice-cards.mjs で切り出し）。枠いっぱいに cover で敷く。
  *  ファイル名がそのままカードの ID（cards/ buildings/ spells/ の下の <id>.webp）。志願兵だけは clerk.webp。
  *  絵がまだ無いカードは、種類ごとの仮の絵で出す。 */
