@@ -20,6 +20,9 @@ import {
 } from '../src/game/engine';
 import { WINDUP_MS, COIN_MAX, COIN_MS, FIELD_SLOTS, MATCH_MS, PLAYER_HP } from '../src/game/rules';
 
+/** バルクが倒れたときに相手プレイヤーへ与えるダメージ。 */
+const USURER_DEATH = (CARDS.usurer.ab.onDeath as { amount: number }).amount;
+
 /** 即時に効く前提のテスト用: 攻撃・呪文・召喚のあとに溜め（WINDUP_MS）を明けるところまで進める。溜めそのものを見るテストは rawStep を使う。 */
 const step: typeof rawStep = (state, action) => {
   const n = rawStep(state, action);
@@ -313,7 +316,7 @@ describe('砲撃（砦）', () => {
     [s, u] = place(s, 1, 0, 'usurer', 1);
     const n = tick(s, every);
     expect(gone(n, 1, u.uid)).toBe(true);
-    expect(n.players[0].hp).toBe(PLAYER_HP - 2);
+    expect(n.players[0].hp).toBe(PLAYER_HP - USURER_DEATH);
   });
 
   it('時間切れと同じ tick で起きた砲撃の結果が勝敗に反映される', () => {
@@ -400,7 +403,7 @@ describe('呪文', () => {
       const [s3, u] = place(withHand(hand), 1, 0, 'usurer');
       const k = step(s3, { type: 'summon', p: 0, handIndex: 0, slot: -1, target: u.uid });
       expect(gone(k, 1, u.uid)).toBe(true);
-      expect(k.players[0].hp).toBe(PLAYER_HP - 2);
+      expect(k.players[0].hp).toBe(PLAYER_HP - USURER_DEATH);
     });
 
     it('建築物にも撃てる', () => {
@@ -437,7 +440,7 @@ describe('呪文', () => {
       expect(hpOf(n, 1, dUid)).toBe(CARDS.double.hp);
       expect(hpOf(n, 1, k.uid)).toBe(5 - (dmg - 1));
       expect(gone(n, 1, u.uid)).toBe(true);
-      expect(n.players[0].hp).toBe(PLAYER_HP - 2);
+      expect(n.players[0].hp).toBe(PLAYER_HP - USURER_DEATH);
     });
   });
 

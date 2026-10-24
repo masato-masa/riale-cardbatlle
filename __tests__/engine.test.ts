@@ -28,6 +28,9 @@ import {
   WINDUP_MS,
 } from '../src/game/rules';
 
+/** バルクが倒れたときに相手プレイヤーへ与えるダメージ。 */
+const USURER_DEATH = (CARDS.usurer.ab.onDeath as { amount: number }).amount;
+
 const STUN = (CARDS.informer.ab.onSummon as { ms: number }).ms;
 /** 即時に効く前提のテスト用: 攻撃・呪文・召喚のあとに溜め（WINDUP_MS）を明けるところまで進める。溜めそのものを見るテストは rawStep を使う。 */
 const step: typeof rawStep = (state, action) => {
@@ -341,7 +344,7 @@ describe('決着', () => {
     let a: Unit, b: Unit;
     [s, a] = place(s, 0, 0, 'usurer', 1);
     [s, b] = place(s, 1, 0, 'usurer', 1);
-    s = { ...s, players: [{ ...s.players[0], hp: 2 }, { ...s.players[1], hp: 2 }] };
+    s = { ...s, players: [{ ...s.players[0], hp: USURER_DEATH }, { ...s.players[1], hp: USURER_DEATH }] };
     s = step(s, { type: 'attack', p: 0, uid: a.uid, target: { kind: 'unit', uid: b.uid } });
     expect(s.result).toEqual({ winner: null, reason: 'hp' });
   });
@@ -480,7 +483,7 @@ describe('能力: 攻撃まわり', () => {
     expect(findUnit(n.players[1], d.uid)!.unit.barrier).toBe(false);
     expect(hpOf(n, 1, bl.uid)).toBe(6); // 鉄壁で 1 - 1 = 0
     expect(gone(n, 1, u.uid)).toBe(true);
-    expect(n.players[0].hp).toBe(PLAYER_HP - 2); // 死亡時
+    expect(n.players[0].hp).toBe(PLAYER_HP - USURER_DEATH); // 死亡時
   });
 
   it('顔役: プレイヤーへの攻撃ではカードに当たらない', () => {
@@ -650,13 +653,13 @@ describe('能力: 召喚時・コイン・遺言', () => {
     expect(m.events.some((e) => e.kind === 'stun')).toBe(false);
   });
 
-  it('遺言: 倒れたら相手プレイヤーに 2 ダメージ。生きている間は何も起きない', () => {
+  it('遺言: 倒れたら相手プレイヤーにダメージ。生きている間は何も起きない', () => {
     let [s, u] = place(withHand(HAND4), 1, 0, 'usurer');
     let a: Unit;
     [s, a] = place(s, 0, 0, 'craftsman');
     const n = hit(s, 0, a.uid, U(u.uid));
     expect(gone(n, 1, u.uid)).toBe(true);
-    expect(n.players[0].hp).toBe(PLAYER_HP - 2);
+    expect(n.players[0].hp).toBe(PLAYER_HP - USURER_DEATH);
     expect(n.players[1].hp).toBe(PLAYER_HP);
     const [s2, tough] = place(s, 1, 1, 'herald', 9);
     const m = hit(s2, 0, a.uid, U(u.uid));
@@ -673,7 +676,7 @@ describe('能力: 召喚時・コイン・遺言', () => {
     expect(isWalled(s.players[0])).toBe(true);
     const m = hit(s, 0, a.uid, U(u.uid));
     expect(gone(m, 1, u.uid)).toBe(true);
-    expect(m.players[0].hp).toBe(PLAYER_HP - 2); // 自分の壁を通って
+    expect(m.players[0].hp).toBe(PLAYER_HP - USURER_DEATH); // 自分の壁を通って
 
     let [r, me] = place(withHand(HAND4), 0, 0, 'usurer', 1);
     let foe: Unit;
@@ -682,14 +685,14 @@ describe('能力: 召喚時・コイン・遺言', () => {
     expect(isWalled(r.players[1])).toBe(true);
     const k = hit(r, 0, me.uid, U(foe.uid));
     expect(gone(k, 0, me.uid)).toBe(true);
-    expect(k.players[1].hp).toBe(PLAYER_HP - 2); // 相手の壁を通って
+    expect(k.players[1].hp).toBe(PLAYER_HP - USURER_DEATH); // 相手の壁を通って
   });
 
   it('遺言: それで決着することもある。両者 0 なら引き分け', () => {
     let [s, u] = place(withHand(HAND4), 1, 0, 'usurer');
     let a: Unit;
     [s, a] = place(s, 0, 0, 'craftsman');
-    const n = hit(withHp(s, 0, 2), 0, a.uid, U(u.uid));
+    const n = hit(withHp(s, 0, USURER_DEATH), 0, a.uid, U(u.uid));
     expect(n.players[0].hp).toBe(0);
     expect(n.result).toEqual({ winner: 1, reason: 'hp' });
     expect(n.events.at(-1)!.kind).toBe('end');

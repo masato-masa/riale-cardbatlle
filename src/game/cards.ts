@@ -589,7 +589,7 @@ const spell = (id: CardId, name: string, summon: number, effect: SpellEffect): C
 export const CARDS: Record<CardId, CardDef> = {
   herald: unit('herald', 'ポラン', 1, 1, 1, CD_FAST, { haste: true }),
   miner: unit('miner', 'ドルガ', 2, 1, 2, CD_FAST, { onSummon: { kind: 'token' } }),
-  usurer: unit('usurer', 'バルク', 2, 2, 2, CD_FAST, { onDeath: { kind: 'face', amount: 2 } }),
+  usurer: unit('usurer', 'バルク', 2, 2, 2, CD_FAST, { onDeath: { kind: 'face', amount: 1 } }),
   spy: unit('spy', 'カゲマル', 3, 3, 3, CD_FAST, { stealth: true }),
   craftsman: unit('craftsman', 'ゴルド', 3, 3, 3, CD_STD, { unitBonus: 2 }),
   guard: unit('guard', 'ロイ', 2, 1, 3, CD_STD, { blocker: true }),
