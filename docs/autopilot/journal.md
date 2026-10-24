@@ -320,3 +320,7 @@
 
 - 自作 SVG のタブアイコン 3 つ（カード・剣・歯車）と一時停止ボタンを、ChatGPT 製（icons-sheet を見本、tabs-sheet → slice-icons.mjs で透過）に。390×844 でタブ 3 つ・一時停止が表示されることを確認。
 - 教訓: javascript_tool の中で 45 秒待つとツールの上限に当たる。待ちは 40 秒以内か、wait を分ける。
+
+## 2026-10-24 状態アイコン（タグ autopilot/052-before-state-icons、公開済み）
+
+- 自作 SVG の状態アイコン 7 つとブロッカーの盾を ChatGPT 製に（states-sheet 3×3 → slice-icons.mjs。紫のステルスがマゼンタに近いので、slice-icons を色の距離で透かす方式に統一）。小さく出しても形で見分けられるよう、シルエットをはっきりと指示。ホームのカードでブロッカーの盾が出ることを確認（45px）。
