@@ -1,6 +1,7 @@
 import { abilityLines, CARDS, KEYWORDS, STATUS_NOTES, TYPE_NAME, usageNote, WALL_TEXT, type CardId } from '@/game/cards';
 import { PLAYER_ATK, PLAYER_HP } from '@/game/rules';
 
+import { cardArt } from './art';
 import { CardFace } from './CardFace';
 
 /** 説明の中のキーワード（基本能力・状態の名前）と、時機の見出し（登場時・攻撃時・N 秒ごと など、「：」の前）を黄色にする。 */
@@ -41,6 +42,10 @@ export function CardDetail({ card, hp }: { card: CardId; hp?: number }) {
   const def = CARDS[card];
   return (
     <div className="card-detail">
+      {/* クラロワの説明画面のように、カードの絵を大きく見せる帯（上を中心に切り抜き、下はシートの地へ溶かす） */}
+      <div className="card-hero" aria-hidden="true">
+        <img src={cardArt(card, def.type)} alt="" draggable={false} />
+      </div>
       {def.epithet ? <p className="card-epithet">{def.epithet}</p> : null}
       <div className="card-detail-face">
         <CardFace card={card} hp={hp} />
@@ -85,7 +90,7 @@ export function CardDetail({ card, hp }: { card: CardId; hp?: number }) {
 export function HelpBody() {
   return (
     <ul className="help-list">
-      <li>コインは時間でたまります（最大 10）。最後の 1 分は、ユニットのクールタイムが 2 倍の速さで減ります。</li>
+      <li>コインは時間でたまります（最大 10）。残り 2 分からは、ユニットのクールタイムが 2 倍の速さで減ります。</li>
       <li>手札を自分の場へドラッグすると召喚。自分のカードの上に重ねると入れ替わります（チェンジ）。左上の数字が召喚コストです。</li>
       <li>場のカードを相手のカードか相手のプレイヤーへドラッグすると攻撃。右上の数字がクールタイム（秒）で、明けるとまた攻撃できます。</li>
       <li>カードは、場へ置いてから 0.5 秒後に登場します（半透明のカードが濃くなります）。攻撃を見てから出しても妨害には間に合わないので、相手の攻撃を読んで先に置きましょう。</li>

@@ -629,7 +629,7 @@ function tick(state: GameState, dt: number): GameState {
     ...pl,
     coins: Math.min(COIN_MAX, pl.coins + base * coinBoostOf(pl)),
   })) as GameState['players'];
-  // 最後の 1 分: クールタイムが 2 倍の速さで減る（早く明ける分だけ、readyAt を前へ）
+  // 終盤（FAST_COOLDOWN_FROM_MS から）: クールタイムが 2 倍の速さで減る（早く明ける分だけ、readyAt を前へ）
   const fast = Math.max(0, end - Math.max(state.time, FAST_COOLDOWN_FROM_MS));
   if (fast > 0) {
     for (const pl of players) {

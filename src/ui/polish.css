@@ -2981,3 +2981,36 @@
   white-space: nowrap;
   pointer-events: none;
 }
+
+/* カード説明の上の大きな絵の帯（クラロワのカード説明画面と同じ見せ方） */
+.card-hero {
+  grid-column: 1 / -1;
+  position: relative;
+  height: 132px;
+  margin: -6px -4px 2px;
+  border-radius: 14px;
+  overflow: hidden;
+  box-shadow: inset 0 0 0 2px rgb(246 197 72 / 0.55);
+}
+
+.card-hero img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: 50% 22%;
+  display: block;
+}
+
+.card-hero::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(transparent 55%, rgb(26 18 56 / 0.9));
+  pointer-events: none;
+}
+
+@media (max-height: 700px) {
+  .card-hero {
+    height: 96px;
+  }
+}
