@@ -1921,7 +1921,8 @@
 .tut-card {
   position: absolute;
   left: 50%;
-  top: 41%;
+  /* 相手の場と川のあいだ。41% だと自分の場に重なり、ドラッグする自分のカードを隠した */
+  top: 30%;
   translate: -50% 0;
   width: min(340px, 90vw);
   padding: 12px 16px 14px;
