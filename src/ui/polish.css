@@ -3221,3 +3221,21 @@ img.result-star.is-lit {
 .hint {
   z-index: 45;
 }
+
+/* コンセプトデッキの行に、そのデッキを使う相手の顔 */
+.preset-head {
+  align-items: center;
+  gap: 8px;
+}
+
+.preset-head b {
+  margin-right: auto;
+}
+
+.preset-portrait {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  border: 2px solid var(--gold-2);
+  object-fit: cover;
+}

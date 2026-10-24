@@ -7,7 +7,7 @@ import { ARENAS, arenaForCost, arenaIndex, loadTrophies } from '@/storage/trophy
 import { applyPreset, averageCost, COLLECTION, DECK_SLOTS, deckCode, loadBook, parseDeckCode, saveBook, saveDeck } from '@/storage/deck';
 
 import { CardFace } from './CardFace';
-import { DECK_BG_URL } from './art';
+import { DECK_BG_URL, foePortrait } from './art';
 import { CardDetail } from './GameParts';
 import { Sheet } from './Sheets';
 import { playSelect, playUiTap } from './sound';
@@ -16,9 +16,9 @@ import { TabBar } from './TabBar';
 const TYPE_ORDER: CardType[] = ['unit', 'building', 'spell'];
 
 /** コンセプトデッキ（選ぶと、いまのデッキに入る）。 */
-const PRESETS: { name: string; deck: CardId[] }[] = [
+const PRESETS: { name: string; deck: CardId[]; face?: string }[] = [
   { name: 'はじめてのデッキ', deck: STARTER_DECK },
-  ...RIVAL_DECKS.map((d) => ({ name: `${d.name}デッキ`, deck: d.deck })),
+  ...RIVAL_DECKS.map((d) => ({ name: `${d.name}デッキ`, deck: d.deck, face: foePortrait(d.name) })),
 ];
 
 /** 一覧の並び: 種類ごと、コストの安い順。 */
@@ -290,6 +290,7 @@ export function DeckScreen({ deck, onChange, onBack }: { deck: CardId[]; onChang
                 return (
                   <button key={pr.name} className="preset-row" onClick={() => usePreset(pr.deck)}>
                     <span className="preset-head">
+                      {pr.face ? <img className="preset-portrait" src={pr.face} alt="" draggable={false} /> : null}
                       <b>{pr.name}</b>
                       <small>平均コスト {averageCost(pr.deck).toFixed(1)}{missing > 0 ? ` ・ 未獲得 ${missing} 枚` : ''}</small>
                     </span>
