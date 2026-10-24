@@ -10,7 +10,7 @@ import { loadDaily, MISSIONS } from '@/storage/daily';
 import { loadHistory, suggestLevel, summarize } from '@/storage/history';
 import { ARENAS, arenaIndex, loadArenaSeen, loadTrophies, saveArenaSeen } from '@/storage/trophy';
 
-import { ARENA_FLOOR_URLS, HERO_ME_URL, ICON_URL } from './art';
+import { ARENA_FLOOR_URLS, foePortrait, HERO_ME_URL, ICON_URL } from './art';
 import { CardFace } from './CardFace';
 import { Sheet } from './Sheets';
 import { playUiTap, primeAudio } from './sound';
@@ -39,6 +39,7 @@ export function Home({ deck, onStart, onDeck }: { deck: CardId[]; onStart: (leve
   const [dev, setDev] = useState(false);
   const [dailyOpen, setDailyOpen] = useState(false);
   const [statsOpen, setStatsOpen] = useState(false);
+  const [roadOpen, setRoadOpen] = useState(false);
   /** 新しいアリーナに上がってから初めてホームに来たときの演出（一度だけ）。 */
   const [arenaUp, setArenaUp] = useState(() => arenaIndex(loadTrophies()) > loadArenaSeen());
   const daily = loadDaily();
@@ -94,6 +95,42 @@ export function Home({ deck, onStart, onDeck }: { deck: CardId[]; onStart: (leve
             >
               OK
             </button>
+          </Sheet>
+        ) : null}
+        {roadOpen ? (
+          <Sheet key="road" title="トロフィーロード" onClose={() => setRoadOpen(false)}>
+            {/* クラロワのトロフィーロード: アリーナごとに、必要なトロフィー・宝箱の上限・新しく出てくる相手。上ほど先 */}
+            <div className="road">
+              {ARENAS.map((a, i) => {
+                const fresh = a.pool.filter((n) => !ARENAS.slice(0, i).some((b) => b.pool.includes(n)));
+                const state = i < ai ? 'is-past' : i === ai ? 'is-now' : 'is-locked';
+                return (
+                  <div key={a.name} className={`road-row ${state}`}>
+                    <img className="road-floor" src={ARENA_FLOOR_URLS[i]} alt="" draggable={false} />
+                    <div className="road-body">
+                      <b className="road-name">
+                        {a.name}
+                        {i === ai ? <span className="road-now">いまここ</span> : null}
+                      </b>
+                      <small className="road-need">
+                        <img src={ICON_URL.trophy} alt="" draggable={false} />
+                        {a.from}
+                        {i > ai ? `（あと ${a.from - trophies}）` : ''}・宝箱からコスト {a.cardCap} まで
+                      </small>
+                      {fresh.length > 0 ? (
+                        <span className="road-foes" aria-label={`新しい相手: ${fresh.join('・')}`}>
+                          {fresh.map((n) => (
+                            <img key={n} src={foePortrait(n)} alt="" title={`${n}デッキ`} draggable={false} />
+                          ))}
+                        </span>
+                      ) : (
+                        <small className="road-need">これまでの相手すべてが出てくる</small>
+                      )}
+                    </div>
+                  </div>
+                );
+              }).reverse()}
+            </div>
           </Sheet>
         ) : null}
         {statsOpen ? (
@@ -220,10 +257,17 @@ export function Home({ deck, onStart, onDeck }: { deck: CardId[]; onStart: (leve
           </span>
         </div>
         <div className="ts-arena" aria-label={`トロフィー ${trophies}、${ARENAS[ai]!.name}`}>
-          <span className="ts-arena-name">
+          <button
+            className="ts-arena-name"
+            onClick={() => {
+              playUiTap();
+              setRoadOpen(true);
+            }}
+          >
             <img src={ICON_URL.arena} alt="" draggable={false} />
             {ARENAS[ai]!.name}
-          </span>
+            <span aria-hidden="true">›</span>
+          </button>
           <span className="ts-trophy">
             <img src={ICON_URL.trophy} alt="" draggable={false} />
             <b>{trophies}</b>
