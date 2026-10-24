@@ -20,7 +20,7 @@
 - 公開: `npm run deploy`（gh-pages ブランチへ）。
 - 開発サーバー（Vite）は、起動後に追加した素材を拾えず 404 になることがある。素材を足したら dev サーバーを再起動する（本番ビルドは問題なし）。
 - 確認用の URL: `?mute`（音なし）、`?unlockall`（全カード解放）、`?sounds`（サウンドテスト）、`?chest`（宝箱の開封演出）、`?result=win|lose|draw`（試合なしで結果画面）、`?speed=N`（時間 N 倍速）。
-- 常設ツール: `npm run simulate`（CPU 同士の勝率・試合時間）、`npm run audit`（全カードの勝率。偏りの調整に使う）、`npm run fuzz`（ランダムデッキ 300 試合で例外・異常値を検出）。
+- 常設ツール: `npm run simulate`（CPU 同士の勝率・試合時間）、`npm run audit`（全カードの勝率。偏りの調整に使う）、`npm run fuzz`（ランダムデッキ 300 試合で例外・異常値を検出）、`npx tsx scripts/audit-swap.ts`（初期デッキの 1 枚を差し替えて hard で測る。全カード監査で誤差に埋もれる差が見える）、`npx tsx scripts/audit-decks.ts`（相手デッキごとの勝率、hard）。
   素材の取り込みは `scripts/slice-cards.mjs`（カード・建築・呪文）、`slice-effects.mjs`（演出）、`slice-pips.mjs`（数字の台座）、`slice-chest.mjs`（宝箱）。
 - 成長（宝箱でカード解放）は `src/storage/collection.ts`、初回案内は `src/ui/Tutorial.tsx`。課題の一覧は `docs/issues.md`。
 - playwright で確認するときは、待ちに必ず timeout を付ける（付けないと固まる）。`clock.install` を使ったら `playwright-cli close` で閉じる。
