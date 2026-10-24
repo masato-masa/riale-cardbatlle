@@ -11,16 +11,16 @@ describe('トロフィーとアリーナ', () => {
     expect(arenaIndex(5000)).toBe(ARENAS.length - 1);
   });
 
-  it('強い CPU に勝つほど多く増え、弱い CPU に負けるほど多く減る。引き分けは変わらない', () => {
+  it('強い CPU に勝つほど多く増える。つよいで勝率 40% なら増減はほぼ 0（つよいだけ選べば得、にならない）。引き分けは変わらない', () => {
     expect(trophyDelta('hard', 0)).toBeGreaterThan(trophyDelta('normal', 0));
     expect(trophyDelta('normal', 0)).toBeGreaterThan(trophyDelta('easy', 0));
-    expect(trophyDelta('easy', 1)).toBeLessThan(trophyDelta('hard', 1));
+    expect(Math.abs(0.4 * trophyDelta('hard', 0) + 0.6 * trophyDelta('hard', 1))).toBeLessThanOrEqual(1);
     expect(trophyDelta('normal', null)).toBe(0);
   });
 
   it('0 未満にならず、いまのアリーナの下限より下へは落ちない（昇格は下がらない）', () => {
     expect(applyTrophies(5, 'easy', 1)).toBe(0);
-    expect(applyTrophies(305, 'easy', 1)).toBe(300);
+    expect(applyTrophies(305, 'normal', 1)).toBe(300);
     expect(applyTrophies(300, 'normal', 0)).toBe(325);
   });
 

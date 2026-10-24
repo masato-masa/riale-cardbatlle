@@ -40,11 +40,12 @@ export function arenaIndex(trophies: number): number {
   return i;
 }
 
-/** 勝敗によるトロフィーの増減。強い CPU に勝つほど多く、弱い CPU に負けるほど多く失う。 */
+/** 勝敗によるトロフィーの増減。強い CPU に勝つほど多く増える。 */
 export function trophyDelta(level: CpuLevel, winner: 0 | 1 | null): number {
   if (winner === null) return 0;
   const win = { easy: 10, normal: 25, hard: 35 }[level];
-  const lose = { easy: -20, normal: -12, hard: -8 }[level];
+  // 負けで減る量: 強い相手ほど勝ちの増え方を大きくし、負けの減り方もそれなりに（つよいだけ選べば得、にならないよう、勝率 40% で増減がほぼ 0）
+  const lose = { easy: -10, normal: -18, hard: -24 }[level];
   return winner === 0 ? win : lose;
 }
 
