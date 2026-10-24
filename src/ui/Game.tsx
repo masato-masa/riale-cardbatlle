@@ -1763,6 +1763,7 @@ export function Game({ level, deck, onExit }: { level: CpuLevel; deck: CardId[];
                         <span className="result-medal">
                           <img src={HERO_ME_URL} alt="" draggable={false} />
                         </span>
+                        <small className="result-name">{myName}</small>
                         <b>{me.hp}</b>
                       </span>
                       <span className="result-vs">{game.result.reason === 'time' ? '時間切れ' : 'VS'}</span>
@@ -1770,6 +1771,7 @@ export function Game({ level, deck, onExit }: { level: CpuLevel; deck: CardId[];
                         <span className="result-medal">
                           <img src={foePortrait(rival.name)} alt="" draggable={false} />
                         </span>
+                        <small className="result-name">{foePersona(rival.name).name}</small>
                         <b>{foe.hp}</b>
                       </span>
                     </div>
