@@ -392,3 +392,7 @@
 
 - Game・DeckScreen・SoundLab を React.lazy で別ファイルに。ホーム表示 0.3 秒後に対戦とデッキ画面を裏で先読み（押した瞬間には読み終わっている）。
 - 最初の JS: 533KB（gzip 173KB）→ 436KB（gzip 141KB、-18%）。対戦は 87KB の別ファイル。ホーム→デッキ→バトルの流れでエラーなし。
+
+## 2026-10-24 対戦の一言の重なり（タグ autopilot/069-before-toast、公開済み）
+
+- 390×844 の対戦で「コインが足りません」が自分の札（608〜676px 付近）の後ろに潜っていた。.hint を z-index 45 にして札より前に。※確認で elementFromPoint を使ったが、.hint は pointer-events:none なので判定できない（その方法は使わない）。
