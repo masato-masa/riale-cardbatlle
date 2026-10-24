@@ -87,9 +87,31 @@ export function setTutorialDone(): void {
   }
 }
 
-/** 初回の案内をもう一度出す。 */
+const TIPS_KEY = 'riale-cardbatlle:tips';
+
+/** 場面ごとの一言案内（予約・割り込み・チェンジ）のうち、もう見たもの。 */
+export function seenTips(): Set<string> {
+  try {
+    const raw = localStorage.getItem(TIPS_KEY);
+    const list: unknown = raw ? JSON.parse(raw) : [];
+    return new Set(Array.isArray(list) ? list.filter((x): x is string => typeof x === 'string') : []);
+  } catch {
+    return new Set();
+  }
+}
+
+export function markTip(id: string): void {
+  try {
+    localStorage.setItem(TIPS_KEY, JSON.stringify([...seenTips(), id]));
+  } catch {
+    // 保存できなくても遊べる
+  }
+}
+
+/** 初回の案内をもう一度出す（場面ごとの一言案内も）。 */
 export function resetTutorial(): void {
   try {
+    localStorage.removeItem(TIPS_KEY);
     localStorage.removeItem(TUTORIAL_KEY);
   } catch {
     // 消せなくても遊べる

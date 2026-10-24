@@ -52,3 +52,14 @@ describe('戦績の連勝', () => {
     expect(r.best).toBe(3);
   });
 });
+
+import { markTip, seenTips } from '../src/storage/profile';
+
+describe('場面ごとの一言案内', () => {
+  it('見た案内を覚える', () => {
+    expect(seenTips().size).toBe(0);
+    markTip('interrupt');
+    markTip('reserve');
+    expect([...seenTips()].sort()).toEqual(['interrupt', 'reserve']);
+  });
+});

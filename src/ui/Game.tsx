@@ -33,7 +33,7 @@ import {
 } from '@/game/engine';
 import { makeRng } from '@/game/rng';
 import { awardMatch, CHEST_POINTS, type MatchReward } from '@/storage/collection';
-import { addResult, isTutorialDone, setTutorialDone } from '@/storage/profile';
+import { addResult, isTutorialDone, markTip, seenTips, setTutorialDone } from '@/storage/profile';
 import { ARENAS, arenaIndex, loadTrophies, recordTrophies, rivalFor, type TrophyChange } from '@/storage/trophy';
 import { COIN_MAX, FAST_COOLDOWN_FROM_MS, MATCH_MS, PLAYER_HP, SUMMON_WINDUP_MS, WINDUP_MS } from '@/game/rules';
 
@@ -44,7 +44,7 @@ import { RewardChest } from './RewardChest';
 import { CardDetail, HelpBody, HeroBadge } from './GameParts';
 import { hapticImpact, hapticLose, hapticReady, hapticReject, hapticUseCard, hapticWin } from './haptics';
 import { Sheet } from './Sheets';
-import { Tutorial, type TutorialStep } from './Tutorial';
+import { Tip, type TipId, Tutorial, type TutorialStep } from './Tutorial';
 import {
   playBarrier,
   playDeath,
@@ -227,12 +227,42 @@ export function Game({ level, deck, onExit }: { level: CpuLevel; deck: CardId[];
   const [trophy, setTrophy] = useState<TrophyChange | null>(null);
   /** 初回の案内（済んでいれば null）。最初の説明の間は時間を止める。 */
   const [tut, setTut] = useState<TutorialStep | null>(() => (isTutorialDone() ? null : 0));
+  /** 場面ごとの一言案内（初めての場面で 1 回だけ。出ている間は時間を止める）。 */
+  const [tip, setTip] = useState<TipId | null>(null);
+  const tipsSeen = useRef(seenTips());
   const pausedRef = useRef(false);
-  pausedRef.current = detail !== null || menu !== null || tut === 0;
+  pausedRef.current = detail !== null || menu !== null || tut === 0 || tip !== null;
   /** 開始の演出（VS）のあいだは時間を進めない。 */
   const introRef = useRef(true);
   /** 初回は、案内のあいだ相手を「よわい」にする。 */
   const levelRef = useRef<CpuLevel>(isTutorialDone() ? level : 'easy');
+
+  // ---- 場面ごとの一言案内（初回の案内が済んだあと） ----
+  useEffect(() => {
+    if (tut !== null || tip !== null || game.result || detail || menu) return;
+    const me = game.players[0];
+    const want = (id: TipId) => !tipsSeen.current.has(id);
+    const show = (id: TipId) => {
+      tipsSeen.current.add(id);
+      markTip(id);
+      setTip(id);
+    };
+    // 割り込み: 相手の溜めが自分側へ向いていて、間に合ううちに出せるブロッカーが手札にある
+    if (
+      want('interrupt') &&
+      !me.field.some((u) => u && isBlockerUnit(u)) &&
+      freeSlot(game, 0) >= 0 &&
+      game.pending.some((x) => x.kind === 'attack' && x.p === 1 && x.at - game.time > SUMMON_WINDUP_MS + 150) &&
+      me.hand.some((c) => isBlocker(c) && CARDS[c].summon <= me.coins)
+    )
+      return show('interrupt');
+    // チェンジ: 場がいっぱいで、出せるカードが手札にある
+    if (want('overwrite') && me.field.every((u) => !!u) && me.hand.some((c) => CARDS[c].type !== 'spell' && CARDS[c].summon <= me.coins))
+      return show('overwrite');
+    // 予約: クールタイムが長く残っていて、予約していないユニットがいる
+    if (want('reserve') && game.time > 15_000 && me.field.some((u) => u && CARDS[u.card].type === 'unit' && !u.reserved && u.readyAt - game.time > 4000))
+      return show('reserve');
+  }, [game, tut, tip, detail, menu]);
 
   // ---- 初回の案内の進行 ----
   const placed = game.players[0].field.some((u) => !!u);
@@ -1364,6 +1394,7 @@ export function Game({ level, deck, onExit }: { level: CpuLevel; deck: CardId[];
 
       {/* 溜め中の行動: 攻撃元から対象へ矢印、対象に縮んでいく照準。範囲の呪文は場ごと光らせる */}
       {tut !== null && !intro && !game.result && menu === null ? <Tutorial step={tut} onNext={() => setTut(1)} /> : null}
+      {tip !== null && !intro && !game.result && menu === null ? <Tip id={tip} onClose={() => setTip(null)} /> : null}
       <PendingMarks game={game} fieldMe={fieldRef.current} fieldFoe={foeFieldRef.current} />
 
       {/* 狙撃・呪文・砲撃の弾（尾を引く彗星。落石は上から落ちる） */}
