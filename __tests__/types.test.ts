@@ -112,10 +112,10 @@ describe('クールタイム（カードごと）', () => {
     expect(avg).toBeLessThanOrEqual(26);
   });
 
-  it('祈りは、そのカードの cd に掛かる。-30%、2 枚でも下限の 40%（3 枚でも 40% より短くならない）', () => {
+  it('祈りは、そのカードの cd に掛かる。1 枚ぶん短く、2 枚でも下限の 40%（3 枚でも 40% より短くならない）', () => {
     let [s] = place(withHand(HAND4), 0, 0, 'cathedral');
     for (const card of ['herald', 'boss'] as CardId[]) {
-      expect(cooldownOf(s.players[0], card)).toBe(Math.round(CARDS[card].cd * 0.7));
+      expect(cooldownOf(s.players[0], card)).toBe(Math.round(CARDS[card].cd * (1 - CARDS.cathedral.ab.cooldownCut!)));
       expect(cooldownOf(s.players[1], card)).toBe(CARDS[card].cd);
     }
     [s] = place(s, 0, 1, 'cathedral');
@@ -124,20 +124,20 @@ describe('クールタイム（カードごと）', () => {
     expect(cooldownOf(s.players[0], 'boss')).toBe(Math.round(CARDS.boss.cd * 0.4));
   });
 
-  it('祈りがあると次の攻撃までが短くなる（カードごとの値の 70%）。相手のユニットには効かない', () => {
+  it('祈りがあると次の攻撃までが短くなる（カードごとの値から祈りの割合ぶん短く）。相手のユニットには効かない', () => {
     let [s] = place(withHand(HAND4), 0, 0, 'cathedral');
     let a: Unit, b: Unit;
     [s, a] = place(s, 0, 1, 'boss');
     [s, b] = place(s, 1, 0, 'boss');
     s = hit(hit(s, 0, a.uid, FACE), 1, b.uid, FACE);
-    expect(findUnit(s.players[0], a.uid)!.unit.readyAt).toBe(Math.round(CARDS.boss.cd * 0.7)); // 時刻 0 に攻撃
+    expect(findUnit(s.players[0], a.uid)!.unit.readyAt).toBe(Math.round(CARDS.boss.cd * (1 - CARDS.cathedral.ab.cooldownCut!))); // 時刻 0 に攻撃
     expect(findUnit(s.players[1], b.uid)!.unit.readyAt).toBe(WINDUP_MS + CARDS.boss.cd); // 時刻 WINDUP_MS に攻撃
   });
 
   it('祈りがあれば、召喚後の待ちも短くなる', () => {
     let [s] = place(withHand(['craftsman', 'herald', 'herald', 'herald']), 0, 0, 'cathedral');
     s = step(s, { type: 'summon', p: 0, handIndex: 0, slot: 1 });
-    expect(s.players[0].field[1]!.readyAt - s.time).toBe(Math.round(Math.round(CARDS.craftsman.cd * 0.7) / 2));
+    expect(s.players[0].field[1]!.readyAt - s.time).toBe(Math.round(Math.round(CARDS.craftsman.cd * (1 - CARDS.cathedral.ab.cooldownCut!)) / 2));
   });
 });
 
