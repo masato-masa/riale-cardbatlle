@@ -6,8 +6,8 @@ import { applyTrophies, ARENAS, arenaIndex, rivalFor, trophyDelta } from '../src
 describe('トロフィーとアリーナ', () => {
   it('アリーナは閾値で上がる', () => {
     expect(arenaIndex(0)).toBe(0);
-    expect(arenaIndex(299)).toBe(0);
-    expect(arenaIndex(300)).toBe(1);
+    expect(arenaIndex(ARENAS[1]!.from - 1)).toBe(0);
+    expect(arenaIndex(ARENAS[1]!.from)).toBe(1);
     expect(arenaIndex(5000)).toBe(ARENAS.length - 1);
   });
 
@@ -19,9 +19,18 @@ describe('トロフィーとアリーナ', () => {
   });
 
   it('0 未満にならず、いまのアリーナの下限より下へは落ちない（昇格は下がらない）', () => {
-    expect(applyTrophies(5, 'easy', 1)).toBe(0);
-    expect(applyTrophies(305, 'normal', 1)).toBe(300);
-    expect(applyTrophies(300, 'normal', 0)).toBe(325);
+    const top = ARENAS.at(-1)!.from;
+    expect(applyTrophies(ARENAS[2]!.from + 5, 'hard', 1)).toBe(ARENAS[2]!.from);
+    expect(applyTrophies(top + 5, 'normal', 1)).toBe(top);
+    expect(applyTrophies(top, 'normal', 0)).toBe(top + trophyDelta('normal', 0));
+  });
+
+  it('負けて減る量はアリーナの倍率で小さくなる（最初のアリーナでは減らない）', () => {
+    expect(ARENAS[0]!.lossScale).toBe(0);
+    expect(applyTrophies(100, 'hard', 1)).toBe(100);
+    const a = ARENAS[1]!;
+    expect(applyTrophies(a.from + 100, 'hard', 1)).toBe(a.from + 100 + Math.round(trophyDelta('hard', 1) * a.lossScale));
+    expect(ARENAS.at(-1)!.lossScale).toBe(1);
   });
 
   it('アリーナごとに出る相手デッキの幅が広がり、プールの名前はすべて実在する', () => {

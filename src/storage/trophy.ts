@@ -16,15 +16,17 @@ export interface Arena {
   tint: string;
   /** 宝箱から出るカードのコストの上限（アリーナが上がると重いカードが解放される）。 */
   cardCap: number;
+  /** 負けたときに減る量の倍率。序盤は小さく（クラロワの序盤と同じく、負けてもほとんど減らない）。 */
+  lossScale: number;
 }
 
 export const ARENAS: Arena[] = [
   // 最初のアリーナは、初期デッキ（normal の CPU で代用）が 5〜6 割勝てる相手だけ。商人は normal だと初期デッキに 78% 勝つので 2 つ目から
-  { name: 'はじまりの広場', from: 0, pool: ['毒', '巨人', '連撃'], tint: 'none', cardCap: 4 },
-  { name: '砂の闘技場', from: 300, pool: ['商人', '毒', '巨人', '連撃', '割り込み', '奇襲'], tint: 'none', cardCap: 6 },
-  { name: '城門前', from: 700, pool: ['毒', '巨人', '連撃', '割り込み', '狙撃', '生贄', '討伐', '奇襲', '鉄壁'], tint: 'none', cardCap: 7 },
-  { name: '王の間', from: 1200, pool: ['巨人', '連撃', '割り込み', '狙撃', '生贄', '討伐', 'T一族', '封印', '城塞', '呪術', '死霊', '聖騎士', '鉄壁', '工房'], tint: 'none', cardCap: 8 },
-  { name: '伝説の頂', from: 1800, pool: RIVAL_DECKS.map((d) => d.name), tint: 'none', cardCap: 10 },
+  { name: 'はじまりの広場', from: 0, pool: ['毒', '巨人', '連撃'], tint: 'none', cardCap: 4, lossScale: 0 },
+  { name: '砂の闘技場', from: 150, pool: ['商人', '毒', '巨人', '連撃', '割り込み', '奇襲'], tint: 'none', cardCap: 6, lossScale: 0.5 },
+  { name: '城門前', from: 400, pool: ['毒', '巨人', '連撃', '割り込み', '狙撃', '生贄', '討伐', '奇襲', '鉄壁'], tint: 'none', cardCap: 7, lossScale: 0.75 },
+  { name: '王の間', from: 800, pool: ['巨人', '連撃', '割り込み', '狙撃', '生贄', '討伐', 'T一族', '封印', '城塞', '呪術', '死霊', '聖騎士', '鉄壁', '工房'], tint: 'none', cardCap: 8, lossScale: 1 },
+  { name: '伝説の頂', from: 1300, pool: RIVAL_DECKS.map((d) => d.name), tint: 'none', cardCap: 10, lossScale: 1 },
 ];
 
 /** そのコストのカードが宝箱から出始めるアリーナ。 */
@@ -52,8 +54,9 @@ export function trophyDelta(level: CpuLevel, winner: 0 | 1 | null): number {
 
 /** 増減を反映した新しいトロフィー数。いまのアリーナの下限より下には落ちない。 */
 export function applyTrophies(trophies: number, level: CpuLevel, winner: 0 | 1 | null): number {
-  const floor = ARENAS[arenaIndex(trophies)]!.from;
-  return Math.max(floor, trophies + trophyDelta(level, winner));
+  const arena = ARENAS[arenaIndex(trophies)]!;
+  const d = trophyDelta(level, winner);
+  return Math.max(arena.from, trophies + (d < 0 ? Math.round(d * arena.lossScale) : d));
 }
 
 /** そのトロフィー数のアリーナで出る相手デッキ（シードで決まる）。 */

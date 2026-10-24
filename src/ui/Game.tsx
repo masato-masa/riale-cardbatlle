@@ -461,7 +461,7 @@ export function Game({ level, deck, onExit }: { level: CpuLevel; deck: CardId[];
   useEffect(() => {
     if (DEV_RESULT === undefined) return;
     const won = DEV_RESULT === 0;
-    setTrophy(won ? { before: 285, after: 310, arenaBefore: 0, arenaAfter: 1 } : { before: 310, after: 300, arenaBefore: 1, arenaAfter: 1 });
+    setTrophy(won ? { before: 135, after: 160, arenaBefore: 0, arenaAfter: 1 } : { before: 210, after: 201, arenaBefore: 1, arenaAfter: 1 });
     setMissionsDone(won ? ['win1', 'summon15'] : ['play3']);
     setStreakBonus(won ? 3 : 0);
     setHints(
