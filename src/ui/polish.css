@@ -2871,3 +2871,8 @@
   place-items: safe center;
   padding-block: 28px;
 }
+
+/* 名前が 360px 幅で 8px まで小さくなり読みにくかった。最長 5 文字なので 10px でも枠に収まる */
+.face-name {
+  font-size: max(10px, 14cqw);
+}
