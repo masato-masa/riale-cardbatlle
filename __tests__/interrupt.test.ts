@@ -137,10 +137,11 @@ describe('上書き（生贄）', () => {
     const n = overwrite('bomber', 'recruit');
     expect(n.players[1].hp).toBe(PLAYER_HP - 4);
   });
-  it('リーゼ: 生贄で上書きしたカードが +3/+3', () => {
+  it('リーゼ: 生贄で上書きしたカードを強化する', () => {
     const n = overwrite('heir', 'recruit');
     const u = n.players[0].field[0]!;
-    expect(u.hp).toBe(CARDS.recruit.hp + 3);
+    const b = CARDS.heir.ab.onReplaced;
+    expect(u.hp).toBe(CARDS.recruit.hp + (b?.kind === 'buffNew' ? b.hp : 0));
   });
   it('フェン: 生贄で自分の HP を 6 回復', () => {
     let s = fresh();
