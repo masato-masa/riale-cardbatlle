@@ -8,7 +8,7 @@ import { loadLevel, loadRecord, saveLevel } from '@/storage/profile';
 import { CARDS } from '@/game/cards';
 import { loadDaily, MISSIONS } from '@/storage/daily';
 import { loadHistory, suggestLevel, summarize } from '@/storage/history';
-import { ARENAS, arenaIndex, loadTrophies } from '@/storage/trophy';
+import { ARENAS, arenaIndex, loadArenaSeen, loadTrophies, saveArenaSeen } from '@/storage/trophy';
 
 import { ARENA_FLOOR_URLS, HERO_ME_URL, ICON_URL } from './art';
 import { CardFace } from './CardFace';
@@ -39,6 +39,8 @@ export function Home({ deck, onStart, onDeck }: { deck: CardId[]; onStart: (leve
   const [dev, setDev] = useState(false);
   const [dailyOpen, setDailyOpen] = useState(false);
   const [statsOpen, setStatsOpen] = useState(false);
+  /** 新しいアリーナに上がってから初めてホームに来たときの演出（一度だけ）。 */
+  const [arenaUp, setArenaUp] = useState(() => arenaIndex(loadTrophies()) > loadArenaSeen());
   const daily = loadDaily();
   const dailyDone = daily.missions.filter((id) => (daily.progress[id] ?? 0) >= MISSIONS[id].goal).length;
   const [allOn, setAllOn] = useState(isUnlockAll);
@@ -65,6 +67,35 @@ export function Home({ deck, onStart, onDeck }: { deck: CardId[]; onStart: (leve
         テスト用
       </button>
       <AnimatePresence>
+        {arenaUp ? (
+          <Sheet
+            key="arena-up"
+            title="アリーナ昇格！"
+            onClose={() => {
+              saveArenaSeen(ai);
+              setArenaUp(false);
+            }}
+          >
+            <div className="arena-up-card">
+              <img className="arena-up-floor" src={ARENA_FLOOR_URLS[ai]} alt="" draggable={false} />
+              <b className="arena-up-name">
+                <img src={ICON_URL.arena} alt="" draggable={false} />
+                {ARENAS[ai]!.name}
+              </b>
+              <p>宝箱からコスト {ARENAS[ai]!.cardCap} までのカードが出るようになり、出てくる相手デッキが増えました。</p>
+            </div>
+            <button
+              className="sheet-btn"
+              onClick={() => {
+                playUiTap();
+                saveArenaSeen(ai);
+                setArenaUp(false);
+              }}
+            >
+              OK
+            </button>
+          </Sheet>
+        ) : null}
         {statsOpen ? (
           <Sheet key="stats" title="戦績（直近 50 試合）" onClose={() => setStatsOpen(false)}>
             {(() => {

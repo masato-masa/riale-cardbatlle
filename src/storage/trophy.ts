@@ -89,3 +89,23 @@ export function recordTrophies(level: CpuLevel, winner: 0 | 1 | null): TrophyCha
   }
   return { before, after, arenaBefore: arenaIndex(before), arenaAfter: arenaIndex(after) };
 }
+
+const SEEN_KEY = 'riale-cardbatlle:arena-seen';
+
+/** ホームで昇格の演出を見せたアリーナ（まだなら -1 ではなく 0。最初のアリーナは演出しない）。 */
+export function loadArenaSeen(): number {
+  try {
+    const v = Number(localStorage.getItem(SEEN_KEY));
+    return Number.isFinite(v) && v > 0 ? Math.floor(v) : 0;
+  } catch {
+    return 0;
+  }
+}
+
+export function saveArenaSeen(i: number): void {
+  try {
+    localStorage.setItem(SEEN_KEY, String(i));
+  } catch {
+    // 保存できなくても遊べる（次も演出が出るだけ）
+  }
+}

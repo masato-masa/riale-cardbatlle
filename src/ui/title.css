@@ -1040,3 +1040,41 @@ body {
 .recent-mark.is-lose {
   background: linear-gradient(#e5484d, #9c2a30);
 }
+
+/* アリーナ昇格の演出（ホームで一度だけ） */
+.arena-up-card {
+  display: grid;
+  justify-items: center;
+  gap: 8px;
+  text-align: center;
+}
+
+.arena-up-floor {
+  width: 100%;
+  height: 150px;
+  object-fit: cover;
+  object-position: 50% 30%;
+  border-radius: 14px;
+  box-shadow: inset 0 0 0 2px rgb(246 197 72 / 0.6), 0 0 18px rgb(255 216 74 / 0.5);
+}
+
+.arena-up-name {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--gold-1);
+  font-size: 22px;
+  -webkit-text-stroke: 3px rgb(18 8 30 / 0.9);
+  paint-order: stroke fill;
+}
+
+.arena-up-name img {
+  width: 32px;
+  height: 32px;
+}
+
+.arena-up-card p {
+  margin: 0;
+  font-size: 13px;
+  color: #e9e1ff;
+}
