@@ -35,6 +35,17 @@ export function pushHistory(r: MatchRecord): void {
   }
 }
 
+/** 難易度のおすすめ: その難易度で直近 3 試合すべて負けなら一段下、すべて勝ちなら一段上を勧める（決めるのはプレイヤー）。 */
+export function suggestLevel(list: MatchRecord[], level: CpuLevel): { to: CpuLevel; why: 'lose' | 'win' } | null {
+  const order: CpuLevel[] = ['easy', 'normal', 'hard'];
+  const recent = list.filter((r) => r.level === level).slice(0, 3);
+  if (recent.length < 3) return null;
+  const i = order.indexOf(level);
+  if (recent.every((r) => r.result === 'lose') && i > 0) return { to: order[i - 1]!, why: 'lose' };
+  if (recent.every((r) => r.result === 'win') && i < order.length - 1) return { to: order[i + 1]!, why: 'win' };
+  return null;
+}
+
 export interface Rate {
   label: string;
   n: number;

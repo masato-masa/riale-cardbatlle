@@ -916,3 +916,16 @@ body {
 .stat-card .blocker-badge {
   display: none;
 }
+
+/* 難易度のおすすめ（3 連勝・3 連敗のとき、難易度の上に一言。押すとその難易度に） */
+.ts-suggest {
+  margin: 0 auto 6px;
+  padding: 4px 14px;
+  border: 2px solid var(--gold-2);
+  border-radius: 999px;
+  background: linear-gradient(#5b3fc4, #34217f);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  box-shadow: 0 2px 0 rgb(0 0 0 / 0.45);
+}

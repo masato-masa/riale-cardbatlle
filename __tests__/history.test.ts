@@ -37,3 +37,16 @@ describe('戦績', () => {
     expect(s.topCards[0]).toEqual({ card: 'herald', count: 5 });
   });
 });
+
+import { suggestLevel } from '../src/storage/history';
+
+describe('難易度のおすすめ', () => {
+  it('同じ難易度で 3 連敗なら一段下、3 連勝なら一段上。足りなければ出さない', () => {
+    const L = (r: MatchRecord['result'], lv: MatchRecord['level'] = 'normal') => rec(r, lv, '毒');
+    expect(suggestLevel([L('lose'), L('lose'), L('lose')], 'normal')).toEqual({ to: 'easy', why: 'lose' });
+    expect(suggestLevel([L('win'), L('win'), L('win')], 'normal')).toEqual({ to: 'hard', why: 'win' });
+    expect(suggestLevel([L('win'), L('lose'), L('win')], 'normal')).toBeNull();
+    expect(suggestLevel([L('lose', 'easy'), L('lose', 'easy'), L('lose', 'easy')], 'easy')).toBeNull();
+    expect(suggestLevel([L('win'), L('win')], 'normal')).toBeNull();
+  });
+});

@@ -7,7 +7,7 @@ import { isUnlockAll, setUnlockAll } from '@/storage/collection';
 import { loadLevel, loadRecord, saveLevel } from '@/storage/profile';
 import { CARDS } from '@/game/cards';
 import { loadDaily, MISSIONS } from '@/storage/daily';
-import { loadHistory, summarize } from '@/storage/history';
+import { loadHistory, suggestLevel, summarize } from '@/storage/history';
 import { ARENAS, arenaIndex, loadTrophies } from '@/storage/trophy';
 
 import { FIELD_URL, HERO_ME_URL } from './art';
@@ -235,6 +235,16 @@ export function Home({ deck, onStart, onDeck }: { deck: CardId[]; onStart: (leve
       </main>
 
       <footer className="ts-bottom">
+        {(() => {
+          const sug = suggestLevel(loadHistory(), level);
+          if (!sug) return null;
+          const name = LEVELS.find((l) => l.id === sug.to)!.label;
+          return (
+            <button className="ts-suggest" onClick={() => pick(sug.to)}>
+              {sug.why === 'win' ? `3 連勝！「${name}」に挑戦する？` : `3 連敗中。「${name}」で腕を磨く？`}
+            </button>
+          );
+        })()}
         <div className="ts-levels" role="radiogroup" aria-label="CPU のつよさ">
           {LEVELS.map((l) => (
             <button
