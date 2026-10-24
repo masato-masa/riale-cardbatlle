@@ -1,8 +1,8 @@
 import { motion } from 'motion/react';
 import { useEffect, useState } from 'react';
 
-import type { CardId } from '@/game/cards';
 import { CARDS } from '@/game/cards';
+import type { RewardItem } from '@/storage/collection';
 
 import chestClosed from '../assets/art/ui/chest-closed.webp';
 import chestOpen from '../assets/art/ui/chest-open.webp';
@@ -10,7 +10,7 @@ import { CardFace } from './CardFace';
 import { playReady, playSelect } from './sound';
 
 /** 結果画面の宝箱。閉じた箱が揺れる → ぱかっと開いて光る → カードが飛び出す（クラロワの宝箱と同じ流れ）。 */
-export function RewardChest({ cards }: { cards: CardId[] }) {
+export function RewardChest({ items }: { items: RewardItem[] }) {
   const [phase, setPhase] = useState<'shake' | 'open' | 'card'>('shake');
   useEffect(() => {
     const t1 = window.setTimeout(() => {
@@ -42,17 +42,17 @@ export function RewardChest({ cards }: { cards: CardId[] }) {
       />
       {phase !== 'shake' ? <span className="chest-glow" aria-hidden="true" /> : null}
       {phase === 'card'
-        ? cards.map((c) => (
+        ? items.map(({ card: c, isNew, level, leveledUp }, i) => (
             <motion.div
-              key={c}
+              key={`${c}-${i}`}
               className="chest-card"
               initial={{ y: 40, scale: 0.2, opacity: 0, rotate: -10 }}
               animate={{ y: -8, scale: 1, opacity: 1, rotate: 0 }}
               transition={{ type: 'spring', stiffness: 260, damping: 14, opacity: { duration: 0.2 } }}
             >
-              <b>新しいカード！</b>
+              <b>{isNew ? '新しいカード！' : leveledUp ? `レベルアップ！ Lv${level}` : `+1 枚（Lv${level}）`}</b>
               <div className="reward-face">
-                <CardFace card={c} />
+                <CardFace card={c} level={level} />
               </div>
               <span>{CARDS[c].name}</span>
             </motion.div>

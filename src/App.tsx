@@ -25,7 +25,7 @@ export function App() {
   if (new URLSearchParams(location.search).has('chest'))
     return (
       <div style={{ minHeight: '100dvh', display: 'grid', placeItems: 'center', background: '#1b1440' }}>
-        <RewardChest cards={['reaper']} />
+        <RewardChest items={[{ card: 'reaper', isNew: false, level: 3, leveledUp: true }]} />
       </div>
     );
   const [screen, setScreen] = useState<Screen>({ kind: 'home' });

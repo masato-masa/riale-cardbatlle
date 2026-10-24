@@ -30,9 +30,10 @@ import {
   type GameState,
   type Target,
   type Unit,
+  MAX_CARD_LEVEL,
 } from '@/game/engine';
 import { makeRng } from '@/game/rng';
-import { awardMatch, CHEST_POINTS, type MatchReward } from '@/storage/collection';
+import { awardMatch, CHEST_POINTS, loadLevels, type MatchReward } from '@/storage/collection';
 import { addResult, isTutorialDone, setTutorialDone } from '@/storage/profile';
 import { ARENAS, arenaIndex, loadTrophies, recordTrophies, rivalFor, type TrophyChange } from '@/storage/trophy';
 import { COIN_MAX, FAST_COOLDOWN_FROM_MS, MATCH_MS, PLAYER_HP, SUMMON_WINDUP_MS, WINDUP_MS } from '@/game/rules';
@@ -201,6 +202,14 @@ function CrossMask({ id, x0, y0, x1, y1 }: { id: string; x0: number; y0: number;
   );
 }
 
+/** 対戦のレベル表: 自分は持っているレベル、相手はアリーナに応じた一律のレベル（はじまり=Lv1 … 伝説=Lv5）。 */
+function matchLevels(rivalDeck: readonly CardId[]): [Partial<Record<CardId, number>>, Partial<Record<CardId, number>>] {
+  const lv = Math.min(MAX_CARD_LEVEL, arenaIndex(loadTrophies()) + 1);
+  const foe: Partial<Record<CardId, number>> = {};
+  if (lv > 1) for (const c of rivalDeck) foe[c] = lv;
+  return [loadLevels(), foe];
+}
+
 /** 確認用: URL の ?speed=N で時間を N 倍速にする（結果画面などを早く見るため）。 */
 const DEV_SPEED = Math.min(10, Math.max(1, Number(new URLSearchParams(location.search).get('speed')) || 1));
 
@@ -209,7 +218,7 @@ export function Game({ level, deck, onExit }: { level: CpuLevel; deck: CardId[];
   // 相手のデッキはテーマ別に、試合ごと（シードごと）に選ぶ。出てくる幅はアリーナ（トロフィー）で変わる
   const [rival, setRival] = useState(() => rivalFor(seed, loadTrophies()));
   const decks: [CardId[], CardId[]] = [deck, rival.deck];
-  const [game, setGame] = useState<GameState>(() => createGame(decks, seed));
+  const [game, setGame] = useState<GameState>(() => createGame(decks, seed, matchLevels(rival.deck)));
   const gameRef = useRef(game);
   const brainRef = useRef(createBrain());
   const randRef = useRef(makeRng(seed ^ 0x9e3779b9));
@@ -1076,7 +1085,7 @@ export function Game({ level, deck, onExit }: { level: CpuLevel; deck: CardId[];
     setResultShown(false);
     const nextRival = rivalFor(next, loadTrophies());
     setRival(nextRival);
-    commit(createGame([deck, nextRival.deck], next));
+    commit(createGame([deck, nextRival.deck], next, matchLevels(nextRival.deck)));
   };
 
   /** 場のカードの状態アイコン。 */
@@ -1297,7 +1306,7 @@ export function Game({ level, deck, onExit }: { level: CpuLevel; deck: CardId[];
                         onPointerCancel={onPressCancel}
                         onContextMenu={(e) => e.preventDefault()}
                       >
-                        <CardFace card={card} />
+                        <CardFace card={card} level={me.levels?.[card]} />
                         {lack > 0 ? <span className="hand-wait" style={{ height: `${lack * 100}%` }} /> : null}
                       </motion.div>
                     </AnimatePresence>
@@ -1644,7 +1653,7 @@ export function Game({ level, deck, onExit }: { level: CpuLevel; deck: CardId[];
                             <i key={i} className={i < reward.points || reward.cards.length > 0 ? 'is-on' : ''} />
                           ))}
                         </div>
-                        {reward.cards.length > 0 ? <RewardChest cards={reward.cards} /> : null}
+                        {reward.items.length > 0 ? <RewardChest items={reward.items} /> : null}
                       </div>
                     ) : null}
                   </>

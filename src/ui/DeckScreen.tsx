@@ -2,7 +2,7 @@ import { AnimatePresence, motion } from 'motion/react';
 import { useMemo, useRef, useState } from 'react';
 
 import { CARDS, RIVAL_DECKS, STARTER_DECK, TYPE_NAME, type CardId, type CardType } from '@/game/cards';
-import { loadUnlocked } from '@/storage/collection';
+import { copiesToNext, loadProgress, loadUnlocked } from '@/storage/collection';
 import { applyPreset, averageCost, COLLECTION, DECK_SLOTS, loadBook, saveBook, saveDeck } from '@/storage/deck';
 
 import { CardFace } from './CardFace';
@@ -43,6 +43,7 @@ function byCost(ids: CardId[]): CardId[] {
 export function DeckScreen({ deck, onChange, onBack }: { deck: CardId[]; onChange: (deck: CardId[]) => void; onBack: () => void }) {
   const [open, setOpen] = useState<{ card: CardId; inDeck: boolean; locked?: boolean } | null>(null);
   const unlocked = useMemo(() => loadUnlocked(), []);
+  const progress = useMemo(() => loadProgress(), []);
   /** 保存した 5 つのデッキと、使っている番号。 */
   const [active, setActive] = useState(() => loadBook().active);
   /** コンセプトデッキの一覧と、補った枚数の知らせ。 */
@@ -170,7 +171,7 @@ export function DeckScreen({ deck, onChange, onBack }: { deck: CardId[]; onChang
                   setOpen({ card: id, inDeck: true });
                 }}
               >
-                <CardFace card={id} />
+                <CardFace card={id} level={progress[id]?.level} />
               </motion.button>
             ))}
           </div>
@@ -212,7 +213,7 @@ export function DeckScreen({ deck, onChange, onBack }: { deck: CardId[]; onChang
                       setOpen({ card: id, inDeck: false });
                     }}
                   >
-                    <CardFace card={id} />
+                    <CardFace card={id} level={progress[id]?.level} />
                   </motion.button>
                 ))}
               </div>
@@ -293,6 +294,13 @@ export function DeckScreen({ deck, onChange, onBack }: { deck: CardId[]; onChang
         {open ? (
           <Sheet key="card" title={CARDS[open.card].name} anchor="bottom" onClose={() => setOpen(null)}>
             <CardDetail card={open.card} />
+            {!open.locked && CARDS[open.card].type !== 'spell' ? (
+              <p className="card-detail-note">
+                {(progress[open.card]?.level ?? 1) >= 5
+                  ? `Lv5（最大）`
+                  : `Lv${progress[open.card]?.level ?? 1}・次のレベルまで あと ${copiesToNext(progress[open.card]?.level ?? 1) - (progress[open.card]?.copies ?? 0)} 枚（宝箱で同じカードが出ると重なる）`}
+              </p>
+            ) : null}
             {open.locked ? <p className="card-detail-note">🔒 まだ持っていません。対戦でたまる宝箱から手に入ります。</p> : null}
             {open.inDeck ? (
               <button className="sheet-btn" onClick={() => setOpen(null)}>

@@ -3,6 +3,7 @@
 // URL に ?unlockall を付けると全部使える（確認用）。localStorage に保存する。
 
 import { CARDS, STARTER_DECK, type CardId } from '@/game/cards';
+import { MAX_CARD_LEVEL } from '@/game/engine';
 
 import { ARENAS, arenaIndex, loadTrophies } from './trophy';
 
@@ -96,11 +97,77 @@ export function pickReward(unlocked: Set<CardId>, rand: () => number, cap = Infi
   return locked[locked.length - 1]!;
 }
 
+const LEVEL_KEY = 'riale-cardbatlle:levels';
+
+/** 次のレベルに上がるのに要る重ね枚数（Lv1→2 は 1 枚、2→3 は 2 枚…）。 */
+export function copiesToNext(level: number): number {
+  return level;
+}
+
+export interface CardProgress {
+  level: number;
+  /** いまのレベルで重ねた枚数。 */
+  copies: number;
+}
+
+export function loadProgress(): Partial<Record<CardId, CardProgress>> {
+  try {
+    const raw = localStorage.getItem(LEVEL_KEY);
+    if (!raw) return {};
+    const obj = JSON.parse(raw) as Record<string, { level?: unknown; copies?: unknown }>;
+    const out: Partial<Record<CardId, CardProgress>> = {};
+    for (const [id, v] of Object.entries(obj)) {
+      if (!ALL.includes(id as CardId)) continue;
+      const level = typeof v.level === 'number' ? Math.max(1, Math.min(MAX_CARD_LEVEL, Math.floor(v.level))) : 1;
+      const copies = typeof v.copies === 'number' && v.copies >= 0 ? Math.floor(v.copies) : 0;
+      out[id as CardId] = { level, copies };
+    }
+    return out;
+  } catch {
+    return {};
+  }
+}
+
+/** 対戦に渡すレベル表（Lv1 は省く）。 */
+export function loadLevels(): Partial<Record<CardId, number>> {
+  const out: Partial<Record<CardId, number>> = {};
+  for (const [id, p] of Object.entries(loadProgress())) if (p && p.level > 1) out[id as CardId] = p.level;
+  return out;
+}
+
+/** 同じカードを 1 枚重ねる。必要枚数に届けばレベルが上がる。 */
+export function addCopy(progress: Partial<Record<CardId, CardProgress>>, id: CardId): { level: number; leveledUp: boolean } {
+  const cur = progress[id] ?? { level: 1, copies: 0 };
+  if (cur.level >= MAX_CARD_LEVEL) return { level: cur.level, leveledUp: false };
+  cur.copies += 1;
+  let leveledUp = false;
+  if (cur.copies >= copiesToNext(cur.level)) {
+    cur.level += 1;
+    cur.copies = 0;
+    leveledUp = true;
+  }
+  progress[id] = cur;
+  return { level: cur.level, leveledUp };
+}
+
+/** 宝箱で、持っているカードの重ね（レベル上げ）が出る確率。新しいカードが無ければ必ず重ね。 */
+export const COPY_CHANCE = 0.45;
+
+export interface RewardItem {
+  card: CardId;
+  /** 新しく手に入ったカードか（false なら重ね）。 */
+  isNew: boolean;
+  level: number;
+  leveledUp: boolean;
+}
+
 export interface MatchReward {
   /** この試合で得た点。 */
   gained: number;
   /** 宝箱から出たカード（出なければ空）。 */
   cards: CardId[];
+  /** 宝箱の中身の詳細（新しいカードか、重ねてレベルが上がったか）。 */
+  items: RewardItem[];
   /** いまたまっている点（宝箱の次のゲージ）。 */
   points: number;
 }
@@ -110,20 +177,51 @@ export function awardMatch(winner: 0 | 1 | null, rand: () => number = Math.rando
   const gained = winner === 0 ? 2 : 1;
   let total = loadPoints() + gained;
   const unlocked = loadUnlocked();
-  const cards: CardId[] = [];
+  const progress = loadProgress();
+  const cap = ARENAS[arenaIndex(loadTrophies())]!.cardCap;
+  const items: RewardItem[] = [];
   while (total >= CHEST_POINTS) {
     total -= CHEST_POINTS;
-    const c = pickReward(unlocked, rand, ARENAS[arenaIndex(loadTrophies())]!.cardCap);
-    if (c) {
-      unlocked.add(c);
-      cards.push(c);
+    const fresh = rand() < COPY_CHANCE ? null : pickReward(unlocked, rand, cap);
+    if (fresh) {
+      unlocked.add(fresh);
+      items.push({ card: fresh, isNew: true, level: 1, leveledUp: false });
+      continue;
     }
+    // 重ね: 持っていて、まだ最大レベルでないカードから（安いカードほど出やすい）
+    const owned = [...unlocked].filter((id) => (progress[id]?.level ?? 1) < MAX_CARD_LEVEL);
+    if (owned.length === 0) {
+      const c = pickReward(unlocked, rand, cap);
+      if (c) {
+        unlocked.add(c);
+        items.push({ card: c, isNew: true, level: 1, leveledUp: false });
+      }
+      continue;
+    }
+    const sum = owned.reduce((n, id) => n + weight(id), 0);
+    let r = rand() * sum;
+    let pick = owned[owned.length - 1]!;
+    for (const id of owned) {
+      r -= weight(id);
+      if (r <= 0) {
+        pick = id;
+        break;
+      }
+    }
+    const res = addCopy(progress, pick);
+    items.push({ card: pick, isNew: false, level: res.level, leveledUp: res.leveledUp });
   }
+  const cards = items.map((x) => x.card);
   if (!unlockAllByUrl()) saveUnlocked(unlocked);
+  try {
+    localStorage.setItem(LEVEL_KEY, JSON.stringify(progress));
+  } catch {
+    // 保存できなくても遊べる
+  }
   try {
     localStorage.setItem(POINTS_KEY, String(total));
   } catch {
     // 保存できなくても遊べる
   }
-  return { gained, cards, points: total };
+  return { gained, cards, items, points: total };
 }
