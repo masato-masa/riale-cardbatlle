@@ -150,6 +150,8 @@ const PICK_LIMIT_MS = 6000;
 const RESULT_DELAY_MS = 4200;
 /** この連勝数から、勝つたびに宝箱ゲージ +1。 */
 const STREAK_BONUS_FROM = 3;
+/** 相手の呪文のカードを見せておく時間（ms）。 */
+const FOE_CAST_MS = 1800;
 
 const SUMMON_REASON = {
   coins: 'コインが足りません',
@@ -264,6 +266,8 @@ export function Game({ level, deck, onExit }: { level: CpuLevel; deck: CardId[];
   /** 連勝ボーナスが付いたときの連勝数（付かなければ 0）。 */
   const [streakBonus, setStreakBonus] = useState(0);
   const [myName] = useState(loadName);
+  /** 相手が溜め始めた呪文（ライバルズのように、何を使ったかをしばらく見せる）。 */
+  const [foeCast, setFoeCast] = useState<{ id: number; card: CardId } | null>(null);
   /** デイリーミッション用の、この試合の記録（自分の行動）。 */
   const freshStats = () => ({ summons: 0, interrupts: 0, spells: 0, faceDamage: 0, myAttacksBlocked: 0, interruptChances: 0, faceTaken: 0, reserves: 0, overwrites: 0, buildings: 0, coinCapMs: 0, lastTime: 0, played: {} as Partial<Record<CardId, number>> });
   const statsRef = useRef(freshStats());
@@ -603,6 +607,11 @@ export function Game({ level, deck, onExit }: { level: CpuLevel; deck: CardId[];
         const x = e.pending;
         if (x.kind === 'spell') playSpellCast();
         else if (x.kind === 'attack' || x.kind === 'summon') playSelect();
+        if (x.kind === 'spell' && e.p === 1) {
+          const id = e.id;
+          setFoeCast({ id, card: x.card });
+          window.setTimeout(() => setFoeCast((c) => (c?.id === id ? null : c)), FOE_CAST_MS);
+        }
         if (e.p === 0) hapticUseCard();
       }
       if (e.kind === 'reserve' && e.p === 0) playSelect();
@@ -1512,6 +1521,24 @@ export function Game({ level, deck, onExit }: { level: CpuLevel; deck: CardId[];
       {/* 溜め中の行動: 攻撃元から対象へ矢印、対象に縮んでいく照準。範囲の呪文は場ごと光らせる */}
       {tut !== null && !intro && !game.result && menu === null ? <Tutorial step={tut} onNext={() => setTut(1)} /> : null}
       {tip !== null && !intro && !game.result && menu === null ? <Tip id={tip} onClose={() => setTip(null)} /> : null}
+      <AnimatePresence>
+        {foeCast ? (
+          <motion.div
+            key={foeCast.id}
+            className="foe-cast"
+            aria-label={`相手の呪文: ${CARDS[foeCast.card].name}`}
+            initial={{ x: 40, opacity: 0, scale: 0.8 }}
+            animate={{ x: 0, opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, pointerEvents: 'none' }}
+            transition={{ type: 'spring', stiffness: 420, damping: 26 }}
+          >
+            <span className="foe-cast-face">
+              <CardFace card={foeCast.card} small />
+            </span>
+            <b>{CARDS[foeCast.card].name}</b>
+          </motion.div>
+        ) : null}
+      </AnimatePresence>
       <PendingMarks game={game} fieldMe={fieldRef.current} fieldFoe={foeFieldRef.current} />
 
       {/* 狙撃・呪文・砲撃の弾（尾を引く彗星。落石は上から落ちる） */}

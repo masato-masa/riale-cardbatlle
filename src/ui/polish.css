@@ -3452,3 +3452,33 @@ img.result-star.is-lit {
   font-weight: 800;
   line-height: 1;
 }
+
+/* 相手が使った呪文（右上、相手のコイン表示の上に少しのあいだ。相手の場のカードは隠さない） */
+.foe-cast {
+  position: absolute;
+  z-index: 44;
+  right: 4px;
+  top: 2px;
+  display: grid;
+  justify-items: center;
+  gap: 2px;
+  padding: 4px 4px 3px;
+  border: 2px solid #c86bff;
+  border-radius: 10px;
+  background: rgb(30 12 50 / 0.88);
+  box-shadow: 0 0 14px rgb(200 107 255 / 0.6);
+  pointer-events: none;
+}
+
+.foe-cast-face {
+  position: relative;
+  width: 44px;
+  aspect-ratio: 68 / 84;
+  container-type: inline-size;
+}
+
+.foe-cast b {
+  color: #fff;
+  font-size: 10px;
+  font-weight: 800;
+}
