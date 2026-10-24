@@ -101,6 +101,9 @@ export type CardId =
   | 'kleen'
   | 'kroda'
   | 'kdera'
+  | 'tmassa'
+  | 'tzarashi'
+  | 'tkisuke'
   | 'hunter'
   | 'slayer'
   | 'vampire'
@@ -258,6 +261,8 @@ export interface Abilities {
   clanArmor?: number;
   /** 場にほかの同じ一族が need 体以上いるとき、連撃 */
   clanDouble?: number;
+  /** 場にいる間、ほかの同じ一族の味方の攻撃力 +N（自分が倒れると消える） */
+  clanRally?: number;
   /** 妨害耐性: 妨害されても、クールタイムは増えない（足止めも受けない） */
   interfereImmune?: true;
   /** 狙い撃ち: ブロッカー・壁を無視して、好きな相手（プレイヤー・ユニット）を攻撃できる */
@@ -407,11 +412,14 @@ const EPITHET: Partial<Record<CardId, string>> = {
   monarch: '殉葬の王',
   riposte: '返し刃の騎士',
   avenger: '復讐の刃',
-  kboyan: 'K一族の長兵',
-  kvav: 'K一族の鼓手',
-  kleen: 'K一族の盾',
-  kroda: 'K一族の双刃',
-  kdera: 'K一族の砲手',
+  kboyan: 'T一族の長兵',
+  kvav: 'T一族の鼓手',
+  kleen: 'T一族の盾',
+  kroda: 'T一族の双刃',
+  kdera: 'T一族の砲手',
+  tmassa: 'T一族の城門',
+  tzarashi: 'T一族の旗手',
+  tkisuke: 'T一族の影',
   hunter: '賞金稼ぎ',
   slayer: '屠る者',
   vampire: '夜を渡る吸血鬼',
@@ -519,11 +527,14 @@ const FLAVOR: Partial<Record<CardId, string>> = {
   monarch: '我が身を捧げよう。国に、金貨の雨を。',
   riposte: '受け止めたなら、返すまでだ。',
   avenger: '止められるたび、刃は研がれる。',
-  kboyan: '一族が揃うとき、Kの刃は最も鋭い。',
-  kvav: 'さあ、Kの者ども！ 声を揃えろ！',
+  kboyan: '一族が揃うとき、Tの刃は最も鋭い。',
+  kvav: 'さあ、Tの者ども！ 声を揃えろ！',
   kleen: '兄弟が隣にいる。だから俺は倒れない。',
   kroda: '二人以上の仲間がいれば、剣は二度振るえる。',
   kdera: '一族の数だけ、砲は火を噴く。',
+  tmassa: '門は閉ざす。だが仲間が来れば、二度打つ。',
+  tzarashi: '旗を見ろ！ Tの者は、ひとりでは戦わない。',
+  tkisuke: '見えないうちに、一族の刃が届く。',
   hunter: '一人倒せば金貨二枚。実入りがいい。',
   slayer: '倒すたびに、血が力になる。',
   vampire: '敵の血は、いつだって温かい。',
@@ -683,11 +694,15 @@ export const CARDS: Record<CardId, CardDef> = {
   steadfast: unit('steadfast', 'エマ', 4, 3, 4, CD_STD, { interfereImmune: true, onCancelled: { kind: 'buff', atk: 1, hp: 1 } }),
   tactician: unit('tactician', 'ノエル', 3, 3, 3, CD_STD, { onOverwrite: { kind: 'buff', atk: 2, hp: 2 }, onReplaced: { kind: 'buffNew', atk: 1, hp: 1 } }),
   slayer: unit('slayer', 'グリム', 5, 5, 4, CD_STD, { onKill: { kind: 'buff', atk: 1, hp: 1 } }),
-  kboyan: unit('kboyan', 'Ｋ・ボヤン', 4, 3, 4, CD_FAST, { clan: 'K', clanAtk: 2 }),
-  kvav: unit('kvav', 'Ｋ・ヴァヴ', 3, 3, 3, CD_STD, { clan: 'K', onSummon: { kind: 'buffClan', atk: 1, hp: 1 } }),
-  kleen: unit('kleen', 'Ｋ・リーン', 2, 1, 4, CD_STD, { clan: 'K', blocker: true, clanArmor: 1 }),
-  kroda: unit('kroda', 'Ｋ・ローダ', 5, 4, 5, CD_SLOW, { clan: 'K', clanDouble: 2 }),
-  kdera: unit('kdera', 'Ｋ・デラ', 6, 5, 5, CD_SLOW, { clan: 'K', onSummon: { kind: 'clanBurst', per: 2 } }),
+  kboyan: unit('kboyan', 'Ｔ・ボヤン', 4, 3, 4, CD_FAST, { clan: 'T', clanAtk: 2 }),
+  kvav: unit('kvav', 'Ｔ・ヴァヴ', 3, 3, 3, CD_STD, { clan: 'T', onSummon: { kind: 'buffClan', atk: 1, hp: 1 } }),
+  kleen: unit('kleen', 'Ｔ・リーン', 2, 1, 4, CD_STD, { clan: 'T', blocker: true, clanArmor: 1 }),
+  kroda: unit('kroda', 'Ｔ・ローダ', 5, 4, 5, CD_SLOW, { clan: 'T', clanDouble: 2 }),
+  kdera: unit('kdera', 'Ｔ・デラ', 6, 5, 5, CD_SLOW, { clan: 'T', onSummon: { kind: 'clanBurst', per: 2 } }),
+  // T 一族の残り 3 枚。ほかの T 一族がいるときに強く、ひとりだと平均よりやや弱い
+  tmassa: unit('tmassa', 'Ｔ・マッサ', 6, 3, 7, CD_SLOW, { clan: 'T', blocker: true, clanDouble: 1 }),
+  tzarashi: unit('tzarashi', 'Ｔ・ザラシ', 4, 2, 3, CD_STD, { clan: 'T', clanRally: 2 }),
+  tkisuke: unit('tkisuke', 'Ｔ・キスケ', 3, 1, 3, CD_STD, { clan: 'T', stealth: true, clanAtk: 3 }),
   avenger: unit('avenger', 'ヴェラ', 4, 3, 4, CD_STD, { onCancelled: { kind: 'buff', atk: 2, hp: 0 } }),
   rain: spell('rain', '癒しの雨', 1, { kind: 'healAll', amount: 5 }),
   warcry: spell('warcry', '戦の号令', 2, { kind: 'buffAll', atk: 1, hp: 1 }),
@@ -711,7 +726,7 @@ export const RIVAL_DECKS: { name: string; deck: CardId[] }[] = [
   { name: '割り込み', deck: ['guard', 'shieldmaid', 'warder', 'diehard', 'ambusher', 'knight', 'oldguard', 'ambush'] },
   { name: '生贄', deck: ['offering', 'tactician', 'heir', 'footman', 'usurper', 'sniper', 'conqueror', 'knight'] },
   { name: '討伐', deck: ['herald', 'hunter', 'avenger', 'kdera', 'slayer', 'riposte', 'trickster', 'monarch'] },
-  { name: 'K一族', deck: ['kleen', 'kvav', 'kboyan', 'kroda', 'kdera', 'boss', 'avenger', 'captain'] },
+  { name: 'T一族', deck: ['kleen', 'kvav', 'kboyan', 'kroda', 'kdera', 'tmassa', 'tzarashi', 'tkisuke'] },
   { name: '封印', deck: ['informer', 'warder', 'binder', 'blockader', 'knight', 'stalwart', 'shieldmaid', 'quarry'] },
 ];
 
@@ -795,6 +810,7 @@ export function abilityLines(card: CardId): string[] {
   if (s?.kind === 'disarm') lines.push(`登場時：敵ユニット 1 体を ${s.ms / 1000} 秒間、攻撃不能にする`);
   if (a.clanAtk) lines.push(`場にほかの ${a.clan} 一族がいるとき：攻撃力 +${a.clanAtk}`);
   if (a.clanArmor) lines.push(`場にほかの ${a.clan} 一族がいるとき：受けるダメージ -${a.clanArmor}`);
+  if (a.clanRally) lines.push(`場にいる間：ほかの ${a.clan} 一族の攻撃力 +${a.clanRally}`);
   if (a.clanDouble) lines.push(`場にほかの ${a.clan} 一族が ${a.clanDouble} 体以上いるとき：連撃（1 回のクールタイムで 2 回攻撃）`);
   if (a.freeAim) lines.push('狙い撃ち（ブロッカー・壁を無視して、好きな相手を攻撃できる）');
   if (a.doubleStrike) lines.push('連撃（1 回のクールタイムで 2 回攻撃する）');

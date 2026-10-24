@@ -2740,3 +2740,8 @@
 .dk .collection-grid {
   gap: 22px 12px;
 }
+
+/* 名前は、下の隅の攻撃・HP の台座に隠れないよう 1 行ぶん上げる（場の自分のカードは下に台座がないので、そのまま） */
+.face:not(.is-flip) .face-name {
+  padding-bottom: 17cqw;
+}

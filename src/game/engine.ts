@@ -245,6 +245,8 @@ export function attackOf(player: PlayerState, unit: Unit): number {
   if (CARDS[unit.card].type !== 'unit') return 0;
   let rally = 0;
   for (const u of player.field) if (u && u.uid !== unit.uid) rally += abOf(u).rally ?? 0;
+  const myClan = abOf(unit).clan;
+  if (myClan) for (const u of player.field) if (u && u.uid !== unit.uid && abOf(u).clan === myClan) rally += abOf(u).clanRally ?? 0;
   const clan = clanOthers(player, unit) > 0 ? (abOf(unit).clanAtk ?? 0) : 0;
   return CARDS[unit.card].atk + rally + clan + (unit.atkBuff ?? 0);
 }

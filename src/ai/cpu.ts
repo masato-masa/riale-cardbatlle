@@ -105,6 +105,7 @@ function worth(card: CardId, hp: number, atk: number, allies: number, barrier: b
   // 一族の条件つき（そろえば強い。そろう見込みを半分見る）
   if (ab.clanAtk) v += ab.clanAtk * 0.7 * rate * 0.6;
   if (ab.clanArmor) v += ab.clanArmor * 0.6;
+  if (ab.clanRally) v += ab.clanRally * 0.8;
   if (ab.clanDouble) v += atk * 0.9 * rate * 0.45;
   if (ab.lifesteal) v += 1.0;
   if (ab.venom) v += ab.venom * 0.6;
