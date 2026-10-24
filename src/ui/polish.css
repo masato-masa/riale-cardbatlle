@@ -3423,3 +3423,23 @@ img.result-star.is-lit {
   font-size: 11px;
   text-decoration: underline;
 }
+
+/* 設定: なまえ */
+.name-input {
+  width: 9.5em;
+  min-width: 0;
+  height: 34px;
+  padding: 0 10px;
+  border: 2px solid var(--gold-2, #f2c14e);
+  border-radius: 10px;
+  background: rgb(10 6 30 / 0.7);
+  color: #fff;
+  font: inherit;
+  font-size: 16px; /* 16px 未満だと iOS が入力時に拡大する */
+  font-weight: 800;
+  text-align: right;
+}
+
+.name-input::placeholder {
+  color: rgb(233 225 255 / 0.4);
+}

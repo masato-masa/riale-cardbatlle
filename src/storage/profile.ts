@@ -68,6 +68,32 @@ export function saveLevel(level: CpuLevel): void {
   }
 }
 
+const NAME_KEY = 'riale-cardbatlle:name';
+/** 名前の最大の長さ（盤面の帯に収まる長さ）。 */
+export const NAME_MAX = 8;
+
+/** 自分の名前（設定で変えられる。空なら「あなた」）。 */
+export function loadName(): string {
+  try {
+    const v = (localStorage.getItem(NAME_KEY) ?? '').trim().slice(0, NAME_MAX);
+    return v || 'あなた';
+  } catch {
+    return 'あなた';
+  }
+}
+
+export function saveName(name: string): void {
+  try {
+    const v = name.trim().slice(0, NAME_MAX);
+    if (v) localStorage.setItem(NAME_KEY, v);
+    else localStorage.removeItem(NAME_KEY);
+  } catch {
+    // 保存できなくても遊べる
+  }
+  // ホームなど、開いている画面に知らせる
+  window.dispatchEvent(new Event('riale:name'));
+}
+
 const TUTORIAL_KEY = 'riale-cardbatlle:tutorial';
 
 /** 初回の遊びかた案内を終えたか。 */

@@ -1,10 +1,10 @@
 import { AnimatePresence } from 'motion/react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 import type { CpuLevel } from '@/ai/cpu';
 import type { CardId } from '@/game/cards';
 import { CHEST_POINTS, isUnlockAll, loadPoints, loadUnlocked, pickReward, setUnlockAll } from '@/storage/collection';
-import { loadLevel, loadRecord, saveLevel } from '@/storage/profile';
+import { loadLevel, loadName, loadRecord, saveLevel } from '@/storage/profile';
 import { CARDS } from '@/game/cards';
 import { loadDaily, MISSIONS } from '@/storage/daily';
 import { loadHistory, suggestLevel, summarize } from '@/storage/history';
@@ -25,6 +25,12 @@ const LEVELS: { id: CpuLevel; label: string }[] = [
 /** ホーム（クラロワ型）。上=自分の札、中央=ロゴとデッキ、下=難易度・大きな「バトル」・タブ。 */
 export function Home({ deck, onStart, onDeck }: { deck: CardId[]; onStart: (level: CpuLevel) => void; onDeck: () => void }) {
   const [level, setLevel] = useState<CpuLevel>(loadLevel);
+  const [name, setName] = useState(loadName);
+  useEffect(() => {
+    const on = () => setName(loadName());
+    window.addEventListener('riale:name', on);
+    return () => window.removeEventListener('riale:name', on);
+  }, []);
   const record = loadRecord();
   const trophies = loadTrophies();
   const ai = arenaIndex(trophies);
@@ -251,7 +257,7 @@ export function Home({ deck, onStart, onDeck }: { deck: CardId[]; onStart: (leve
             <img src={HERO_ME_URL} alt="" draggable={false} />
           </span>
           <span className="ts-name">
-            <b>あなた</b>
+            <b>{name}</b>
             <small>
               {record.win} 勝 {record.lose} 敗{record.streak >= 2 ? ` ・ ${record.streak} 連勝中` : ''}
             </small>

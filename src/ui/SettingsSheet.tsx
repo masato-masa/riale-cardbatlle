@@ -9,7 +9,7 @@ import {
   setHapticsEnabled,
   setSoundEnabled,
 } from './settings';
-import { resetTutorial } from '@/storage/profile';
+import { loadName, NAME_MAX, resetTutorial, saveName } from '@/storage/profile';
 import { Sheet } from './Sheets';
 import { getKit, setKit } from './samples';
 import { playVoice, playUiTap } from './sound';
@@ -29,9 +29,24 @@ export function SettingsSheet({ onClose, onDev }: { onClose: () => void; onDev?:
   const [haptics, setHaptics] = useState(isHapticsEnabled());
   const [kit, setKitState] = useState(getKit());
   const [tutAgain, setTutAgain] = useState(false);
+  const [name, setName] = useState(() => (loadName() === 'あなた' ? '' : loadName()));
   return (
     <Sheet title="設定" onClose={onClose}>
       <div className="sheet-list">
+        <label className="sheet-row static name-row">
+          <span>なまえ</span>
+          <input
+            className="name-input"
+            value={name}
+            maxLength={NAME_MAX}
+            placeholder="あなた"
+            enterKeyHint="done"
+            onChange={(e) => {
+              setName(e.target.value);
+              saveName(e.target.value);
+            }}
+          />
+        </label>
         <Row
           label="効果音"
           on={sound}

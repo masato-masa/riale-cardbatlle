@@ -33,7 +33,7 @@ import {
 } from '@/game/engine';
 import { makeRng } from '@/game/rng';
 import { awardMatch, CHEST_POINTS, type MatchReward } from '@/storage/collection';
-import { addResult, isTutorialDone, loadRecord, markTip, seenTips, setTutorialDone } from '@/storage/profile';
+import { addResult, isTutorialDone, loadName, loadRecord, markTip, seenTips, setTutorialDone } from '@/storage/profile';
 import { hintsFor, type Hint } from '@/game/hints';
 import { MISSIONS, recordDaily, type MissionId } from '@/storage/daily';
 import { pushHistory } from '@/storage/history';
@@ -263,6 +263,7 @@ export function Game({ level, deck, onExit }: { level: CpuLevel; deck: CardId[];
   const [missionsDone, setMissionsDone] = useState<MissionId[]>([]);
   /** 連勝ボーナスが付いたときの連勝数（付かなければ 0）。 */
   const [streakBonus, setStreakBonus] = useState(0);
+  const [myName] = useState(loadName);
   /** デイリーミッション用の、この試合の記録（自分の行動）。 */
   const freshStats = () => ({ summons: 0, interrupts: 0, spells: 0, faceDamage: 0, myAttacksBlocked: 0, interruptChances: 0, faceTaken: 0, reserves: 0, overwrites: 0, buildings: 0, coinCapMs: 0, lastTime: 0, played: {} as Partial<Record<CardId, number>> });
   const statsRef = useRef(freshStats());
@@ -1389,7 +1390,7 @@ export function Game({ level, deck, onExit }: { level: CpuLevel; deck: CardId[];
             {fieldRow(0)}
           </div>
           <div className="hero hero-me" data-player={0}>
-            <HeroBadge hp={me.hp} label="あなた" portrait={HERO_ME_URL} />
+            <HeroBadge hp={me.hp} label={myName} portrait={HERO_ME_URL} />
           </div>
           <button
             className="menu-btn"
@@ -1597,7 +1598,7 @@ export function Game({ level, deck, onExit }: { level: CpuLevel; deck: CardId[];
                 <span className="intro-medal">
                   <img src={HERO_ME_URL} alt="" draggable={false} />
                 </span>
-                <b>あなた</b>
+                <b>{myName}</b>
               </motion.div>
               <motion.span
                 className="intro-vs"
