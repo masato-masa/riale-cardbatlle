@@ -63,6 +63,8 @@ const FOE_KEY: Record<string, string> = {
   封印: 'seal',
   城塞: 'fortress',
   呪術: 'sorcerer',
+  死霊: 'necro',
+  聖騎士: 'paladin',
 };
 export function foePortrait(deckName: string): string {
   const key = FOE_KEY[deckName];

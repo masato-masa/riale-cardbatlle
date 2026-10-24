@@ -732,6 +732,10 @@ export const RIVAL_DECKS: { name: string; deck: CardId[] }[] = [
   { name: '城塞', deck: ['recruit', 'guard', 'fortress', 'forge', 'champion', 'ogre', 'stalwart', 'taxman'] },
   // 投石・大地割り・戦の号令の呪文 3 枚で場を崩して押す
   { name: '呪術', deck: ['guard', 'shieldmaid', 'quarry', 'quake', 'warcry', 'captain', 'veteran', 'taxman'] },
+  // 倒れて仲間を強くする（ネメア）・吸血で粘る。ハッカ（倒れると敵全員に毒）を入れると hard 相手に 80〜98% になったので外した
+  { name: '死霊', deck: ['martyr', 'bloodknight', 'warden', 'shieldmaid', 'recruit', 'herald', 'veteran', 'knight'] },
+  // 回復と強化、ブロッカー 3 枚で守り抜く
+  { name: '聖騎士', deck: ['priest', 'bard', 'guard', 'warder', 'shieldmaid', 'knight', 'veteran', 'herald'] },
 ];
 
 export function isBlocker(card: CardId): boolean {
