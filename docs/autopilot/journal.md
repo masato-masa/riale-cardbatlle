@@ -370,3 +370,7 @@
 ## 2026-10-24 動きを減らす設定への配慮（タグ autopilot/063-before-reduced-motion、公開済み）
 
 - prefers-reduced-motion: reduce のとき、画面の揺れ（shake）をしない。瀕死の縁の脈動・HP 札の点滅・勝利の紙吹雪も止める（ホームの浮遊は前に対応済み）。
+
+## 2026-10-24 ホーム画面に追加（タグ autopilot/064-before-pwa、公開済み）
+
+- manifest.webmanifest（全画面・縦向き・テーマ色）、アプリのアイコン（アリーナの紋章の絵を紫の地に、192/512/180/64px、public/）、apple の全画面用の meta。スマホで「ホーム画面に追加」するとアドレスバー無しの全画面で起動する（クラロワのようなアプリの見え方）。オフライン対応（Service Worker）は入れていない。
