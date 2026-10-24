@@ -13,7 +13,6 @@
 
 | # | 領域 | 項目 | 完了の目安 |
 |---|---|---|---|
-| 6 | 性能 | 【権限待ち: ffmpeg-static の導入が自動承認で拒否された】BGM 2 曲で約 9MB（home 4.9MB・battle 4.3MB）。スマホの通信量と初回の読み込みが重い。再エンコード（96kbps 程度）で半分以下に。※ffmpeg が無いので ffmpeg-static などの導入が要る | 2 曲で 4MB 以下 |
 | 11 | 音 | 効果音・BGM の追加（アリーナごとの BGM）。※録音のみ。素材待ち | 素材が揃ってから |
 | 12 | 素材 | T一族 3 枚の絵（tmassa/tzarashi/tkisuke）。ユーザーが art-src/ に置く | slice-cards.mjs で取り込み |
 
