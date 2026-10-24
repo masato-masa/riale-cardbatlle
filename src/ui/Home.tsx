@@ -13,7 +13,8 @@ import { ARENAS, arenaIndex, loadArenaSeen, loadTrophies, saveArenaSeen } from '
 import { ARENA_FLOOR_URLS, CHEST_URL, COIN_URL, foePersona, foePortrait, HERO_ME_URL, ICON_URL } from './art';
 import { CardFace } from './CardFace';
 import { Sheet } from './Sheets';
-import { playUiTap, primeAudio } from './sound';
+import { getKit, setKit } from './samples';
+import { playUiTap, playVoice, primeAudio } from './sound';
 import { TabBar } from './TabBar';
 
 const LEVELS: { id: CpuLevel; label: string }[] = [
@@ -54,6 +55,7 @@ export function Home({ deck, onStart, onDeck }: { deck: CardId[]; onStart: (leve
   const daily = loadDaily();
   const dailyDone = daily.missions.filter((id) => (daily.progress[id] ?? 0) >= MISSIONS[id].goal).length;
   const [allOn, setAllOn] = useState(isUnlockAll);
+  const [kit, setKitState] = useState(getKit);
   const pick = (l: CpuLevel) => {
     playUiTap();
     saveLevel(l);
@@ -232,6 +234,25 @@ export function Home({ deck, onStart, onDeck }: { deck: CardId[]; onStart: (leve
                     playUiTap();
                   }}
                 />
+              </div>
+              <div className="sheet-row static">
+                <span>効果音の種類</span>
+                <span className="kit-pick">
+                  {[1, 2, 3, 4].map((n) => (
+                    <button
+                      key={n}
+                      className={`kit-btn${kit === n ? ' is-on' : ''}`}
+                      aria-pressed={kit === n}
+                      onClick={() => {
+                        setKit(n);
+                        setKitState(n);
+                        playVoice('summonSmall');
+                      }}
+                    >
+                      {'ABCD'[n - 1]}
+                    </button>
+                  ))}
+                </span>
               </div>
               <button
                 className="sheet-row"
