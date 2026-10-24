@@ -71,21 +71,21 @@ describe('Ｔ一族', () => {
     s = step(withHand(s, ['kdera']), { type: 'summon', p: 0, handIndex: 0, slot: 2 });
     expect(s.players[1].hp).toBe(PLAYER_HP - 6);
   });
-  it('ザラシ: 場にいる間、ほかの T 一族の攻撃力 +2。自分には効かず、いなくなれば消える', () => {
+  it('ザラシ: 場にいる間、ほかの T 一族の攻撃力 +1。自分には効かず、いなくなれば消える', () => {
     let [s, b] = place(fresh(), 0, 0, 'kboyan');
     let z: Unit;
     [s, z] = place(s, 0, 1, 'tzarashi');
-    expect(attackOf(s.players[0], unitOf(s, 0, b.uid)!)).toBe(CARDS.kboyan.atk + 2 + 2); // 一族がいる +2、ザラシの鼓舞 +2
+    expect(attackOf(s.players[0], unitOf(s, 0, b.uid)!)).toBe(CARDS.kboyan.atk + 2 + 1); // 一族がいる +2、ザラシの鼓舞 +1
     expect(attackOf(s.players[0], unitOf(s, 0, z.uid)!)).toBe(CARDS.tzarashi.atk);
     const [t, r] = place(fresh(), 0, 0, 'recruit');
     const [u] = place(t, 0, 1, 'tzarashi');
     expect(attackOf(u.players[0], unitOf(u, 0, r.uid)!)).toBe(CARDS.recruit.atk); // 一族でないカードには効かない
   });
-  it('キスケ: ステルス。ほかの T 一族がいるときだけ攻撃力 +3', () => {
+  it('キスケ: ステルス。ほかの T 一族がいるときだけ攻撃力 +2', () => {
     let [s, k] = place(fresh(), 0, 0, 'tkisuke');
     expect(attackOf(s.players[0], k)).toBe(CARDS.tkisuke.atk);
     [s] = place(s, 0, 1, 'kleen');
-    expect(attackOf(s.players[0], unitOf(s, 0, k.uid)!)).toBe(CARDS.tkisuke.atk + 3);
+    expect(attackOf(s.players[0], unitOf(s, 0, k.uid)!)).toBe(CARDS.tkisuke.atk + 2);
     expect(CARDS.tkisuke.ab.stealth).toBe(true);
   });
   it('マッサ: ブロッカー。ほかの T 一族が 1 体以上いるときだけ連撃', () => {
