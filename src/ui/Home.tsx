@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 
 import type { CpuLevel } from '@/ai/cpu';
 import type { CardId } from '@/game/cards';
-import { CHEST_POINTS, isUnlockAll, loadPoints, loadUnlocked, pickReward, setUnlockAll } from '@/storage/collection';
+import { CHEST_POINTS, isUnlockAll, loadNew, loadPoints, loadUnlocked, pickReward, setUnlockAll } from '@/storage/collection';
 import { loadLevel, loadName, loadRecord, saveLevel } from '@/storage/profile';
 import { CARDS } from '@/game/cards';
 import { loadDaily, MISSIONS } from '@/storage/daily';
@@ -400,7 +400,7 @@ export function Home({ deck, onStart, onDeck }: { deck: CardId[]; onStart: (leve
         <button className="ts-battle" onClick={start}>
           <span>バトル！</span>
         </button>
-        <TabBar active="battle" onDeck={onDeck} onBattle={() => undefined} onDev={() => setDev(true)} />
+        <TabBar active="battle" onDeck={onDeck} onBattle={() => undefined} onDev={() => setDev(true)} deckBadge={loadNew().size > 0} />
       </footer>
     </div>
   );

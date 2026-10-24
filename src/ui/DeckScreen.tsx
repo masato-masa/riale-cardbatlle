@@ -2,7 +2,7 @@ import { AnimatePresence, motion } from 'motion/react';
 import { useMemo, useRef, useState } from 'react';
 
 import { CARDS, RIVAL_DECKS, STARTER_DECK, TYPE_NAME, type CardId, type CardType } from '@/game/cards';
-import { loadUnlocked } from '@/storage/collection';
+import { loadNew, loadUnlocked, markSeen } from '@/storage/collection';
 import { ARENAS, arenaForCost, arenaIndex, loadTrophies } from '@/storage/trophy';
 import { applyPreset, averageCost, COLLECTION, DECK_SLOTS, deckCode, loadBook, parseDeckCode, saveBook, saveDeck } from '@/storage/deck';
 
@@ -44,6 +44,8 @@ function byCost(ids: CardId[]): CardId[] {
 export function DeckScreen({ deck, onChange, onBack }: { deck: CardId[]; onChange: (deck: CardId[]) => void; onBack: () => void }) {
   const [open, setOpen] = useState<{ card: CardId; inDeck: boolean; locked?: boolean } | null>(null);
   const unlocked = useMemo(() => loadUnlocked(), []);
+  /** 手に入れたばかりで、まだ説明を開いていないカード（「NEW」の印）。 */
+  const [fresh, setFresh] = useState(loadNew);
   const myArena = useMemo(() => arenaIndex(loadTrophies()), []);
   /** 鍵カードがまだ出ないアリーナなら、その名前（いまのアリーナで出るなら null）。 */
   const unlockArena = (id: CardId): string | null => {
@@ -244,9 +246,14 @@ export function DeckScreen({ deck, onChange, onBack }: { deck: CardId[]; onChang
                       playUiTap();
                       setSwapIn(null);
                       setOpen({ card: id, inDeck: false });
+                      if (fresh.has(id)) {
+                        markSeen(id);
+                        setFresh(loadNew());
+                      }
                     }}
                   >
                     <CardFace card={id} />
+                    {fresh.has(id) ? <span className="new-badge">NEW</span> : null}
                   </motion.button>
                 ))}
               </div>

@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 
-import { awardMatch, loadPoints, loadUnlocked, pickReward, START_CARDS } from '../src/storage/collection';
+import { awardMatch, loadNew, loadPoints, loadUnlocked, markSeen, pickReward, START_CARDS } from '../src/storage/collection';
 
 class MemStorage {
   private m = new Map<string, string>();
@@ -31,6 +31,13 @@ describe('カードの解放', () => {
     expect(awardMatch(1, () => 0.5).cards.length).toBe(0);
     expect(loadPoints()).toBe(1);
     expect(awardMatch(1, () => 0.5).cards.length).toBe(1);
+  });
+  it('宝箱から出たカードには NEW の印が付き、説明を開くと外れる', () => {
+    const r = awardMatch(0, () => 0.1);
+    const id = r.cards[0]!;
+    expect(loadNew().has(id)).toBe(true);
+    markSeen(id);
+    expect(loadNew().has(id)).toBe(false);
   });
   it('全部持っていれば何も出ない', () => {
     (globalThis as unknown as { location: { search: string } }).location = { search: '?unlockall' };

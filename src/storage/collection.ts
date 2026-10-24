@@ -8,6 +8,7 @@ import { ARENAS, arenaIndex, loadTrophies } from './trophy';
 
 const UNLOCK_KEY = 'riale-cardbatlle:unlocked';
 const POINTS_KEY = 'riale-cardbatlle:points';
+const NEW_KEY = 'riale-cardbatlle:new';
 
 /** 点がここまでたまると宝箱が 1 つ開く。 */
 export const CHEST_POINTS = 2;
@@ -96,6 +97,30 @@ export function pickReward(unlocked: Set<CardId>, rand: () => number, cap = Infi
   return locked[locked.length - 1]!;
 }
 
+/** 手に入れて、まだデッキ画面で見ていないカード（「NEW」の印）。 */
+export function loadNew(): Set<CardId> {
+  try {
+    const list: unknown = JSON.parse(localStorage.getItem(NEW_KEY) ?? '[]');
+    return new Set(Array.isArray(list) ? list.filter((id): id is CardId => typeof id === 'string' && ALL.includes(id as CardId)) : []);
+  } catch {
+    return new Set();
+  }
+}
+
+function saveNew(set: Set<CardId>): void {
+  try {
+    localStorage.setItem(NEW_KEY, JSON.stringify([...set]));
+  } catch {
+    // 保存できなくても遊べる
+  }
+}
+
+/** 「NEW」の印を外す（カードの説明を開いたとき）。 */
+export function markSeen(id: CardId): void {
+  const set = loadNew();
+  if (set.delete(id)) saveNew(set);
+}
+
 export interface MatchReward {
   /** この試合で得た点。 */
   gained: number;
@@ -120,6 +145,7 @@ export function awardMatch(winner: 0 | 1 | null, rand: () => number = Math.rando
     }
   }
   if (!unlockAllByUrl()) saveUnlocked(unlocked);
+  if (cards.length > 0) saveNew(new Set([...loadNew(), ...cards]));
   try {
     localStorage.setItem(POINTS_KEY, String(total));
   } catch {

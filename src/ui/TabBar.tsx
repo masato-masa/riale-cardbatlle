@@ -11,7 +11,7 @@ const icon = (src: string) => <img src={src} alt="" draggable={false} />;
 
 /** 画面下のタブ（クラロワ型）。選んでいるタブは持ち上がって明るくなる。設定はここから開く。 */
 /** onDev を渡すと、設定の一番下に「テスト用」（開発者メニュー）を出す。 */
-export function TabBar({ active, onDeck, onBattle, onDev }: { active: Tab; onDeck: () => void; onBattle: () => void; onDev?: () => void }) {
+export function TabBar({ active, onDeck, onBattle, onDev, deckBadge }: { active: Tab; onDeck: () => void; onBattle: () => void; onDev?: () => void; deckBadge?: boolean }) {
   const [settings, setSettings] = useState(false);
   const tab = (id: string, label: string, icon: ReactNode, on: boolean, go: () => void) => (
     <button
@@ -24,6 +24,7 @@ export function TabBar({ active, onDeck, onBattle, onDev }: { active: Tab; onDec
       }}
     >
       <span className="tab-icon">{icon}</span>
+      {id === 'deck' && deckBadge ? <span className="tab-dot" aria-label="新しいカード" /> : null}
       <span className="tab-label">{label}</span>
     </button>
   );
