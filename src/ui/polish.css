@@ -3551,3 +3551,22 @@ img.result-star.is-lit {
   min-height: 0;
   overflow-y: auto;
 }
+
+/* 設定: ホーム画面に追加の案内 */
+.install-row {
+  display: grid;
+  gap: 6px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: rgb(255 216 74 / 0.1);
+  box-shadow: inset 0 0 0 1.5px rgb(246 197 72 / 0.45);
+  color: #e9e1ff;
+  font-size: 12px;
+  font-weight: 700;
+  text-align: center;
+}
+
+.install-row small {
+  color: var(--gold-1);
+  font-size: 12px;
+}

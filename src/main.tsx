@@ -3,6 +3,8 @@ import { createRoot } from 'react-dom/client';
 import { MotionConfig } from 'motion/react';
 
 import { App } from './App';
+// ホーム画面に追加の合図（beforeinstallprompt）は読み込み直後に来るので、最初に聞き始める
+import './ui/install';
 
 // 端末の「動きを減らす」設定に、アプリ全体で従う。
 // reducedMotion="user" は transform と opacity の動きだけを止め、

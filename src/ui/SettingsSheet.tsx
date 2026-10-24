@@ -11,6 +11,7 @@ import {
 } from './settings';
 import { loadName, NAME_MAX, resetTutorial, saveName } from '@/storage/profile';
 import { Sheet } from './Sheets';
+import { canPromptInstall, isIos, isStandalone, promptInstall } from './install';
 import { playUiTap } from './sound';
 
 function Row({ label, on, onToggle }: { label: string; on: boolean; onToggle: () => void }) {
@@ -27,6 +28,8 @@ export function SettingsSheet({ onClose, onDev }: { onClose: () => void; onDev?:
   const [bgm, setBgm] = useState(isBgmEnabled());
   const [haptics, setHaptics] = useState(isHapticsEnabled());
   const [tutAgain, setTutAgain] = useState(false);
+  const [canInstall, setCanInstall] = useState(canPromptInstall);
+  const showInstall = !isStandalone() && (canInstall || isIos());
   const [name, setName] = useState(() => (loadName() === 'あなた' ? '' : loadName()));
   return (
     <Sheet title="設定" onClose={onClose}>
@@ -89,6 +92,24 @@ export function SettingsSheet({ onClose, onDev }: { onClose: () => void; onDev?:
           </button>
         </div>
       </div>
+      {showInstall ? (
+        <div className="install-row">
+          <span>ホーム画面に追加すると、アプリのように全画面で遊べます。</span>
+          {canInstall ? (
+            <button
+              className="sheet-btn quiet"
+              onClick={() => {
+                playUiTap();
+                void promptInstall().then(() => setCanInstall(false));
+              }}
+            >
+              ホーム画面に追加
+            </button>
+          ) : (
+            <small>Safari の共有ボタン（□↑）→「ホーム画面に追加」</small>
+          )}
+        </div>
+      ) : null}
       <button className="sheet-btn" onClick={onClose}>
         とじる
       </button>
