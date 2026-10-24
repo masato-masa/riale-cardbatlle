@@ -558,10 +558,14 @@ body {
   }
 }
 
-@media (max-height: 740px) {
+/* デッキ一覧は高さ 1000px 以上（タブレット）だけ。812〜900px のスマホでも中身が 945px あり、タブが画面外に出ていた */
+@media (max-height: 999px) {
   .ts-deck {
     display: none;
   }
+}
+
+@media (max-height: 740px) {
 
   .ts-battle {
     height: 66px;
