@@ -26,6 +26,12 @@ export const ARENAS: Arena[] = [
   { name: '伝説の頂', from: 1800, pool: RIVAL_DECKS.map((d) => d.name), tint: 'hue-rotate(-10deg) saturate(1.45) contrast(1.08) brightness(1.06)', cardCap: 10 },
 ];
 
+/** そのコストのカードが宝箱から出始めるアリーナ。 */
+export function arenaForCost(cost: number): number {
+  const i = ARENAS.findIndex((a) => a.cardCap >= cost);
+  return i < 0 ? ARENAS.length - 1 : i;
+}
+
 export function arenaIndex(trophies: number): number {
   let i = 0;
   ARENAS.forEach((a, k) => {
