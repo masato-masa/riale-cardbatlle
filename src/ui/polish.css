@@ -3150,3 +3150,14 @@ img.result-star.is-lit {
   border-radius: 2px 2px 0 0;
   background: linear-gradient(#fff3b8, #f9c933 50%, #d79a06);
 }
+
+.deck-hint {
+  margin: 8px 0 0;
+  padding: 6px 10px;
+  border-radius: 10px;
+  background: rgb(229 72 77 / 0.2);
+  border: 1px solid rgb(255 143 148 / 0.6);
+  color: #ffd6d8;
+  font-size: 12px;
+  font-weight: 700;
+}

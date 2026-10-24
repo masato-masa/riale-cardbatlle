@@ -193,6 +193,8 @@ export function DeckScreen({ deck, onChange, onBack }: { deck: CardId[]; onChang
               </motion.button>
             ))}
           </div>
+          {/* デッキの弱点の一言（ブロッカーが無いと割り込みも守りもできない） */}
+          {!deck.some((c) => CARDS[c].ab.blocker) ? <p className="deck-hint">ブロッカーが 0 枚です。相手の攻撃に割り込めず、プレイヤーを守れません。</p> : null}
         </section>
 
         <div className="band-chips" role="tablist" aria-label="コストで絞る">
