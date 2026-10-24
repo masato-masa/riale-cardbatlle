@@ -3645,3 +3645,9 @@ img.result-star.is-lit {
   padding: 10px 12px calc(10px + env(safe-area-inset-bottom));
   background: linear-gradient(rgb(28 18 60 / 0), rgb(28 18 60 / 0.95) 30%);
 }
+
+/* デッキ画面の絞り込みは hidden で切り替える（display を持つクラスより強く消す） */
+.deck-card[hidden],
+.collection[hidden] {
+  display: none !important;
+}

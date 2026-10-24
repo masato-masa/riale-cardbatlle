@@ -91,8 +91,9 @@ export function DeckScreen({ deck, onChange, onBack }: { deck: CardId[]; onChang
     const c = CARDS[id].summon;
     return band === 0 || (band === 1 && c <= 2) || (band === 2 && c >= 3 && c <= 4) || (band === 3 && c >= 5 && c <= 6) || (band === 4 && c >= 7);
   };
-  const rest = sorted(COLLECTION.filter((id) => !deck.includes(id) && unlocked.has(id) && inBand(id)));
-  const lockedList = sorted(COLLECTION.filter((id) => !unlocked.has(id) && inBand(id)));
+  // 絞り込みはカードを作り直さず、表示だけを切り替える（hidden）。作り直すと「すべて」に戻すたびに 90 枚を描き直し、CPU 4 倍遅で 1 フレーム 711ms 止まった
+  const rest = sorted(COLLECTION.filter((id) => !deck.includes(id) && unlocked.has(id)));
+  const lockedList = sorted(COLLECTION.filter((id) => !unlocked.has(id)));
   const deckView = byCost(deck);
 
   /** 一覧のカード incoming を、デッキのカード out と入れ替える。 */
@@ -237,13 +238,14 @@ export function DeckScreen({ deck, onChange, onBack }: { deck: CardId[]; onChang
           const list = rest.filter((id) => CARDS[id].type === type);
           if (list.length === 0) return null;
           return (
-            <section key={type} className="collection">
+            <section key={type} className="collection" hidden={!list.some(inBand)}>
               <h2 className="collection-title">{TYPE_NAME[type]}</h2>
               <div className="collection-grid">
                 {list.map((id) => (
-                  // 一覧（最大 100 枚以上）には並べ替えの動き（layout）を付けない。絞り込みのたびに全カードの位置を測り直し、CPU 4 倍遅で 1 フレーム 711ms 止まった
+                  // 一覧（最大 100 枚以上）には並べ替えの動き（layout）を付けない。絞り込みのたびに全カードの位置を測り直していた
                   <motion.button
                     key={id}
+                    hidden={!inBand(id)}
                     className={`deck-card${swapIn === id ? ' is-picked' : ''}`}
                     onClick={() => {
                       playUiTap();
@@ -264,7 +266,7 @@ export function DeckScreen({ deck, onChange, onBack }: { deck: CardId[]; onChang
           );
         })}
 
-        {lockedList.length > 0 ? (
+        {lockedList.some(inBand) ? (
           <section className="collection is-locked-section">
             <button
               className="collection-title locked-toggle"
@@ -281,6 +283,7 @@ export function DeckScreen({ deck, onChange, onBack }: { deck: CardId[]; onChang
               {lockedList.map((id) => (
                 <button
                   key={id}
+                  hidden={!inBand(id)}
                   className="deck-card is-locked"
                   onClick={() => {
                     playUiTap();
