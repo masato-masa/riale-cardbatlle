@@ -204,7 +204,7 @@ export type Pulse =
   | { everyMs: number; kind: 'snipe'; amount: number }
   /** 自分（プレイヤー）の HP を回復。味方ユニット 1 体の回復は 3 枠の盤面ではすぐ倒れて効かなかった（hard で 23%） */
   | { everyMs: number; kind: 'heal'; amount: number }
-  /** 敵ユニット 1 体（攻撃力が最も高い）に毒を重ねる */
+  /** 毒の無い敵ユニットのうち、攻撃力が最も高い 1 体に毒（毒は重ならない） */
   | { everyMs: number; kind: 'poison'; amount: number }
   /** 味方ユニット 1 体（攻撃力が最も低い）の攻撃力を上げる */
   | { everyMs: number; kind: 'buff'; atk: number };
@@ -862,7 +862,7 @@ export function abilityLines(card: CardId): string[] {
   if (p?.kind === 'token') lines.push(`${p.everyMs / 1000} 秒ごと：空いている枠に志願兵を出す`);
   if (p?.kind === 'snipe') lines.push(`${p.everyMs / 1000} 秒ごと：HP がいちばん低い敵カードに ${p.amount} ダメージ`);
   if (p?.kind === 'heal') lines.push(`${p.everyMs / 1000} 秒ごと：自分の HP を ${p.amount} 回復`);
-  if (p?.kind === 'poison') lines.push(`${p.everyMs / 1000} 秒ごと：攻撃力がいちばん高い敵ユニットに毒を与える`);
+  if (p?.kind === 'poison') lines.push(`${p.everyMs / 1000} 秒ごと：毒の無い敵ユニットのうち、攻撃力がいちばん高いものに毒を与える`);
   if (p?.kind === 'buff') lines.push(`${p.everyMs / 1000} 秒ごと：攻撃力がいちばん低い味方ユニットの攻撃力 +${p.atk}`);
   if (a.faceBonus) lines.push(`敵プレイヤーへのダメージ +${a.faceBonus}`);
   if (a.unitBonus) lines.push(`攻撃時：敵カードへのダメージ +${a.unitBonus}`);
