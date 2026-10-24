@@ -2,6 +2,7 @@ import { abilityLines, CARDS, KEYWORDS, STATUS_NOTES, TYPE_NAME, usageNote, WALL
 import { PLAYER_ATK, PLAYER_HP } from '@/game/rules';
 
 import { cardArt } from './art';
+import heartUrl from '../assets/art/ui/state-diehard.webp';
 import { CardFace } from './CardFace';
 
 /** 説明の中のキーワード（基本能力・状態の名前）と、時機の見出し（登場時・攻撃時・N 秒ごと など、「：」の前）を黄色にする。 */
@@ -116,16 +117,7 @@ export function BackIcon() {
   );
 }
 
+/** HP のハート（ChatGPT 製の状態アイコンの赤いハート）。 */
 function HeartMark() {
-  return (
-    <svg viewBox="0 0 24 24" aria-hidden="true">
-      <path
-        d="M12 20.5 C5 15.5 2.5 12 2.5 8.5 C2.5 5.6 4.8 3.5 7.5 3.5 C9.4 3.5 11 4.6 12 6.2 C13 4.6 14.6 3.5 16.5 3.5 C19.2 3.5 21.5 5.6 21.5 8.5 C21.5 12 19 15.5 12 20.5 Z"
-        fill="#e5484d"
-        stroke="#0b1520"
-        strokeWidth="1.8"
-        strokeLinejoin="round"
-      />
-    </svg>
-  );
+  return <img className="heart-mark" src={heartUrl} alt="" draggable={false} />;
 }

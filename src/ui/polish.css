@@ -3125,3 +3125,11 @@ img.result-star.is-lit {
   width: 100%;
   filter: drop-shadow(0 1px 2px rgb(0 0 0 / 0.6));
 }
+
+/* プレイヤーの HP のハートは絵（状態アイコンの赤いハート） */
+.hero-hp .heart-mark {
+  width: 22px;
+  height: 22px;
+  object-fit: contain;
+  filter: drop-shadow(0 1px 1px rgb(0 0 0 / 0.6));
+}
