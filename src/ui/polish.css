@@ -3612,3 +3612,20 @@ img.result-star.is-lit {
   background: linear-gradient(#5ad1ff, #2276c9);
   color: #fff;
 }
+
+/* 狭い画面: コンセプトデッキの名前を折らず、平均コストを下の行へ */
+@media (max-width: 359px) {
+  .preset-head {
+    flex-wrap: wrap;
+    row-gap: 0;
+  }
+
+  .preset-head b {
+    white-space: nowrap;
+  }
+
+  .preset-head small {
+    flex-basis: 100%;
+    padding-left: 38px;
+  }
+}
