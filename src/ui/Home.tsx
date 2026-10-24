@@ -5,7 +5,9 @@ import type { CpuLevel } from '@/ai/cpu';
 import type { CardId } from '@/game/cards';
 import { isUnlockAll, setUnlockAll } from '@/storage/collection';
 import { loadLevel, loadRecord, saveLevel } from '@/storage/profile';
+import { CARDS } from '@/game/cards';
 import { loadDaily, MISSIONS } from '@/storage/daily';
+import { loadHistory, summarize } from '@/storage/history';
 import { ARENAS, arenaIndex, loadTrophies } from '@/storage/trophy';
 
 import { FIELD_URL, HERO_ME_URL } from './art';
@@ -30,6 +32,7 @@ export function Home({ deck, onStart, onDeck }: { deck: CardId[]; onStart: (leve
   const arenaPct = nextArena ? ((trophies - ARENAS[ai]!.from) / (nextArena.from - ARENAS[ai]!.from)) * 100 : 100;
   const [dev, setDev] = useState(false);
   const [dailyOpen, setDailyOpen] = useState(false);
+  const [statsOpen, setStatsOpen] = useState(false);
   const daily = loadDaily();
   const dailyDone = daily.missions.filter((id) => (daily.progress[id] ?? 0) >= MISSIONS[id].goal).length;
   const [allOn, setAllOn] = useState(isUnlockAll);
@@ -56,6 +59,52 @@ export function Home({ deck, onStart, onDeck }: { deck: CardId[]; onStart: (leve
         テスト用
       </button>
       <AnimatePresence>
+        {statsOpen ? (
+          <Sheet key="stats" title="戦績（直近 50 試合）" onClose={() => setStatsOpen(false)}>
+            {(() => {
+              const s = summarize(loadHistory());
+              if (s.total.n === 0) return <p className="card-detail-note">まだ記録がありません。対戦すると、ここに勝率やよく出すカードが出ます。</p>;
+              return (
+                <div className="sheet-list">
+                  <div className="stat-row is-total">
+                    <span>勝率</span>
+                    <b>{s.total.pct}%</b>
+                    <small>{s.total.n} 試合・平均 {s.avgSec} 秒・最高 {record.best} 連勝</small>
+                  </div>
+                  <div className="stat-head">難易度別</div>
+                  {s.byLevel.map((r) => (
+                    <div key={r.label} className="stat-row">
+                      <span>{r.label}</span>
+                      <span className="mission-bar" aria-hidden="true"><i style={{ width: `${r.pct}%` }} /></span>
+                      <b>{r.pct}%</b>
+                      <small>{r.n} 試合</small>
+                    </div>
+                  ))}
+                  <div className="stat-head">相手デッキ別</div>
+                  {s.byRival.slice(0, 6).map((r) => (
+                    <div key={r.label} className="stat-row">
+                      <span>{r.label}</span>
+                      <span className="mission-bar" aria-hidden="true"><i style={{ width: `${r.pct}%` }} /></span>
+                      <b>{r.pct}%</b>
+                      <small>{r.n} 試合</small>
+                    </div>
+                  ))}
+                  <div className="stat-head">よく出すカード</div>
+                  <div className="stat-cards">
+                    {s.topCards.map(({ card, count }) => (
+                      <span key={card} className="stat-card">
+                        <CardFace card={card} small />
+                        <small>
+                          {CARDS[card].name} ×{count}
+                        </small>
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              );
+            })()}
+          </Sheet>
+        ) : null}
         {dailyOpen ? (
           <Sheet key="daily" title="きょうのミッション" onClose={() => setDailyOpen(false)}>
             <div className="sheet-list">
@@ -138,6 +187,15 @@ export function Home({ deck, onStart, onDeck }: { deck: CardId[]; onStart: (leve
             }}
           >
             ミッション {dailyDone}/{daily.missions.length}
+          </button>
+          <button
+            className="ts-daily"
+            onClick={() => {
+              playUiTap();
+              setStatsOpen(true);
+            }}
+          >
+            戦績
           </button>
         </div>
       </header>

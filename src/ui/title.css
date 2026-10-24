@@ -855,3 +855,64 @@ body {
 .mission-row.is-done {
   background: rgb(255 216 74 / 0.14);
 }
+
+/* 戦績のシート */
+.stat-head {
+  margin-top: 6px;
+  color: var(--gold-1);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.stat-row {
+  display: grid;
+  grid-template-columns: 5.5em 1fr 3em 4em;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  border-radius: 10px;
+  background: rgb(255 255 255 / 0.06);
+  font-size: 13px;
+}
+
+.stat-row b {
+  text-align: right;
+}
+
+.stat-row small {
+  color: #d9cfff;
+  font-size: 11px;
+  text-align: right;
+}
+
+.stat-row.is-total {
+  grid-template-columns: auto auto 1fr;
+}
+
+.stat-row.is-total b {
+  font-size: 22px;
+  color: var(--gold-1);
+}
+
+.stat-cards {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.stat-card {
+  display: grid;
+  justify-items: center;
+  gap: 2px;
+  font-size: 10px;
+  text-align: center;
+}
+
+.stat-card .face {
+  width: 100%;
+}
+
+.stat-card .pip,
+.stat-card .blocker-badge {
+  display: none;
+}

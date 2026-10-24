@@ -36,6 +36,7 @@ import { awardMatch, CHEST_POINTS, type MatchReward } from '@/storage/collection
 import { addResult, isTutorialDone, markTip, seenTips, setTutorialDone } from '@/storage/profile';
 import { hintsFor, type Hint } from '@/game/hints';
 import { MISSIONS, recordDaily, type MissionId } from '@/storage/daily';
+import { pushHistory } from '@/storage/history';
 import { ARENAS, arenaIndex, loadTrophies, recordTrophies, rivalFor, type TrophyChange } from '@/storage/trophy';
 import { COIN_MAX, FAST_COOLDOWN_FROM_MS, MATCH_MS, PLAYER_HP, SUMMON_WINDUP_MS, WINDUP_MS } from '@/game/rules';
 
@@ -230,7 +231,7 @@ export function Game({ level, deck, onExit }: { level: CpuLevel; deck: CardId[];
   /** この試合で達成したデイリーミッション。 */
   const [missionsDone, setMissionsDone] = useState<MissionId[]>([]);
   /** デイリーミッション用の、この試合の記録（自分の行動）。 */
-  const freshStats = () => ({ summons: 0, interrupts: 0, spells: 0, faceDamage: 0, myAttacksBlocked: 0, interruptChances: 0, faceTaken: 0, reserves: 0, coinCapMs: 0, lastTime: 0 });
+  const freshStats = () => ({ summons: 0, interrupts: 0, spells: 0, faceDamage: 0, myAttacksBlocked: 0, interruptChances: 0, faceTaken: 0, reserves: 0, coinCapMs: 0, lastTime: 0, played: {} as Partial<Record<CardId, number>> });
   const statsRef = useRef(freshStats());
   /** 試合後の振り返りの一言。 */
   const [hints, setHints] = useState<Hint[]>([]);
@@ -524,6 +525,10 @@ export function Game({ level, deck, onExit }: { level: CpuLevel; deck: CardId[];
       // デイリーミッションの記録（自分の行動と、相手プレイヤーへのダメージ・割り込みの成功）
       if (e.kind === 'summon' && e.p === 0 && !e.token) statsRef.current.summons += 1;
       if (e.kind === 'spell' && e.p === 0) statsRef.current.spells += 1;
+      if ((e.kind === 'summon' && e.p === 0 && !e.token) || (e.kind === 'spell' && e.p === 0)) {
+        const pl = statsRef.current.played;
+        pl[e.card] = (pl[e.card] ?? 0) + 1;
+      }
       if (e.kind === 'damage' && e.p === 1 && e.target.kind === 'player') statsRef.current.faceDamage += e.amount;
       if (e.kind === 'cancel' && e.p === 1 && e.reason === 'blocked' && e.pending.kind === 'attack') statsRef.current.interrupts += 1;
       if (e.kind === 'cancel' && e.p === 0 && e.reason === 'blocked' && e.pending.kind === 'attack') statsRef.current.myAttacksBlocked += 1;
@@ -646,6 +651,13 @@ export function Game({ level, deck, onExit }: { level: CpuLevel; deck: CardId[];
         const done = recordDaily({ won: r?.winner === 0, ...statsRef.current });
         setMissionsDone(done);
         const st = statsRef.current;
+        pushHistory({
+          result: r?.winner === 0 ? 'win' : r?.winner === null ? 'draw' : 'lose',
+          level,
+          rival: rival.name,
+          played: st.played,
+          sec: Math.round(gameRef.current.time / 1000),
+        });
         setHints(
           hintsFor({
             won: r?.winner === 0,
