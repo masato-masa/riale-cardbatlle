@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import type { CpuLevel } from '@/ai/cpu';
 import type { CardId } from '@/game/cards';
 import { CHEST_POINTS, isUnlockAll, loadNew, loadPoints, loadUnlocked, pickReward, setUnlockAll } from '@/storage/collection';
-import { loadLevel, loadName, loadRecord, saveLevel } from '@/storage/profile';
+import { loadLevel, loadName, loadRecord, resetProgress, saveLevel } from '@/storage/profile';
 import { CARDS } from '@/game/cards';
 import { loadDaily, MISSIONS } from '@/storage/daily';
 import { loadHistory, suggestLevel, summarize } from '@/storage/history';
@@ -56,6 +56,8 @@ export function Home({ deck, onStart, onDeck }: { deck: CardId[]; onStart: (leve
   const dailyDone = daily.missions.filter((id) => (daily.progress[id] ?? 0) >= MISSIONS[id].goal).length;
   const [allOn, setAllOn] = useState(isUnlockAll);
   const [kit, setKitState] = useState(getKit);
+  /** 「きろくをけす」を 1 回押した（もう 1 回で消す）。 */
+  const [resetArmed, setResetArmed] = useState(false);
   const pick = (l: CpuLevel) => {
     playUiTap();
     saveLevel(l);
@@ -219,7 +221,7 @@ export function Home({ deck, onStart, onDeck }: { deck: CardId[]; onStart: (leve
           </Sheet>
         ) : null}
         {dev ? (
-          <Sheet key="dev" title="テスト用" onClose={() => setDev(false)}>
+          <Sheet key="dev" title="テスト用" onClose={() => { setDev(false); setResetArmed(false); }}>
             <div className="sheet-list">
               <div className="sheet-row static">
                 <span>全カード解放</span>
@@ -265,8 +267,20 @@ export function Home({ deck, onStart, onDeck }: { deck: CardId[]; onStart: (leve
                 <span>サウンド・BGM の調整</span>
                 <span aria-hidden="true">›</span>
               </button>
+              <button
+                className={`sheet-row reset-row${resetArmed ? ' is-armed' : ''}`}
+                onClick={() => {
+                  playUiTap();
+                  if (!resetArmed) return setResetArmed(true);
+                  resetProgress();
+                  location.reload();
+                }}
+              >
+                <span>{resetArmed ? 'もう一度押すと消えます' : 'きろくをけす'}</span>
+                <small>トロフィー・カード・デッキ・戦績</small>
+              </button>
             </div>
-            <button className="sheet-btn" onClick={() => setDev(false)}>
+            <button className="sheet-btn" onClick={() => { setDev(false); setResetArmed(false); }}>
               とじる
             </button>
           </Sheet>

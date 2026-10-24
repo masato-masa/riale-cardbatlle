@@ -68,6 +68,20 @@ export function saveLevel(level: CpuLevel): void {
   }
 }
 
+/** 記録を消しても残す設定（音・振動・名前・難易度・テスト用の切り替え）。 */
+const KEEP_ON_RESET = new Set(['sound', 'bgm', 'haptics', 'sfx-kit', 'sfx-pick', 'speed', 'name', 'unlockall', 'level']);
+
+/** テスト用: 記録（トロフィー・カード・宝箱・デッキ・戦績・ミッション・案内）を消して最初からにする。設定は残す。 */
+export function resetProgress(): void {
+  try {
+    for (const k of Object.keys(localStorage)) {
+      if (k.startsWith('riale-cardbatlle:') && !KEEP_ON_RESET.has(k.slice('riale-cardbatlle:'.length))) localStorage.removeItem(k);
+    }
+  } catch {
+    // 消せなければそのまま
+  }
+}
+
 const NAME_KEY = 'riale-cardbatlle:name';
 /** 名前の最大の長さ（盤面の帯に収まる長さ）。 */
 export const NAME_MAX = 8;
