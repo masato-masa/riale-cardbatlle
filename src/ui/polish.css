@@ -2745,3 +2745,9 @@
 .face:not(.is-flip) .face-name {
   padding-bottom: 17cqw;
 }
+
+/* シートが画面の中央からずれる（92vw が余白 24px ぶん広く、右へはみ出していた）。共通 UI は触らず、ここで枠内に収める */
+.overlay .sheet {
+  width: min(100%, 420px);
+  box-sizing: border-box;
+}
