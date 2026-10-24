@@ -77,6 +77,16 @@ export function Home({ deck, onStart, onDeck }: { deck: CardId[]; onStart: (leve
                     <b>{s.total.pct}%</b>
                     <small>{s.total.n} 試合・平均 {s.avgSec} 秒・最高 {record.best} 連勝</small>
                   </div>
+                  <div className="stat-head">最近の対戦</div>
+                  <div className="stat-recent">
+                    {loadHistory()
+                      .slice(0, 10)
+                      .map((r, i) => (
+                        <span key={i} className={`recent-mark is-${r.result}`} title={`${r.rival}デッキ（${{ easy: 'よわい', normal: 'ふつう', hard: 'つよい' }[r.level]}）`}>
+                          {r.result === 'win' ? '勝' : r.result === 'lose' ? '負' : '分'}
+                        </span>
+                      ))}
+                  </div>
                   <div className="stat-head">難易度別</div>
                   {s.byLevel.map((r) => (
                     <div key={r.label} className="stat-row">

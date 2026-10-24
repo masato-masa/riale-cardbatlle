@@ -1012,3 +1012,31 @@ body {
   paint-order: stroke fill;
   white-space: nowrap;
 }
+
+/* 戦績: 最近の 10 試合（新しい順） */
+.stat-recent {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+
+.recent-mark {
+  width: 24px;
+  height: 24px;
+  display: grid;
+  place-items: center;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 800;
+  color: #fff;
+  background: #555c74;
+}
+
+.recent-mark.is-win {
+  background: linear-gradient(#ffd84a, #d79a06);
+  color: #4a2a00;
+}
+
+.recent-mark.is-lose {
+  background: linear-gradient(#e5484d, #9c2a30);
+}
