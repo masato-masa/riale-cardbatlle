@@ -3570,3 +3570,39 @@ img.result-star.is-lit {
   color: var(--gold-1);
   font-size: 12px;
 }
+
+/* 結果: 相手のデッキ（押すと 8 枚を広げる） */
+.result-foe-open {
+  justify-self: center;
+  margin: 2px 0 6px;
+  padding: 4px 10px;
+  border: 0;
+  background: none;
+  color: #ffe28a;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 800;
+  text-decoration: underline;
+}
+
+.result-foe-deck {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 6px;
+  width: min(100%, 250px);
+  justify-self: center;
+  margin: 2px auto 8px;
+}
+
+.result-foe-card {
+  position: relative;
+  aspect-ratio: 68 / 84;
+  container-type: inline-size;
+}
+
+.result-foe-title {
+  justify-self: center;
+  color: #ffe28a;
+  font-size: 12px;
+  font-weight: 800;
+}

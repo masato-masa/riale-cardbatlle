@@ -277,6 +277,8 @@ export function Game({ level, deck, challenge, onExit }: { level: CpuLevel; deck
   const [myName] = useState(loadName);
   /** きょうのチャレンジに、この試合で初めて勝った。 */
   const [challengeWon, setChallengeWon] = useState(false);
+  /** 結果画面で相手のデッキを広げている。 */
+  const [foeDeckOpen, setFoeDeckOpen] = useState(false);
   /** 相手が溜め始めた呪文（ライバルズのように、何を使ったかをしばらく見せる）。 */
   const [foeCast, setFoeCast] = useState<{ id: number; card: CardId } | null>(null);
   /** デイリーミッション用の、この試合の記録（自分の行動）。 */
@@ -1245,6 +1247,7 @@ export function Game({ level, deck, challenge, onExit }: { level: CpuLevel; deck
     setTrophy(null);
     setMissionsDone([]);
     setChallengeWon(false);
+    setFoeDeckOpen(false);
     setHints([]);
     statsRef.current = freshStats();
     setResultShown(false);
@@ -1870,6 +1873,27 @@ export function Game({ level, deck, challenge, onExit }: { level: CpuLevel; deck
                   </>
                 );
               })()}
+              {/* 相手のデッキ（次の作戦のために、対戦後に中身を見せる） */}
+              {foeDeckOpen ? <small className="result-foe-title">{foePersona(rival.name).name}の{rival.name}デッキ</small> : null}
+              {foeDeckOpen ? (
+                <div className="result-foe-deck" aria-label={`${foePersona(rival.name).name}の${rival.name}デッキ`}>
+                  {rival.deck.map((c, i) => (
+                    <span key={`${c}-${i}`} className="result-foe-card">
+                      <CardFace card={c} small />
+                    </span>
+                  ))}
+                </div>
+              ) : (
+                <button
+                  className="result-foe-open"
+                  onClick={() => {
+                    playUiTap();
+                    setFoeDeckOpen(true);
+                  }}
+                >
+                  {foePersona(rival.name).name}の{rival.name}デッキを見る
+                </button>
+              )}
               <div className="result-buttons">
                 <button
                   className="res-btn is-gold"
