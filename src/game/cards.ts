@@ -780,6 +780,12 @@ function buffText(atk: number, hp: number): string {
   return parts.join('・');
 }
 
+/** 「自分の」に続ける強化の文。英字（HP）で始まるときは空白を挟む（自分の HP +1）。 */
+function selfBuffText(atk: number, hp: number): string {
+  const t = buffText(atk, hp);
+  return /^[A-Z]/.test(t) ? `自分の ${t}` : `自分の${t}`;
+}
+
 /** 状態の説明（説明シートの下に出す）。 */
 export const STATUS_NOTES: string[] = [
   '討伐: 自分の攻撃で敵ユニットを倒すこと（反撃や毒で倒したときは含まない）',
@@ -839,11 +845,11 @@ export function abilityLines(card: CardId): string[] {
   if (oi?.kind === 'strike') lines.push(`妨害時：妨害した敵ユニットに ${oi.amount} ダメージ`);
   if (oi?.kind === 'stun') lines.push(`妨害時：妨害した敵ユニットのクールタイム +${oi.ms / 1000} 秒`);
   if (oi?.kind === 'coin') lines.push(`妨害時：コイン +${oi.amount}`);
-  if (oi?.kind === 'buff') lines.push(`妨害時：自分の${buffText(oi.atk, oi.hp)}`);
+  if (oi?.kind === 'buff') lines.push(`妨害時：${selfBuffText(oi.atk, oi.hp)}`);
   if (a.interfereImmune) lines.push('妨害耐性（妨害されても、クールタイムが増えない）');
   const oc = a.onCancelled;
   if (oc?.kind === 'ready') lines.push('妨害された時：クールタイムがなくなる');
-  if (oc?.kind === 'buff') lines.push(`妨害された時：自分の${buffText(oc.atk, oc.hp)}`);
+  if (oc?.kind === 'buff') lines.push(`妨害された時：${selfBuffText(oc.atk, oc.hp)}`);
   const or = a.onReplaced;
   if (or?.kind === 'coin') lines.push(`生贄時：コイン +${or.amount}`);
   if (or?.kind === 'face') lines.push(`生贄時：敵プレイヤーに ${or.amount} ダメージ`);
@@ -851,10 +857,10 @@ export function abilityLines(card: CardId): string[] {
   if (or?.kind === 'buffNew') lines.push(`生贄時：チェンジで入れ替わったカードの${buffText(or.atk, or.hp)}`);
   const ok = a.onKill;
   if (ok?.kind === 'coin') lines.push(`討伐時：コイン +${ok.amount}`);
-  if (ok?.kind === 'buff') lines.push(`討伐時：自分の${buffText(ok.atk, ok.hp)}`);
+  if (ok?.kind === 'buff') lines.push(`討伐時：${selfBuffText(ok.atk, ok.hp)}`);
   if (ok?.kind === 'heal') lines.push(`討伐時：自分の HP を ${ok.amount} 回復`);
   const oo = a.onOverwrite;
-  if (oo?.kind === 'buff') lines.push(`チェンジ登場時：自分の${buffText(oo.atk, oo.hp)}`);
+  if (oo?.kind === 'buff') lines.push(`チェンジ登場時：${selfBuffText(oo.atk, oo.hp)}`);
   if (oo?.kind === 'refund') lines.push('チェンジ登場時：入れ替わったカードのコストの半分のコインが戻る');
   if (oo?.kind === 'haste') lines.push('チェンジ登場時：速攻');
   if (a.onDeath?.kind === 'poisonFoes') lines.push(`死亡時：敵ユニット全員に毒を与える`);
