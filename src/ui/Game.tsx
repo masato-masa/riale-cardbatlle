@@ -8,7 +8,6 @@ import {
   isBlocker,
   needsTarget,
   requiresTarget,
-  RIVAL_DECKS,
   summonSide,
   usageNote,
   type CardId,
@@ -35,6 +34,7 @@ import {
 import { makeRng } from '@/game/rng';
 import { awardMatch, CHEST_POINTS, type MatchReward } from '@/storage/collection';
 import { addResult, isTutorialDone, setTutorialDone } from '@/storage/profile';
+import { ARENAS, loadTrophies, recordTrophies, rivalFor, type TrophyChange } from '@/storage/trophy';
 import { COIN_MAX, FAST_COOLDOWN_FROM_MS, MATCH_MS, PLAYER_HP, SUMMON_WINDUP_MS, WINDUP_MS } from '@/game/rules';
 
 import { COIN_URL, FIELD_URL, HERO_FOE_URL, HERO_ME_URL, preloadFx } from './art';
@@ -201,10 +201,14 @@ function CrossMask({ id, x0, y0, x1, y1 }: { id: string; x0: number; y0: number;
   );
 }
 
+/** 確認用: URL の ?speed=N で時間を N 倍速にする（結果画面などを早く見るため）。 */
+const DEV_SPEED = Math.min(10, Math.max(1, Number(new URLSearchParams(location.search).get('speed')) || 1));
+
 export function Game({ level, deck, onExit }: { level: CpuLevel; deck: CardId[]; onExit: () => void }) {
   const [seed, setSeed] = useState(() => (Date.now() & 0x7fffffff) >>> 0);
-  // 相手のデッキはテーマ別に、試合ごと（シードごと）に選ぶ
-  const decks: [CardId[], CardId[]] = [deck, RIVAL_DECKS[seed % RIVAL_DECKS.length]!.deck];
+  // 相手のデッキはテーマ別に、試合ごと（シードごと）に選ぶ。出てくる幅はアリーナ（トロフィー）で変わる
+  const [rival, setRival] = useState(() => rivalFor(seed, loadTrophies()));
+  const decks: [CardId[], CardId[]] = [deck, rival.deck];
   const [game, setGame] = useState<GameState>(() => createGame(decks, seed));
   const gameRef = useRef(game);
   const brainRef = useRef(createBrain());
@@ -219,6 +223,8 @@ export function Game({ level, deck, onExit }: { level: CpuLevel; deck: CardId[];
   const [resultShown, setResultShown] = useState(false);
   /** 試合の報酬（ポイントと宝箱から出たカード）。 */
   const [reward, setReward] = useState<MatchReward | null>(null);
+  /** 試合のトロフィーの増減。 */
+  const [trophy, setTrophy] = useState<TrophyChange | null>(null);
   /** 初回の案内（済んでいれば null）。最初の説明の間は時間を止める。 */
   const [tut, setTut] = useState<TutorialStep | null>(() => (isTutorialDone() ? null : 0));
   const pausedRef = useRef(false);
@@ -258,7 +264,7 @@ export function Game({ level, deck, onExit }: { level: CpuLevel; deck: CardId[];
     let raf = 0;
     let last = performance.now();
     const frame = (now: number) => {
-      const dt = Math.min(100, now - last);
+      const dt = Math.min(100, now - last) * DEV_SPEED;
       last = now;
       const cur = gameRef.current;
       if (!pausedRef.current && !introRef.current && !cur.result) {
@@ -564,6 +570,7 @@ export function Game({ level, deck, onExit }: { level: CpuLevel; deck: CardId[];
       if (e.kind === 'end') {
         const r = gameRef.current.result;
         addResult(r?.winner ?? null);
+        setTrophy(recordTrophies(level, r?.winner ?? null));
         setReward(awardMatch(r?.winner ?? null));
         // 倒れる演出 → 勝敗の文字 → 余韻のあとに結果のポップアップ
         window.setTimeout(() => setResultShown(true), RESULT_DELAY_MS);
@@ -1049,8 +1056,11 @@ export function Game({ level, deck, onExit }: { level: CpuLevel; deck: CardId[];
     setStunned(new Set());
     setSeed(next);
     setReward(null);
+    setTrophy(null);
     setResultShown(false);
-    commit(createGame([deck, RIVAL_DECKS[next % RIVAL_DECKS.length]!.deck], next));
+    const nextRival = rivalFor(next, loadTrophies());
+    setRival(nextRival);
+    commit(createGame([deck, nextRival.deck], next));
   };
 
   /** 場のカードの状態アイコン。 */
@@ -1437,7 +1447,7 @@ export function Game({ level, deck, onExit }: { level: CpuLevel; deck: CardId[];
                   <img src={HERO_FOE_URL} alt="" draggable={false} />
                 </span>
                 <b>あいて</b>
-                <small className="intro-deck">{RIVAL_DECKS[seed % RIVAL_DECKS.length]!.name}デッキ</small>
+                <small className="intro-deck">{rival.name}デッキ</small>
               </motion.div>
             </div>
             <motion.div
@@ -1591,6 +1601,15 @@ export function Game({ level, deck, onExit }: { level: CpuLevel; deck: CardId[];
                         <b>{foe.hp}</b>
                       </span>
                     </div>
+                    {trophy ? (
+                      <div className="result-trophy">
+                        <span className={`trophy-delta${trophy.after > trophy.before ? ' is-up' : trophy.after < trophy.before ? ' is-down' : ''}`}>
+                          トロフィー {trophy.after >= trophy.before ? '+' : ''}{trophy.after - trophy.before}
+                        </span>
+                        <small>{trophy.before} → {trophy.after}</small>
+                        {trophy.arenaAfter > trophy.arenaBefore ? <b className="arena-up">アリーナ昇格！ {ARENAS[trophy.arenaAfter]!.name}</b> : null}
+                      </div>
+                    ) : null}
                     {reward ? (
                       <div className="result-reward">
                         <div className="reward-meter" aria-label={`宝箱ゲージ ${reward.points}/${CHEST_POINTS}`}>

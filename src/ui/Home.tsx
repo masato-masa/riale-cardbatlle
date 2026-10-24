@@ -5,6 +5,7 @@ import type { CpuLevel } from '@/ai/cpu';
 import type { CardId } from '@/game/cards';
 import { isUnlockAll, setUnlockAll } from '@/storage/collection';
 import { loadLevel, loadRecord, saveLevel } from '@/storage/profile';
+import { ARENAS, arenaIndex, loadTrophies } from '@/storage/trophy';
 
 import { FIELD_URL, HERO_ME_URL } from './art';
 import { CardFace } from './CardFace';
@@ -22,6 +23,10 @@ const LEVELS: { id: CpuLevel; label: string }[] = [
 export function Home({ deck, onStart, onDeck }: { deck: CardId[]; onStart: (level: CpuLevel) => void; onDeck: () => void }) {
   const [level, setLevel] = useState<CpuLevel>(loadLevel);
   const record = loadRecord();
+  const trophies = loadTrophies();
+  const ai = arenaIndex(trophies);
+  const nextArena = ARENAS[ai + 1];
+  const arenaPct = nextArena ? ((trophies - ARENAS[ai]!.from) / (nextArena.from - ARENAS[ai]!.from)) * 100 : 100;
   const [dev, setDev] = useState(false);
   const [allOn, setAllOn] = useState(isUnlockAll);
   const pick = (l: CpuLevel) => {
@@ -92,6 +97,14 @@ export function Home({ deck, onStart, onDeck }: { deck: CardId[]; onStart: (leve
               {record.win} 勝 {record.lose} 敗{record.streak >= 2 ? ` ・ ${record.streak} 連勝中` : ''}
             </small>
           </span>
+        </div>
+        <div className="ts-arena" aria-label={`トロフィー ${trophies}、${ARENAS[ai]!.name}`}>
+          <span className="ts-arena-name">{ARENAS[ai]!.name}</span>
+          <span className="ts-trophy">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h12v3c0 3.2-1.8 5.6-4.5 6.3V15H16v2H8v-2h2.5v-2.7C7.8 11.6 6 9.2 6 6V3zm-2 1h2v2c0 1 .3 1.8.8 2.5C5.5 8 4 6.6 4 5V4zm16 0v1c0 1.6-1.5 3-2.8 3.5.5-.7.8-1.5.8-2.5V4h2zM9 19h6v2H9v-2z" /></svg>
+            <b>{trophies}</b>
+          </span>
+          {nextArena ? <span className="ts-arena-bar" aria-hidden="true"><i style={{ width: `${Math.max(4, arenaPct)}%` }} /></span> : null}
         </div>
       </header>
 
