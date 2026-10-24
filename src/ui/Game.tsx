@@ -1355,7 +1355,7 @@ export function Game({ level, deck, onExit }: { level: CpuLevel; deck: CardId[];
               {overtime ? <b className="clock-double">×2</b> : null}
             </span>
             <div className={foeCls.join(' ')} data-player={1} data-drop={foeKey}>
-              <HeroBadge hp={foe.hp} label="あいて" portrait={HERO_FOE_URL} />
+              <HeroBadge hp={foe.hp} label={rival.name.length <= 2 ? `${rival.name}デッキ` : rival.name} portrait={HERO_FOE_URL} />
             </div>
             <span className="hero-coins">
               <img src={COIN_URL} alt="" />
