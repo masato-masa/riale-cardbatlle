@@ -61,15 +61,6 @@ export function Home({ deck, onStart, onDeck }: { deck: CardId[]; onStart: (leve
   return (
     <div className="ts" style={{ backgroundImage: `url(${ARENA_FLOOR_URLS[ai]})` }}>
       <div className="arena-floor" aria-hidden="true" style={{ backgroundImage: `url(${ARENA_FLOOR_URLS[ai]})`, filter: ARENAS[ai]!.tint }} />
-      <button
-        className="ts-dev"
-        onClick={() => {
-          playUiTap();
-          setDev(true);
-        }}
-      >
-        テスト用
-      </button>
       <AnimatePresence>
         {arenaUp ? (
           <Sheet
@@ -382,7 +373,7 @@ export function Home({ deck, onStart, onDeck }: { deck: CardId[]; onStart: (leve
         <button className="ts-battle" onClick={start}>
           <span>バトル！</span>
         </button>
-        <TabBar active="battle" onDeck={onDeck} onBattle={() => undefined} />
+        <TabBar active="battle" onDeck={onDeck} onBattle={() => undefined} onDev={() => setDev(true)} />
       </footer>
     </div>
   );

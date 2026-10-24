@@ -10,7 +10,8 @@ export type Tab = 'deck' | 'battle';
 const icon = (src: string) => <img src={src} alt="" draggable={false} />;
 
 /** 画面下のタブ（クラロワ型）。選んでいるタブは持ち上がって明るくなる。設定はここから開く。 */
-export function TabBar({ active, onDeck, onBattle }: { active: Tab; onDeck: () => void; onBattle: () => void }) {
+/** onDev を渡すと、設定の一番下に「テスト用」（開発者メニュー）を出す。 */
+export function TabBar({ active, onDeck, onBattle, onDev }: { active: Tab; onDeck: () => void; onBattle: () => void; onDev?: () => void }) {
   const [settings, setSettings] = useState(false);
   const tab = (id: string, label: string, icon: ReactNode, on: boolean, go: () => void) => (
     <button
@@ -33,7 +34,7 @@ export function TabBar({ active, onDeck, onBattle }: { active: Tab; onDeck: () =
         {tab('battle', 'バトル', icon(ICON_URL.tabBattle), active === 'battle', onBattle)}
         {tab('settings', '設定', icon(ICON_URL.tabSettings), false, () => setSettings(true))}
       </nav>
-      <AnimatePresence>{settings ? <SettingsSheet key="s" onClose={() => setSettings(false)} /> : null}</AnimatePresence>
+      <AnimatePresence>{settings ? <SettingsSheet key="s" onClose={() => setSettings(false)} onDev={onDev} /> : null}</AnimatePresence>
     </>
   );
 }

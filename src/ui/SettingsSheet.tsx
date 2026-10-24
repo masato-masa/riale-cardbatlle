@@ -23,7 +23,7 @@ function Row({ label, on, onToggle }: { label: string; on: boolean; onToggle: ()
   );
 }
 
-export function SettingsSheet({ onClose }: { onClose: () => void }) {
+export function SettingsSheet({ onClose, onDev }: { onClose: () => void; onDev?: () => void }) {
   const [sound, setSound] = useState(isSoundEnabled());
   const [bgm, setBgm] = useState(isBgmEnabled());
   const [haptics, setHaptics] = useState(isHapticsEnabled());
@@ -98,6 +98,18 @@ export function SettingsSheet({ onClose }: { onClose: () => void }) {
       <button className="sheet-btn" onClick={onClose}>
         とじる
       </button>
+      {onDev ? (
+        <button
+          className="settings-dev"
+          onClick={() => {
+            playUiTap();
+            onClose();
+            onDev();
+          }}
+        >
+          テスト用
+        </button>
+      ) : null}
     </Sheet>
   );
 }
