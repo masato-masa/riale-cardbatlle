@@ -702,7 +702,7 @@ export const RIVAL_DECK: CardId[] = ['herald', 'usurer', 'banker', 'informer', '
 /** CPU のデッキ（テーマ別。試合ごとに 1 つ選ぶ。どれも 8 枚）。 */
 export const RIVAL_DECKS: { name: string; deck: CardId[] }[] = [
   { name: '商人', deck: RIVAL_DECK },
-  { name: '毒', deck: ['needle', 'creeper', 'footman', 'poisoner', 'knight', 'raider', 'stalwart', 'captain'] },
+  { name: '毒', deck: ['needle', 'creeper', 'champion', 'poisoner', 'knight', 'raider', 'stalwart', 'captain'] },
   { name: '巨人', deck: ['recruit', 'bulwark', 'stalwart', 'captain', 'taxman', 'champion', 'ogre', 'forge'] },
   { name: '連撃', deck: ['herald', 'twin', 'bloody', 'duelist', 'knight', 'bloodknight', 'raider', 'stalwart'] },
   { name: '狙撃', deck: ['guard', 'marksman', 'craftsman', 'sniper', 'priest', 'wall', 'festival', 'bloodknight'] },
