@@ -221,11 +221,11 @@ describe('追加カード（ピエロ・ロデリク・セドリック・ヴェ�
     s = step(s, { type: 'summon', p: 0, handIndex: 0, slot: 0 });
     expect(s.players[0].coins).toBe(2 - CARDS.recruit.summon + 5);
   });
-  it('セドリック: 割り込みで 3 ダメージ', () => {
+  it('セドリック: 割り込みで 2 ダメージ', () => {
     const { s, a } = attacking('knight', 'recruit');
     let n = withHand(s, 1, ['riposte']);
     n = step(n, { type: 'summon', p: 1, handIndex: 0, slot: 1 });
-    expect(unitOf(n, 0, a.uid)!.hp).toBe(CARDS.knight.hp - 3);
+    expect(unitOf(n, 0, a.uid)!.hp).toBe(CARDS.knight.hp - 2);
   });
   it('ヴェラ: 攻撃が中断されると攻撃力 +2', () => {
     const { s, a } = attacking('avenger', 'recruit');
