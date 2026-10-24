@@ -33,6 +33,9 @@ async (page) => {
     await page.evaluate(() => {
       localStorage.setItem('riale-cardbatlle:tutorial', '1');
       localStorage.setItem('riale-cardbatlle:tips', JSON.stringify(['interrupt', 'overwrite', 'reserve']));
+      // 戦績のシートが中身を出すよう、対戦の記録を入れておく
+      const rivals = ['毒', '巨人', '連撃', '割り込み'];
+      localStorage.setItem('riale-cardbatlle:history', JSON.stringify(Array.from({ length: 12 }, (_, i) => ({ result: i % 3 ? 'win' : 'lose', level: 'normal', rival: rivals[i % 4], played: { guard: 2, knight: 1, herald: 3 }, sec: 150 }))));
     });
     await page.reload();
     await page.waitForTimeout(1000);
@@ -43,13 +46,21 @@ async (page) => {
       ['ロード', () => page.locator('button.ts-arena-name').click({ force: true, timeout: 5000 })],
       ['チャレンジ', () => page.locator('.ts-chal').click({ force: true, timeout: 5000 })],
       ['設定', () => page.getByText('設定', { exact: true }).last().click({ force: true, timeout: 5000 })],
+      ['ミッション', () => page.locator('.ts-daily').first().click({ force: true, timeout: 5000 })],
+      ['戦績', () => page.getByText('戦績', { exact: true }).first().click({ force: true, timeout: 5000 })],
     ]) {
       await open();
       await page.waitForTimeout(700);
       const n = await page.evaluate(() => {
         const s = document.querySelector('.sheet')?.getBoundingClientRect();
         if (!s) return -1;
-        return [...document.querySelectorAll('.sheet > *')].filter((c) => c.getBoundingClientRect().bottom > s.bottom + 1).length;
+        const below = [...document.querySelectorAll('.sheet > *')].filter((c) => c.getBoundingClientRect().bottom > s.bottom + 1).length;
+        // 横にはみ出す要素と、シートより大きく広がった要素（入れ物の無いカードの面など）
+        const wide = [...document.querySelectorAll('.sheet *')].filter((e) => {
+          const r = e.getBoundingClientRect();
+          return r.width > 0 && (r.right > s.right + 1 || r.width > s.width + 1);
+        }).length;
+        return below + wide;
       });
       if (n !== 0) sheetBad.push(`${label}${n}`);
       await page.keyboard.press('Escape');
