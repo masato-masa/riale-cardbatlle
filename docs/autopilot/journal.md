@@ -88,3 +88,8 @@
 - 調整: おそめへ ユラ系でなく usurper・captain。はやめへ tkisuke・medic・sealer・immune1・binder・bomber・twin・poisoner・tzarashi。footman をはやめ→標準。ヴァル HP10→9、鐘楼 HP9→12、兵舎 4 秒ごと、鍛冶場 HP6→7。
 - 再監査: usurper 63→59、twin 42→50、sealer 38→46、bomber 40→46、poisoner 42→45、binder 38→43、medic 36→37、ヴァル 66→57、captain 62→46（おそめで下がりすぎ）。鍛冶場 42→57（HP8 の測定値。7 に下げて再測定は未）。
 - 残り: tkisuke 30%・鐘楼 31%・兵舎 38%・medic 37% は単体では弱いが、T一族デッキ全体では 55%。建築は CPU の使い方が弱い影響もある。
+
+## 2026-10-24 ハンスの調整は見送り（タグ autopilot/016-before-captain、コード変更なし）
+
+- 5/6 のおそめ 46% と標準 62% の中間を狙い 5/5 標準を試したが、「能力なしはコスト/コスト+1」の既存テスト規則に反するため戻した。鍛冶場 HP7 は 50% で適正。ヴァル 60%、兵舎 40%、鐘楼 28%（建築は CPU の使い方が弱い影響）。
+- T一族 3 枚の絵: ChatGPT の画像は、これまでの記録どおりブラウザ自動操作ではダウンロードが通らない可能性が高い。ユーザーが art-src/ に置けば scripts/slice-cards.mjs で取り込める状態にしてある（ID tmassa/tzarashi/tkisuke）。
