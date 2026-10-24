@@ -3074,3 +3074,21 @@ img.result-star.is-lit {
     height: 40px;
   }
 }
+
+/* 宝箱ゲージ: 宝箱の絵と、たまった点を金貨の絵で（たまっていない点はくすませる） */
+.reward-chest-icon {
+  width: 28px;
+  height: 28px;
+  object-fit: contain;
+  filter: drop-shadow(0 1px 1px rgb(0 0 0 / 0.5));
+}
+
+.reward-coin {
+  width: 20px;
+  height: 20px;
+  filter: grayscale(1) brightness(0.45);
+}
+
+.reward-coin.is-on {
+  filter: drop-shadow(0 0 4px rgb(255 216 74 / 0.8));
+}

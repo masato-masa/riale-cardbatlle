@@ -40,7 +40,7 @@ import { pushHistory } from '@/storage/history';
 import { ARENAS, arenaIndex, loadTrophies, recordTrophies, rivalFor, type TrophyChange } from '@/storage/trophy';
 import { COIN_MAX, FAST_COOLDOWN_FROM_MS, MATCH_MS, PLAYER_HP, SUMMON_WINDUP_MS, WINDUP_MS } from '@/game/rules';
 
-import { ARENA_FLOOR_URLS, COIN_URL, HERO_FOE_URL, HERO_ME_URL, preloadFx, RESULT_ART } from './art';
+import { ARENA_FLOOR_URLS, CHEST_URL, COIN_URL, HERO_FOE_URL, HERO_ME_URL, preloadFx, RESULT_ART } from './art';
 import { setBgmTension, startBgm, stopBgm } from './bgm';
 import { CardFace, type CardState } from './CardFace';
 import { RewardChest } from './RewardChest';
@@ -1785,9 +1785,10 @@ export function Game({ level, deck, onExit }: { level: CpuLevel; deck: CardId[];
                     {reward ? (
                       <motion.div className="result-reward" {...resultStep(3)}>
                         <div className="reward-meter" aria-label={`宝箱ゲージ ${reward.points}/${CHEST_POINTS}`}>
+                          <img className="reward-chest-icon" src={CHEST_URL} alt="" draggable={false} />
                           <span className="reward-label">宝箱ゲージ +{reward.gained}</span>
                           {Array.from({ length: CHEST_POINTS }, (_, i) => (
-                            <i key={i} className={i < reward.points || reward.cards.length > 0 ? 'is-on' : ''} />
+                            <img key={i} src={COIN_URL} alt="" draggable={false} className={`reward-coin${i < reward.points || reward.cards.length > 0 ? ' is-on' : ''}`} />
                           ))}
                         </div>
                         {reward.cards.length > 0 ? chestReady ? <RewardChest cards={reward.cards} /> : <div className="chest" aria-hidden="true" /> : null}

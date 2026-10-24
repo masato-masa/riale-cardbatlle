@@ -5,6 +5,7 @@ import arena2Url from '@/assets/art/arena-2.webp';
 import arena3Url from '@/assets/art/arena-3.webp';
 import arena4Url from '@/assets/art/arena-4.webp';
 import arena5Url from '@/assets/art/arena-5.webp';
+import chestClosedUrl from '@/assets/art/ui/chest-closed.webp';
 import coinUrl from '@/assets/art/ui/coin.webp';
 import deckBgUrl from '@/assets/art/deck-bg.webp';
 import heroFoeUrl from '@/assets/art/ui/hero-foe.webp';
@@ -23,6 +24,7 @@ export const FIELD_URL: string = fieldUrl;
 /** アリーナごとの盤面の地（床だけ差し替え。scripts/build-arena-floors.mjs）。添字はアリーナの番号。 */
 export const ARENA_FLOOR_URLS: string[] = [fieldUrl, arena2Url, arena3Url, arena4Url, arena5Url];
 export const COIN_URL: string = coinUrl;
+export const CHEST_URL: string = chestClosedUrl;
 /** ホームの UI アイコン（ChatGPT で作成。scripts/slice-icons.mjs）。 */
 /** 結果画面の星とリボン（ChatGPT で作成。scripts/slice-result.mjs）。 */
 export const RESULT_ART = { starOn: starOnUrl, starOff: starOffUrl, ribbonWin: ribbonWinUrl, ribbonLose: ribbonLoseUrl };
