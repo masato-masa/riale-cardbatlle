@@ -199,6 +199,9 @@ export function DeckScreen({ deck, onChange, onBack }: { deck: CardId[]; onChang
           </div>
           {/* デッキの弱点の一言（ブロッカーが無いと割り込みも守りもできない） */}
           {!deck.some((c) => CARDS[c].ab.blocker) ? <p className="deck-hint">ブロッカーが 0 枚です。相手の攻撃に割り込めず、プレイヤーを守れません。</p> : null}
+          {/* 相手デッキ 17 種は平均コスト 2.5〜4.5・ユニット 5〜8 枚。そこから大きく外れたときだけ一言 */}
+          {averageCost(deck) >= 5.5 ? <p className="deck-hint">平均コストが高めです。序盤に出せるカードが少なく、先に押し込まれやすくなります。</p> : null}
+          {deck.filter((c) => CARDS[c].type === 'unit').length <= 4 ? <p className="deck-hint">ユニットが少なめです。攻撃できるのはユニットだけなので、相手の HP を削りにくくなります。</p> : null}
         </section>
 
         {/* 集めたカードの進み具合（クラロワのコレクションの「見つけたカード」） */}
