@@ -3500,3 +3500,11 @@ img.result-star.is-lit {
   background: linear-gradient(#ffe28a, #d79a06);
   color: #3a2508;
 }
+
+/* 帯の名前は折り返さない（幅 320px で「ガン／ド」と折れた）。長い名前（最大 8 文字）は … で省く */
+.hero-label {
+  max-width: 5.6em;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
