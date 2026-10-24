@@ -55,6 +55,11 @@ export function CardFace({
       <div className="face-body">
         <img className="face-art" src={cardArt(card, def.type)} alt="" draggable={false} />
         <span className="face-name">{def.name}</span>
+        {hp !== undefined && def.type !== 'spell' && shownHp < (maxHp ?? def.hp) ? (
+          <span className="hp-bar" aria-hidden="true">
+            <i style={{ transform: `scaleX(${Math.max(0, shownHp) / (maxHp ?? def.hp)})` }} />
+          </span>
+        ) : null}
       </div>
       {blocker ? (
         <span className="blocker-badge" aria-label="ブロッカー" title="ブロッカー">
