@@ -34,6 +34,7 @@ import {
 import { makeRng } from '@/game/rng';
 import { awardMatch, CHEST_POINTS, type MatchReward } from '@/storage/collection';
 import { addResult, isTutorialDone, markTip, seenTips, setTutorialDone } from '@/storage/profile';
+import { MISSIONS, recordDaily, type MissionId } from '@/storage/daily';
 import { ARENAS, arenaIndex, loadTrophies, recordTrophies, rivalFor, type TrophyChange } from '@/storage/trophy';
 import { COIN_MAX, FAST_COOLDOWN_FROM_MS, MATCH_MS, PLAYER_HP, SUMMON_WINDUP_MS, WINDUP_MS } from '@/game/rules';
 
@@ -225,6 +226,10 @@ export function Game({ level, deck, onExit }: { level: CpuLevel; deck: CardId[];
   const [reward, setReward] = useState<MatchReward | null>(null);
   /** 試合のトロフィーの増減。 */
   const [trophy, setTrophy] = useState<TrophyChange | null>(null);
+  /** この試合で達成したデイリーミッション。 */
+  const [missionsDone, setMissionsDone] = useState<MissionId[]>([]);
+  /** デイリーミッション用の、この試合の記録（自分の行動）。 */
+  const statsRef = useRef({ summons: 0, interrupts: 0, spells: 0, faceDamage: 0 });
   /** 初回の案内（済んでいれば null）。最初の説明の間は時間を止める。 */
   const [tut, setTut] = useState<TutorialStep | null>(() => (isTutorialDone() ? null : 0));
   /** 場面ごとの一言案内（初めての場面で 1 回だけ。出ている間は時間を止める）。 */
@@ -506,6 +511,11 @@ export function Game({ level, deck, onExit }: { level: CpuLevel; deck: CardId[];
     )[0];
 
     for (const e of batch) {
+      // デイリーミッションの記録（自分の行動と、相手プレイヤーへのダメージ・割り込みの成功）
+      if (e.kind === 'summon' && e.p === 0 && !e.token) statsRef.current.summons += 1;
+      if (e.kind === 'spell' && e.p === 0) statsRef.current.spells += 1;
+      if (e.kind === 'damage' && e.p === 1 && e.target.kind === 'player') statsRef.current.faceDamage += e.amount;
+      if (e.kind === 'cancel' && e.p === 1 && e.reason === 'blocked' && e.pending.kind === 'attack') statsRef.current.interrupts += 1;
       if (e.kind === 'summon') {
         // 着地の輪。枠は描画のあとで出来るので、1 フレーム待って位置を読む
         window.setTimeout(() => addBurst(unitEl(e.uid), 'summon'), 60);
@@ -615,7 +625,9 @@ export function Game({ level, deck, onExit }: { level: CpuLevel; deck: CardId[];
         const r = gameRef.current.result;
         addResult(r?.winner ?? null);
         setTrophy(recordTrophies(level, r?.winner ?? null));
-        setReward(awardMatch(r?.winner ?? null));
+        const done = recordDaily({ won: r?.winner === 0, ...statsRef.current });
+        setMissionsDone(done);
+        setReward(awardMatch(r?.winner ?? null, Math.random, done.length));
         // 倒れる演出 → 勝敗の文字 → 余韻のあとに結果のポップアップ
         window.setTimeout(() => setResultShown(true), RESULT_DELAY_MS);
         // 決着の見せ場: 倒れた側のプレイヤー札で連続の爆発・画面の閃光・大きな揺れ
@@ -1103,6 +1115,8 @@ export function Game({ level, deck, onExit }: { level: CpuLevel; deck: CardId[];
     setSeed(next);
     setReward(null);
     setTrophy(null);
+    setMissionsDone([]);
+    statsRef.current = { summons: 0, interrupts: 0, spells: 0, faceDamage: 0 };
     setResultShown(false);
     const nextRival = rivalFor(next, loadTrophies());
     setRival(nextRival);
@@ -1665,6 +1679,13 @@ export function Game({ level, deck, onExit }: { level: CpuLevel; deck: CardId[];
                             <small>宝箱からコスト {ARENAS[trophy.arenaAfter]!.cardCap} までのカードが出るように</small>
                           </>
                         ) : null}
+                      </div>
+                    ) : null}
+                    {missionsDone.length > 0 ? (
+                      <div className="result-missions">
+                        {missionsDone.map((id) => (
+                          <span key={id}>ミッション達成！ {MISSIONS[id].text}（宝箱ゲージ +1）</span>
+                        ))}
                       </div>
                     ) : null}
                     {reward ? (

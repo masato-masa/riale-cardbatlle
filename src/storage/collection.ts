@@ -105,9 +105,9 @@ export interface MatchReward {
   points: number;
 }
 
-/** 決着を報告して、ポイントと宝箱の中身を更新する。winner は 0=自分 / 1=相手 / null=引き分け。 */
-export function awardMatch(winner: 0 | 1 | null, rand: () => number = Math.random): MatchReward {
-  const gained = winner === 0 ? 2 : 1;
+/** 決着を報告して、ポイントと宝箱の中身を更新する。winner は 0=自分 / 1=相手 / null=引き分け。bonus はデイリーミッションの達成ぶん。 */
+export function awardMatch(winner: 0 | 1 | null, rand: () => number = Math.random, bonus = 0): MatchReward {
+  const gained = (winner === 0 ? 2 : 1) + bonus;
   let total = loadPoints() + gained;
   const unlocked = loadUnlocked();
   const cards: CardId[] = [];

@@ -2819,3 +2819,20 @@
   background-position: center;
   pointer-events: none;
 }
+
+/* 結果: デイリーミッション達成 */
+.result-missions {
+  display: grid;
+  gap: 4px;
+  margin-top: 6px;
+  justify-items: center;
+}
+
+.result-missions span {
+  padding: 3px 12px;
+  border-radius: 999px;
+  background: linear-gradient(#7f5cff, #4b2bbd);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+}

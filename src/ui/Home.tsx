@@ -5,6 +5,7 @@ import type { CpuLevel } from '@/ai/cpu';
 import type { CardId } from '@/game/cards';
 import { isUnlockAll, setUnlockAll } from '@/storage/collection';
 import { loadLevel, loadRecord, saveLevel } from '@/storage/profile';
+import { loadDaily, MISSIONS } from '@/storage/daily';
 import { ARENAS, arenaIndex, loadTrophies } from '@/storage/trophy';
 
 import { FIELD_URL, HERO_ME_URL } from './art';
@@ -28,6 +29,9 @@ export function Home({ deck, onStart, onDeck }: { deck: CardId[]; onStart: (leve
   const nextArena = ARENAS[ai + 1];
   const arenaPct = nextArena ? ((trophies - ARENAS[ai]!.from) / (nextArena.from - ARENAS[ai]!.from)) * 100 : 100;
   const [dev, setDev] = useState(false);
+  const [dailyOpen, setDailyOpen] = useState(false);
+  const daily = loadDaily();
+  const dailyDone = daily.missions.filter((id) => (daily.progress[id] ?? 0) >= MISSIONS[id].goal).length;
   const [allOn, setAllOn] = useState(isUnlockAll);
   const pick = (l: CpuLevel) => {
     playUiTap();
@@ -52,6 +56,26 @@ export function Home({ deck, onStart, onDeck }: { deck: CardId[]; onStart: (leve
         テスト用
       </button>
       <AnimatePresence>
+        {dailyOpen ? (
+          <Sheet key="daily" title="きょうのミッション" onClose={() => setDailyOpen(false)}>
+            <div className="sheet-list">
+              {daily.missions.map((id) => {
+                const n = daily.progress[id] ?? 0;
+                const goal = MISSIONS[id].goal;
+                return (
+                  <div key={id} className={`mission-row${n >= goal ? ' is-done' : ''}`}>
+                    <span className="mission-text">{MISSIONS[id].text}</span>
+                    <span className="mission-bar" aria-hidden="true">
+                      <i style={{ width: `${(n / goal) * 100}%` }} />
+                    </span>
+                    <b className="mission-count">{n >= goal ? '達成' : `${n}/${goal}`}</b>
+                  </div>
+                );
+              })}
+            </div>
+            <p className="card-detail-note">達成するたびに宝箱ゲージが 1 たまります。ミッションは毎日入れ替わります。</p>
+          </Sheet>
+        ) : null}
         {dev ? (
           <Sheet key="dev" title="テスト用" onClose={() => setDev(false)}>
             <div className="sheet-list">
@@ -106,6 +130,15 @@ export function Home({ deck, onStart, onDeck }: { deck: CardId[]; onStart: (leve
             <b>{trophies}</b>
           </span>
           {nextArena ? <span className="ts-arena-bar" aria-hidden="true"><i style={{ width: `${Math.max(4, arenaPct)}%` }} /></span> : null}
+          <button
+            className={`ts-daily${dailyDone === daily.missions.length ? ' is-done' : ''}`}
+            onClick={() => {
+              playUiTap();
+              setDailyOpen(true);
+            }}
+          >
+            ミッション {dailyDone}/{daily.missions.length}
+          </button>
         </div>
       </header>
 

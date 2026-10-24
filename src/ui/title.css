@@ -798,3 +798,60 @@ body {
   border-radius: inherit;
   background: linear-gradient(#fff3b8, #f9c933 50%, #d79a06);
 }
+
+/* デイリーミッションの入口（アリーナの下）とシートの行 */
+.ts-daily {
+  margin-top: 2px;
+  padding: 3px 10px;
+  border: 2px solid var(--gold-2);
+  border-radius: 999px;
+  background: linear-gradient(#5b3fc4, #34217f);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  box-shadow: 0 2px 0 rgb(0 0 0 / 0.45);
+}
+
+.ts-daily.is-done {
+  background: linear-gradient(#ffe27a, #f0a81e);
+  color: #4a2a00;
+}
+
+.mission-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  grid-template-rows: auto auto;
+  gap: 4px 10px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: rgb(255 255 255 / 0.06);
+}
+
+.mission-text {
+  font-weight: 700;
+}
+
+.mission-count {
+  grid-row: 1 / span 2;
+  grid-column: 2;
+  align-self: center;
+  color: var(--gold-1);
+}
+
+.mission-bar {
+  height: 8px;
+  border-radius: 999px;
+  background: rgb(0 0 0 / 0.5);
+  overflow: hidden;
+}
+
+.mission-bar i {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(#fff3b8, #f9c933 50%, #d79a06);
+}
+
+.mission-row.is-done {
+  background: rgb(255 216 74 / 0.14);
+}
