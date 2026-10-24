@@ -108,6 +108,18 @@ export function DeckScreen({ deck, onChange, onBack }: { deck: CardId[]; onChang
       <header className="dk-top">
         <h1 className="dk-title">デッキ</h1>
         <span className="dk-avg">
+          {/* コストの分布（1〜2・3〜4・5〜6・7〜）。軽いカードと重いカードの釣り合いが一目で分かる */}
+          <span className="dk-curve" aria-label="コストの分布">
+            {[
+              [1, 2],
+              [3, 4],
+              [5, 6],
+              [7, 99],
+            ].map(([lo, hi]) => {
+              const n = deck.filter((c) => CARDS[c].summon >= lo! && CARDS[c].summon <= hi!).length;
+              return <i key={lo} style={{ height: `${Math.max(2, (n / 8) * 100 * 2)}%` }} title={`コスト ${lo}${hi === 99 ? '〜' : `〜${hi}`}: ${n} 枚`} />;
+            })}
+          </span>
           平均コスト <b>{averageCost(deck).toFixed(1)}</b>
         </span>
       </header>

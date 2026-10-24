@@ -3133,3 +3133,20 @@ img.result-star.is-lit {
   object-fit: contain;
   filter: drop-shadow(0 1px 1px rgb(0 0 0 / 0.6));
 }
+
+/* デッキのコストの分布（平均コストの左の小さな棒 4 本） */
+.dk-curve {
+  display: inline-flex;
+  align-items: flex-end;
+  gap: 2px;
+  height: 18px;
+  margin-right: 6px;
+  vertical-align: middle;
+}
+
+.dk-curve i {
+  width: 5px;
+  max-height: 100%;
+  border-radius: 2px 2px 0 0;
+  background: linear-gradient(#fff3b8, #f9c933 50%, #d79a06);
+}
