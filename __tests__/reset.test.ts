@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 
-import { resetProgress } from '../src/storage/profile';
+import { addBeaten, loadAvatar, loadBeaten, resetProgress, saveAvatar } from '../src/storage/profile';
 
 class MemStorage {
   private m = new Map<string, string>();
@@ -38,3 +38,16 @@ describe('テスト用: きろくをけす', () => {
     expect(mem.getItem('other-app:x')).toBe('1');
   });
 });
+
+describe('アイコン（勝った相手の顔）', () => {
+  it('初めて勝った相手だけ true。アイコンは最初は hero、選ぶと保存される', () => {
+    (globalThis as unknown as { window: EventTarget }).window = new EventTarget();
+    expect(loadAvatar()).toBe('hero');
+    expect(addBeaten('毒')).toBe(true);
+    expect(addBeaten('毒')).toBe(false);
+    expect(loadBeaten().has('毒')).toBe(true);
+    saveAvatar('毒');
+    expect(loadAvatar()).toBe('毒');
+  });
+});
+

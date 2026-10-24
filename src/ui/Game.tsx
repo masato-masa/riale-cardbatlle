@@ -34,7 +34,7 @@ import {
 } from '@/game/engine';
 import { makeRng } from '@/game/rng';
 import { awardMatch, CHEST_POINTS, type MatchReward } from '@/storage/collection';
-import { addResult, isTutorialDone, loadName, loadRecord, markTip, seenTips, setTutorialDone } from '@/storage/profile';
+import { addBeaten, addResult, isTutorialDone, loadAvatar, loadName, loadRecord, markTip, seenTips, setTutorialDone } from '@/storage/profile';
 import { hintsFor, type Hint } from '@/game/hints';
 import { CHALLENGE_POINTS, clearChallenge } from '@/storage/challenge';
 import { MISSIONS, recordDaily, type MissionId } from '@/storage/daily';
@@ -42,7 +42,7 @@ import { pushHistory } from '@/storage/history';
 import { ARENAS, arenaIndex, loadTrophies, recordTrophies, rivalFor, type TrophyChange } from '@/storage/trophy';
 import { COIN_MAX, FAST_COOLDOWN_FROM_MS, MATCH_MS, PLAYER_HP, SUMMON_WINDUP_MS, WINDUP_MS } from '@/game/rules';
 
-import { ARENA_FLOOR_URLS, CHEST_URL, COIN_URL, foePersona, foePortrait, ICON_URL, HERO_ME_URL, preloadFx, RESULT_ART } from './art';
+import { ARENA_FLOOR_URLS, avatarUrl, CHEST_URL, COIN_URL, foePersona, foePortrait, ICON_URL, HERO_ME_URL, preloadFx, RESULT_ART } from './art';
 import { setBgmTension, startBgm, stopBgm } from './bgm';
 import { CardFace, type CardState } from './CardFace';
 import { RewardChest } from './RewardChest';
@@ -275,6 +275,11 @@ export function Game({ level, deck, challenge, onExit }: { level: CpuLevel; deck
   /** 連勝ボーナスが付いたときの連勝数（付かなければ 0）。 */
   const [streakBonus, setStreakBonus] = useState(0);
   const [myName] = useState(loadName);
+  const [myAvatar] = useState(loadAvatar);
+  /** 自分の顔。相手と同じ顔を選んでいたら、この試合は最初の顔にする（見分けがつくように）。 */
+  const myPortrait = myAvatar !== rival.name ? avatarUrl(myAvatar) : HERO_ME_URL;
+  /** この試合で初めて勝った相手（その顔が自分のアイコンに使えるようになった）。 */
+  const [newAvatar, setNewAvatar] = useState(false);
   /** きょうのチャレンジに、この試合で初めて勝った。 */
   const [challengeWon, setChallengeWon] = useState(false);
   /** 結果画面で相手のデッキを広げている。 */
@@ -723,6 +728,7 @@ export function Game({ level, deck, challenge, onExit }: { level: CpuLevel; deck
       if (e.kind === 'end') {
         const r = gameRef.current.result;
         addResult(r?.winner ?? null);
+        setNewAvatar(r?.winner === 0 && addBeaten(rival.name));
         // 連勝ボーナス: 3 連勝目から、勝つたびに宝箱ゲージ +1（もう 1 戦の動機）
         const streak = r?.winner === 0 ? loadRecord().streak : 0;
         const streakPts = streak >= STREAK_BONUS_FROM ? 1 : 0;
@@ -1248,6 +1254,7 @@ export function Game({ level, deck, challenge, onExit }: { level: CpuLevel; deck
     setMissionsDone([]);
     setChallengeWon(false);
     setFoeDeckOpen(false);
+    setNewAvatar(false);
     setHints([]);
     statsRef.current = freshStats();
     setResultShown(false);
@@ -1417,7 +1424,7 @@ export function Game({ level, deck, challenge, onExit }: { level: CpuLevel; deck
             {fieldRow(0)}
           </div>
           <div className="hero hero-me" data-player={0}>
-            <HeroBadge hp={me.hp} label={myName} portrait={HERO_ME_URL} />
+            <HeroBadge hp={me.hp} label={myName} portrait={myPortrait} />
           </div>
           <button
             className="menu-btn"
@@ -1641,7 +1648,7 @@ export function Game({ level, deck, challenge, onExit }: { level: CpuLevel; deck
                 animate={{ x: 0, opacity: 1, transition: { type: 'spring', stiffness: 260, damping: 22, delay: 0.1 } }}
               >
                 <span className="intro-medal">
-                  <img src={HERO_ME_URL} alt="" draggable={false} />
+                  <img src={myPortrait} alt="" draggable={false} />
                 </span>
                 <b>{myName}</b>
               </motion.div>
@@ -1806,7 +1813,7 @@ export function Game({ level, deck, challenge, onExit }: { level: CpuLevel; deck
                     <div className="result-duel">
                       <span className="result-side is-me">
                         <span className="result-medal">
-                          <img src={HERO_ME_URL} alt="" draggable={false} />
+                          <img src={myPortrait} alt="" draggable={false} />
                         </span>
                         <small className="result-name">{myName}</small>
                         <b>{me.hp}</b>
@@ -1849,8 +1856,9 @@ export function Game({ level, deck, challenge, onExit }: { level: CpuLevel; deck
                         ))}
                       </motion.div>
                     ) : null}
-                    {missionsDone.length > 0 || streakBonus > 0 || challengeWon ? (
+                    {missionsDone.length > 0 || streakBonus > 0 || challengeWon || newAvatar ? (
                       <motion.div className="result-missions" {...resultStep(2)}>
+                        {newAvatar ? <span className="is-avatar">{foePersona(rival.name).name}の顔をアイコンに使えるようになりました</span> : null}
                         {challengeWon ? <span className="is-challenge">きょうのチャレンジ達成！（宝箱ゲージ +{CHALLENGE_POINTS}）</span> : null}
                         {streakBonus > 0 ? <span className="is-streak">{streakBonus} 連勝ボーナス！（宝箱ゲージ +1）</span> : null}
                         {missionsDone.map((id) => (

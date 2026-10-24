@@ -3606,3 +3606,9 @@ img.result-star.is-lit {
   font-size: 12px;
   font-weight: 800;
 }
+
+/* 結果: 新しいアイコン */
+.result-missions span.is-avatar {
+  background: linear-gradient(#5ad1ff, #2276c9);
+  color: #fff;
+}

@@ -4,14 +4,14 @@ import { useEffect, useState } from 'react';
 import type { CpuLevel } from '@/ai/cpu';
 import type { CardId } from '@/game/cards';
 import { CHEST_POINTS, isUnlockAll, loadNew, loadPoints, loadUnlocked, pickReward, setUnlockAll } from '@/storage/collection';
-import { loadLevel, loadName, loadRecord, resetProgress, saveLevel } from '@/storage/profile';
+import { loadAvatar, loadBeaten, loadLevel, loadName, loadRecord, resetProgress, saveAvatar, saveLevel } from '@/storage/profile';
 import { CARDS, RIVAL_DECKS } from '@/game/cards';
 import { CHALLENGE_POINTS, challengeFor, isChallengeCleared } from '@/storage/challenge';
 import { loadDaily, MISSIONS } from '@/storage/daily';
 import { loadHistory, suggestLevel, summarize } from '@/storage/history';
 import { ARENAS, arenaIndex, loadArenaSeen, loadTrophies, saveArenaSeen } from '@/storage/trophy';
 
-import { ARENA_FLOOR_URLS, CHEST_URL, COIN_URL, foePersona, foePortrait, HERO_ME_URL, ICON_URL } from './art';
+import { ARENA_FLOOR_URLS, avatarUrl, CHEST_URL, COIN_URL, foePersona, foePortrait, HERO_ME_URL, ICON_URL } from './art';
 import { CardFace } from './CardFace';
 import { Sheet } from './Sheets';
 import { getKit, setKit } from './samples';
@@ -49,6 +49,8 @@ export function Home({ deck, onStart, onDeck }: { deck: CardId[]; onStart: (leve
   const [statsOpen, setStatsOpen] = useState(false);
   const [roadOpen, setRoadOpen] = useState(false);
   const [chalOpen, setChalOpen] = useState(false);
+  const [avatarOpen, setAvatarOpen] = useState(false);
+  const [avatar, setAvatar] = useState(loadAvatar);
   const chal = challengeFor();
   const chalDone = isChallengeCleared();
   /** アリーナ i で初めて出てくる相手デッキ（それより前のアリーナに無いもの）。 */
@@ -109,6 +111,43 @@ export function Home({ deck, onStart, onDeck }: { deck: CardId[]; onStart: (leve
               }}
             >
               OK
+            </button>
+          </Sheet>
+        ) : null}
+        {avatarOpen ? (
+          <Sheet key="avatar" title="アイコン" onClose={() => setAvatarOpen(false)}>
+            {(() => {
+              const beaten = loadBeaten();
+              const all = ['hero', ...RIVAL_DECKS.map((d) => d.name)];
+              return (
+                <>
+                  <p className="card-detail-note">勝ったことのある相手の顔を、自分のアイコンにできます（{beaten.size}/{RIVAL_DECKS.length}）。</p>
+                  <div className="avatar-grid">
+                    {all.map((a) => {
+                      const open = a === 'hero' || beaten.has(a);
+                      return (
+                        <button
+                          key={a}
+                          className={`avatar-pick${a === avatar ? ' is-on' : ''}${open ? '' : ' is-locked'}`}
+                          disabled={!open}
+                          aria-label={open ? (a === 'hero' ? '最初の顔' : foePersona(a).name) : `${foePersona(a).name}に勝つと使える`}
+                          onClick={() => {
+                            playUiTap();
+                            saveAvatar(a);
+                            setAvatar(a);
+                          }}
+                        >
+                          <img src={a === 'hero' ? HERO_ME_URL : foePortrait(a)} alt="" draggable={false} />
+                          <small>{open ? (a === 'hero' ? 'はじめ' : foePersona(a).name) : '？'}</small>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </>
+              );
+            })()}
+            <button className="sheet-btn" onClick={() => setAvatarOpen(false)}>
+              とじる
             </button>
           </Sheet>
         ) : null}
@@ -322,9 +361,16 @@ export function Home({ deck, onStart, onDeck }: { deck: CardId[]; onStart: (leve
       </AnimatePresence>
       <header className="ts-top">
         <div className="ts-player">
-          <span className="ts-medal">
-            <img src={HERO_ME_URL} alt="" draggable={false} />
-          </span>
+          <button
+            className="ts-medal"
+            aria-label="アイコンを変える"
+            onClick={() => {
+              playUiTap();
+              setAvatarOpen(true);
+            }}
+          >
+            <img src={avatarUrl(avatar)} alt="" draggable={false} />
+          </button>
           <span className="ts-name">
             <b>{name}</b>
             <small>

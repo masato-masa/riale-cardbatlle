@@ -1350,3 +1350,58 @@ button.ts-arena-name {
     height: 72px;
   }
 }
+
+/* アイコンを選ぶ（勝った相手の顔が使えるようになる） */
+button.ts-medal {
+  padding: 0;
+  border: 0;
+  cursor: pointer;
+}
+
+.sheet > .avatar-grid {
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.avatar-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(64px, 1fr));
+  gap: 8px;
+}
+
+.avatar-pick {
+  display: grid;
+  justify-items: center;
+  gap: 2px;
+  padding: 4px 0;
+  border: 0;
+  border-radius: 10px;
+  background: none;
+  color: #e9e1ff;
+  font: inherit;
+  cursor: pointer;
+}
+
+.avatar-pick img {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  box-shadow: 0 0 0 2px rgb(246 197 72 / 0.5);
+}
+
+.avatar-pick small {
+  font-size: 10px;
+  font-weight: 800;
+}
+
+.avatar-pick.is-on {
+  background: rgb(255 216 74 / 0.16);
+}
+
+.avatar-pick.is-on img {
+  box-shadow: 0 0 0 3px #ffd84a, 0 0 12px rgb(255 216 74 / 0.6);
+}
+
+.avatar-pick.is-locked img {
+  filter: grayscale(1) brightness(0.35);
+}

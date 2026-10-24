@@ -82,6 +82,50 @@ export function resetProgress(): void {
   }
 }
 
+const BEATEN_KEY = 'riale-cardbatlle:beaten';
+const AVATAR_KEY = 'riale-cardbatlle:avatar';
+
+/** 勝ったことのある相手デッキ（その使い手の顔を、自分のアイコンにできる）。 */
+export function loadBeaten(): Set<string> {
+  try {
+    const list: unknown = JSON.parse(localStorage.getItem(BEATEN_KEY) ?? '[]');
+    return new Set(Array.isArray(list) ? list.filter((x): x is string => typeof x === 'string') : []);
+  } catch {
+    return new Set();
+  }
+}
+
+/** 勝った相手を記録する。初めて勝った相手なら true。 */
+export function addBeaten(name: string): boolean {
+  const set = loadBeaten();
+  if (set.has(name)) return false;
+  set.add(name);
+  try {
+    localStorage.setItem(BEATEN_KEY, JSON.stringify([...set]));
+  } catch {
+    // 保存できなくても遊べる
+  }
+  return true;
+}
+
+/** 自分のアイコン（'hero' = 最初の顔、または勝った相手デッキの名前）。 */
+export function loadAvatar(): string {
+  try {
+    return localStorage.getItem(AVATAR_KEY) || 'hero';
+  } catch {
+    return 'hero';
+  }
+}
+
+export function saveAvatar(avatar: string): void {
+  try {
+    localStorage.setItem(AVATAR_KEY, avatar);
+  } catch {
+    // 保存できなくても、この場では効く
+  }
+  window.dispatchEvent(new Event('riale:avatar'));
+}
+
 const NAME_KEY = 'riale-cardbatlle:name';
 /** 名前の最大の長さ（盤面の帯に収まる長さ）。 */
 export const NAME_MAX = 8;

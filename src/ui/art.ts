@@ -94,6 +94,11 @@ export function foePersona(deckName: string): { name: string; title: string } {
   return FOE_PERSONA[deckName] ?? { name: 'あいて', title: '' };
 }
 
+/** 自分のアイコンの絵（'hero' か、勝った相手デッキの名前）。 */
+export function avatarUrl(avatar: string): string {
+  return avatar === 'hero' ? HERO_ME_URL : foePortrait(avatar);
+}
+
 export function foePortrait(deckName: string): string {
   const key = FOE_KEY[deckName];
   return (key && foeUrl(key)) ?? heroFoeUrl;
