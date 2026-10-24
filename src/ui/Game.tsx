@@ -20,7 +20,7 @@ import {
   findUnit,
   freeSlot,
   isWalled,
-  legalTargetsFor,
+  reservableTargets,
   abOf,
   isBlockerUnit,
   maxHpOf,
@@ -35,7 +35,7 @@ import {
 import { makeRng } from '@/game/rng';
 import { awardMatch, CHEST_POINTS, type MatchReward } from '@/storage/collection';
 import { addResult, isTutorialDone, setTutorialDone } from '@/storage/profile';
-import { COIN_MAX, FAST_COOLDOWN_FROM_MS, FIELD_SLOTS, MATCH_MS, PLAYER_HP, SUMMON_WINDUP_MS, WINDUP_MS } from '@/game/rules';
+import { COIN_MAX, FAST_COOLDOWN_FROM_MS, MATCH_MS, PLAYER_HP, SUMMON_WINDUP_MS, WINDUP_MS } from '@/game/rules';
 
 import { COIN_URL, FIELD_URL, HERO_FOE_URL, HERO_ME_URL, preloadFx } from './art';
 import { setBgmTension, startBgm, stopBgm } from './bgm';
@@ -969,11 +969,8 @@ export function Game({ level, deck, onExit }: { level: CpuLevel; deck: CardId[];
           : null;
     if (!target) return;
     const block = attackBlock(s, 0, d.uid, target);
-    if (block === 'target' && target.kind === 'player' && isWalled(s.players[1])) {
-      return reject(`相手の場が ${FIELD_SLOTS} 枚で壁になっています`);
-    }
-    // クールタイム中（溜め中も）は予約にする。明けた瞬間に攻撃が始まる
-    if (block === 'cooldown') {
+    // クールタイム中（溜め中も）と、ブロッカー・壁で狙えないときは予約にする。狙えるようになった瞬間に攻撃が始まる
+    if (block === 'cooldown' || block === 'target') {
       commit(step(s, { type: 'reserve', p: 0, uid: d.uid, target }));
       setTut((t) => (t === 2 ? 3 : t));
       return;
@@ -1012,7 +1009,7 @@ export function Game({ level, deck, onExit }: { level: CpuLevel; deck: CardId[];
   const me = game.players[0];
   const foe = game.players[1];
   const unitDrag = drag?.kind === 'unit' ? drag : null;
-  const legal = useMemo(() => new Set(unitDrag ? legalTargetsFor(game, 0, unitDrag.uid).map(targetKey) : []), [game, unitDrag?.uid]);
+  const legal = useMemo(() => new Set(unitDrag ? reservableTargets(game, 0).map(targetKey) : []), [game, unitDrag?.uid]);
   const handDrag = drag?.kind === 'hand' ? drag : null;
   const handDragCard = handDrag ? me.hand[handDrag.index] : undefined;
   const aiming = !!handDragCard && CARDS[handDragCard].type === 'spell' && needsTarget(handDragCard);

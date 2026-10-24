@@ -285,6 +285,11 @@ function targetsAgainst(foe: PlayerState): Target[] {
   return list;
 }
 
+/** 予約に選べる相手: ブロッカー・壁に阻まれていても、盤面にいる（ステルスでない）ユニットとプレイヤー。 */
+export function reservableTargets(state: GameState, p: PlayerIndex): Target[] {
+  return freeTargets(state.players[other(p)]);
+}
+
 function sameTarget(a: Target, b: Target): boolean {
   return a.kind === b.kind && (a.kind === 'player' || (b.kind === 'unit' && a.uid === b.uid));
 }
@@ -711,13 +716,15 @@ function runReservations(state: GameState): GameState {
     const foe = d.players[other(p)];
     for (const u of me.field) {
       if (!u?.reserved) continue;
-      if (!legalAgainst(foe, u.reserved, u)) {
+      // 対象がいなくなったら予約は消える。ブロッカー・壁で狙えないだけなら、予約したまま待機する
+      if (!freeTargets(foe).some((t) => sameTarget(t, u.reserved!))) {
         u.reserved = null;
         d.events.push({ kind: 'unreserve', p, uid: u.uid });
         changed = true;
         continue;
       }
       if (d.time < u.readyAt || isDisarmed(u, d.time) || d.pending.some((x) => x.kind === 'attack' && x.uid === u.uid)) continue;
+      if (!legalAgainst(foe, u.reserved, u)) continue;
       const target = u.reserved;
       const readyBefore = u.readyAt;
       const secondBefore = !!u.second;
@@ -730,7 +737,7 @@ function runReservations(state: GameState): GameState {
   return changed ? finish(state, d) : state;
 }
 
-/** 攻撃の予約。クールタイム中（または溜め中）のユニットだけ予約できる。すぐ攻撃できるなら予約ではなく attack を使う。 */
+/** 攻撃の予約。クールタイム中（または溜め中）のユニットか、ブロッカー・壁で狙えない対象だけ予約できる。すぐ攻撃できるなら予約ではなく attack を使う。 */
 function reserve(state: GameState, p: PlayerIndex, uid: number, target: Target | null): GameState {
   if (state.result) return state;
   const found = findUnit(state.players[p], uid);
@@ -738,9 +745,9 @@ function reserve(state: GameState, p: PlayerIndex, uid: number, target: Target |
   if (target === null) {
     if (!found.unit.reserved) return state;
   } else {
-    if (!isLegalTarget(state, p, target, uid)) return state;
+    if (!freeTargets(state.players[other(p)]).some((t) => sameTarget(t, target))) return state;
     const busy = state.time < found.unit.readyAt || state.pending.some((x) => x.kind === 'attack' && x.uid === uid);
-    if (!busy) return state;
+    if (!busy && isLegalTarget(state, p, target, uid)) return state;
   }
   const d = draftOf(state);
   const u = findUnit(d.players[p], uid)!.unit;

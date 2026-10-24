@@ -77,20 +77,36 @@ describe('攻撃の予約', () => {
     expect(s.events.some((e) => e.kind === 'unreserve' && e.uid === a.uid)).toBe(true);
   });
 
-  it('ブロッカーが出たら、ブロッカー以外への予約は消える', () => {
-    let [s, a] = place(withHand(['guard', 'herald', 'herald', 'herald']), 0, 0, 'craftsman', 9000);
+  it('ブロッカーが出ても予約は残り、攻撃せず待機する。ブロッカーを倒すと攻撃が始まる', () => {
+    let [s, a] = place(withHand(['guard', 'herald', 'herald', 'herald']), 0, 0, 'craftsman', 3000);
     s = rsv(s, 0, a.uid, FACE);
     s = step(s, { type: 'summon', p: 1, handIndex: 0, slot: 0 });
+    s = tick(s, 4000);
+    expect(unitOf(s, 0, a.uid)!.reserved).toEqual(FACE);
+    expect(s.pending.some((x) => x.kind === 'attack' && x.uid === a.uid)).toBe(false);
+    expect(unitOf(s, 0, a.uid)!.readyAt).toBe(3000); // 待機の間、クールタイムは進めない
+    const guardUid = s.players[1].field.find((u) => u)!.uid;
+    s = { ...s, players: [s.players[0], { ...s.players[1], field: s.players[1].field.map(() => null) }] };
     s = tick(s, 16);
-    expect(unitOf(s, 0, a.uid)!.reserved).toBeNull();
+    expect(guardUid).toBeDefined();
+    expect(s.pending.some((x) => x.kind === 'attack' && x.uid === a.uid)).toBe(true);
   });
 
-  it('相手の場が埋まって壁になったら、プレイヤーへの予約は消える', () => {
+  it('壁やブロッカーで狙えない対象にも、すぐ動けるユニットが予約できる（攻撃は始まらない）', () => {
+    let [s, a] = place(withHand(HAND4), 0, 0, 'craftsman', 0);
+    for (let i = 0; i < FIELD_SLOTS; i++) [s] = place(s, 1, i, 'herald');
+    expect(atk(s, 0, a.uid, FACE)).toBe(s);
+    const n = rsv(s, 0, a.uid, FACE);
+    expect(unitOf(n, 0, a.uid)!.reserved).toEqual(FACE);
+    expect(tick(n, 16).pending).toHaveLength(0);
+  });
+
+  it('相手の場が埋まって壁になっても、プレイヤーへの予約は残って待機する', () => {
     let [s, a] = place(withHand(HAND4), 0, 0, 'craftsman', 9000);
     s = rsv(s, 0, a.uid, FACE);
     for (let i = 0; i < FIELD_SLOTS; i++) [s] = place(s, 1, i, 'herald');
     s = tick(s, 16);
-    expect(unitOf(s, 0, a.uid)!.reserved).toBeNull();
+    expect(unitOf(s, 0, a.uid)!.reserved).toEqual(FACE);
   });
 
   it('予約は取り消せる。攻撃したら予約は消える', () => {
