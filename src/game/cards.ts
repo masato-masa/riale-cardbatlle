@@ -728,6 +728,8 @@ export const RIVAL_DECKS: { name: string; deck: CardId[] }[] = [
   { name: '討伐', deck: ['herald', 'hunter', 'avenger', 'scout', 'slayer', 'riposte', 'trickster', 'monarch'] },
   { name: 'T一族', deck: ['kleen', 'kvav', 'kboyan', 'kroda', 'kdera', 'tmassa', 'tzarashi', 'tkisuke'] },
   { name: '封印', deck: ['informer', 'warder', 'binder', 'blockader', 'knight', 'herald', 'shieldmaid', 'quarry'] },
+  // 砦と鍛冶場を立てて、大型で押す。ブロッカーは 2 枚（ロイ・バーナ）。ブロッカーを減らすと hard 相手に 15% 以下まで落ちた
+  { name: '城塞', deck: ['recruit', 'guard', 'fortress', 'forge', 'champion', 'ogre', 'stalwart', 'taxman'] },
 ];
 
 export function isBlocker(card: CardId): boolean {
