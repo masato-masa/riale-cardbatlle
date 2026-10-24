@@ -14,6 +14,10 @@ import iconArenaUrl from '@/assets/art/ui/icon-arena.webp';
 import iconMissionUrl from '@/assets/art/ui/icon-mission.webp';
 import iconStatsUrl from '@/assets/art/ui/icon-stats.webp';
 import iconTrophyUrl from '@/assets/art/ui/icon-trophy.webp';
+import iconPauseUrl from '@/assets/art/ui/icon-pause.webp';
+import tabBattleUrl from '@/assets/art/ui/tab-battle.webp';
+import tabDeckUrl from '@/assets/art/ui/tab-deck.webp';
+import tabSettingsUrl from '@/assets/art/ui/tab-settings.webp';
 import ribbonLoseUrl from '@/assets/art/ui/ribbon-lose.webp';
 import ribbonWinUrl from '@/assets/art/ui/ribbon-win.webp';
 import starOffUrl from '@/assets/art/ui/star-off.webp';
@@ -28,7 +32,16 @@ export const CHEST_URL: string = chestClosedUrl;
 /** ホームの UI アイコン（ChatGPT で作成。scripts/slice-icons.mjs）。 */
 /** 結果画面の星とリボン（ChatGPT で作成。scripts/slice-result.mjs）。 */
 export const RESULT_ART = { starOn: starOnUrl, starOff: starOffUrl, ribbonWin: ribbonWinUrl, ribbonLose: ribbonLoseUrl };
-export const ICON_URL = { trophy: iconTrophyUrl, mission: iconMissionUrl, stats: iconStatsUrl, arena: iconArenaUrl };
+export const ICON_URL = {
+  trophy: iconTrophyUrl,
+  mission: iconMissionUrl,
+  stats: iconStatsUrl,
+  arena: iconArenaUrl,
+  pause: iconPauseUrl,
+  tabDeck: tabDeckUrl,
+  tabBattle: tabBattleUrl,
+  tabSettings: tabSettingsUrl,
+};
 /** デッキ編成画面の背景（軍の作戦室。ChatGPT で作成。scripts/slice-arena.mjs の deck-bg と同じ要領）。 */
 export const DECK_BG_URL: string = deckBgUrl;
 /** プレイヤーの肖像（ChatGPT で作成。scripts/slice-portraits.mjs で切り出し）。 */

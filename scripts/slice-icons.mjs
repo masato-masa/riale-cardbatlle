@@ -1,23 +1,27 @@
 // ChatGPT で作った UI アイコン（art-src/icons-sheet.png、純マゼンタ地に 2×2）を、地を透かして src/assets/art/ui/ へ出す。
-// 左上=トロフィー / 右上=巻物（ミッション）/ 左下=本（戦績）/ 右下=盾の紋章（アリーナ）。透かし方は slice-pips.mjs と同じ。
+// icons-sheet: トロフィー・巻物（ミッション）・本（戦績）・盾の紋章（アリーナ）。tabs-sheet: タブ 3 つと一時停止。透かし方は slice-pips.mjs と同じ。
 // 使い方: node scripts/slice-icons.mjs
 import { fileURLToPath } from 'node:url';
 
 import sharp from 'sharp';
 
 const root = fileURLToPath(new URL('..', import.meta.url));
-const src = `${root}art-src/icons-sheet.png`;
 const out = `${root}src/assets/art/ui`;
+
+/** シートと、2×2 のマスの名前（左上・右上・左下・右下）。tabs-sheet はタブ（デッキ・バトル・設定）と一時停止。 */
+const SHEETS = {
+  'icons-sheet': ['icon-trophy', 'icon-mission', 'icon-stats', 'icon-arena'],
+  'tabs-sheet': ['tab-deck', 'tab-battle', 'tab-settings', 'icon-pause'],
+};
+
+for (const [sheet, names] of Object.entries(SHEETS)) {
+const src = `${root}art-src/${sheet}.png`;
 const { width, height } = await sharp(src).metadata();
 const w = Math.floor(width / 2);
 const h = Math.floor(height / 2);
-
-for (const [name, col, row] of [
-  ['icon-trophy', 0, 0],
-  ['icon-mission', 1, 0],
-  ['icon-stats', 0, 1],
-  ['icon-arena', 1, 1],
-]) {
+for (const [k, name] of names.entries()) {
+  const col = k % 2;
+  const row = Math.floor(k / 2);
   const { data, info } = await sharp(src)
     .extract({ left: col * w, top: row * h, width: w, height: h })
     .ensureAlpha()
@@ -39,4 +43,5 @@ for (const [name, col, row] of [
     .webp({ quality: 90, alphaQuality: 100 })
     .toFile(`${out}/${name}.webp`);
   console.log(`${name}.webp`);
+}
 }

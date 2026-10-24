@@ -40,7 +40,7 @@ import { pushHistory } from '@/storage/history';
 import { ARENAS, arenaIndex, loadTrophies, recordTrophies, rivalFor, type TrophyChange } from '@/storage/trophy';
 import { COIN_MAX, FAST_COOLDOWN_FROM_MS, MATCH_MS, PLAYER_HP, SUMMON_WINDUP_MS, WINDUP_MS } from '@/game/rules';
 
-import { ARENA_FLOOR_URLS, CHEST_URL, COIN_URL, HERO_FOE_URL, HERO_ME_URL, preloadFx, RESULT_ART } from './art';
+import { ARENA_FLOOR_URLS, CHEST_URL, COIN_URL, ICON_URL, HERO_FOE_URL, HERO_ME_URL, preloadFx, RESULT_ART } from './art';
 import { setBgmTension, startBgm, stopBgm } from './bgm';
 import { CardFace, type CardState } from './CardFace';
 import { RewardChest } from './RewardChest';
@@ -1380,10 +1380,7 @@ export function Game({ level, deck, onExit }: { level: CpuLevel; deck: CardId[];
               setMenu('menu');
             }}
           >
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-              <rect x="6" y="5" width="4.2" height="14" rx="1.4" />
-              <rect x="13.8" y="5" width="4.2" height="14" rx="1.4" />
-            </svg>
+            <img src={ICON_URL.pause} alt="" draggable={false} />
           </button>
         </div>
 
