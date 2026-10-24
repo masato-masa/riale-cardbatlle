@@ -315,3 +315,8 @@
 ## 2026-10-24 宝箱ゲージの絵（タグ autopilot/050-before-chest-meter、公開済み）
 
 - 結果画面の宝箱ゲージを、CSS の丸から既存の絵（宝箱・金貨）に。たまっていない点は灰色で暗く。?result=lose で 3 つの絵が読み込まれることを確認。
+
+## 2026-10-24 タブと一時停止のアイコン（タグ autopilot/051-before-tab-icons、公開済み）
+
+- 自作 SVG のタブアイコン 3 つ（カード・剣・歯車）と一時停止ボタンを、ChatGPT 製（icons-sheet を見本、tabs-sheet → slice-icons.mjs で透過）に。390×844 でタブ 3 つ・一時停止が表示されることを確認。
+- 教訓: javascript_tool の中で 45 秒待つとツールの上限に当たる。待ちは 40 秒以内か、wait を分ける。
