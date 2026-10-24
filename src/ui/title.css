@@ -1001,3 +1001,14 @@ body {
   object-fit: contain;
   filter: drop-shadow(0 2px 0 rgb(0 0 0 / 0.4));
 }
+
+/* 次のアリーナまでの残り（目標が見える） */
+.ts-arena-next {
+  margin-top: -2px;
+  color: #e9e1ff;
+  font-size: 10px;
+  font-weight: 700;
+  -webkit-text-stroke: 2px rgb(18 8 30 / 0.85);
+  paint-order: stroke fill;
+  white-space: nowrap;
+}

@@ -188,6 +188,7 @@ export function Home({ deck, onStart, onDeck }: { deck: CardId[]; onStart: (leve
             <b>{trophies}</b>
           </span>
           {nextArena ? <span className="ts-arena-bar" aria-hidden="true"><i style={{ width: `${Math.max(4, arenaPct)}%` }} /></span> : null}
+          {nextArena ? <small className="ts-arena-next">{nextArena.name}まで あと {nextArena.from - trophies}</small> : null}
           <button
             className={`ts-daily${dailyDone === daily.missions.length ? ' is-done' : ''}`}
             onClick={() => {
