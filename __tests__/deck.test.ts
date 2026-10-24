@@ -61,3 +61,15 @@ describe('デッキ 5 つの保存とコンセプトデッキ', () => {
     expect(r.deck.slice(0, 5)).toEqual(preset.slice(0, 5));
   });
 });
+
+import { deckCode, parseDeckCode } from '../src/storage/deck';
+
+describe('デッキコード', () => {
+  it('書いて読むと同じデッキに戻る。知らないカード・重複・別の文字列は除く', () => {
+    const d = ['herald', 'guard', 'double', 'taxman', 'knight', 'quarry', 'veteran', 'executioner'] as const;
+    expect(parseDeckCode(deckCode([...d]))).toEqual([...d]);
+    expect(parseDeckCode('RCB:herald,herald,nosuchcard,guard')).toEqual(['herald', 'guard']);
+    expect(parseDeckCode('hello')).toBeNull();
+    expect(parseDeckCode('RCB:nosuch')).toBeNull();
+  });
+});

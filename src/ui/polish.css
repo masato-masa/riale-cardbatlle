@@ -3171,3 +3171,48 @@ img.result-star.is-lit {
     animation: none !important;
   }
 }
+
+/* デッキコード（コンセプトデッキのシートの下） */
+.deck-code {
+  display: grid;
+  gap: 6px;
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid rgb(246 197 72 / 0.35);
+}
+
+.deck-code b {
+  color: var(--gold-1);
+  font-size: 13px;
+}
+
+.deck-code small {
+  color: #d9cfff;
+  font-size: 11px;
+}
+
+.deck-code-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 6px;
+}
+
+.deck-code-row input {
+  min-width: 0;
+  padding: 6px 8px;
+  border-radius: 8px;
+  border: 1px solid rgb(246 197 72 / 0.5);
+  background: rgb(0 0 0 / 0.35);
+  color: #fff;
+  font-size: 12px;
+}
+
+.deck-code-btn {
+  padding: 0 12px;
+  border-radius: 8px;
+  border: 2px solid var(--gold-2);
+  background: linear-gradient(#5b3fc4, #34217f);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+}

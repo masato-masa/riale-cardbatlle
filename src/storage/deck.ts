@@ -94,6 +94,19 @@ export function applyPreset(preset: CardId[], current: CardId[], owned: Set<Card
   return { deck, missing };
 }
 
+/** デッキコード（友だちと見せ合う・別の端末へ写すための文字列）。例: RCB:herald,guard,... */
+export function deckCode(deck: CardId[]): string {
+  return `RCB:${deck.join(',')}`;
+}
+
+/** デッキコードを読む。知らないカード・重複は除き、1 枚以上あればその並び（足りない分は applyPreset で補う）。 */
+export function parseDeckCode(code: string): CardId[] | null {
+  const m = code.trim().match(/^RCB:([a-z0-9,]+)$/i);
+  if (!m) return null;
+  const ids = m[1]!.split(',').filter((id, i, arr) => id in CARDS && !CARDS[id as CardId].token && arr.indexOf(id) === i) as CardId[];
+  return ids.length > 0 ? ids.slice(0, DECK_SIZE) : null;
+}
+
 /** 平均コスト（クラロワと同じく小数 1 桁）。 */
 export function averageCost(deck: CardId[]): number {
   return Math.round((deck.reduce((n, id) => n + CARDS[id].summon, 0) / deck.length) * 10) / 10;

@@ -4,7 +4,7 @@ import { useMemo, useRef, useState } from 'react';
 import { CARDS, RIVAL_DECKS, STARTER_DECK, TYPE_NAME, type CardId, type CardType } from '@/game/cards';
 import { loadUnlocked } from '@/storage/collection';
 import { ARENAS, arenaForCost, arenaIndex, loadTrophies } from '@/storage/trophy';
-import { applyPreset, averageCost, COLLECTION, DECK_SLOTS, loadBook, saveBook, saveDeck } from '@/storage/deck';
+import { applyPreset, averageCost, COLLECTION, DECK_SLOTS, deckCode, loadBook, parseDeckCode, saveBook, saveDeck } from '@/storage/deck';
 
 import { CardFace } from './CardFace';
 import { DECK_BG_URL } from './art';
@@ -54,6 +54,8 @@ export function DeckScreen({ deck, onChange, onBack }: { deck: CardId[]; onChang
   const [active, setActive] = useState(() => loadBook().active);
   /** コンセプトデッキの一覧と、補った枚数の知らせ。 */
   const [presets, setPresets] = useState(false);
+  const [codeInput, setCodeInput] = useState('');
+  const [codeNote, setCodeNote] = useState<string | null>(null);
   const [note, setNote] = useState<string | null>(null);
   const chooseSlot = (i: number) => {
     const b = loadBook();
@@ -301,6 +303,40 @@ export function DeckScreen({ deck, onChange, onBack }: { deck: CardId[]; onChang
                   </button>
                 );
               })}
+            </div>
+            <div className="deck-code">
+              <b>デッキコード</b>
+              <div className="deck-code-row">
+                <input readOnly value={deckCode(deck)} aria-label="いまのデッキのコード" onFocus={(e) => e.currentTarget.select()} />
+                <button
+                  className="deck-code-btn"
+                  onClick={() => {
+                    playUiTap();
+                    navigator.clipboard?.writeText(deckCode(deck)).then(
+                      () => setCodeNote('コピーしました'),
+                      () => setCodeNote('コピーできませんでした。枠を長押しして選んでください'),
+                    );
+                  }}
+                >
+                  コピー
+                </button>
+              </div>
+              <div className="deck-code-row">
+                <input value={codeInput} placeholder="RCB: から始まるコードを貼り付け" aria-label="読み込むデッキコード" onChange={(e) => setCodeInput(e.target.value)} />
+                <button
+                  className="deck-code-btn"
+                  onClick={() => {
+                    const ids = parseDeckCode(codeInput);
+                    if (!ids) return setCodeNote('コードが読めませんでした');
+                    usePreset(ids);
+                    setCodeInput('');
+                    setCodeNote(null);
+                  }}
+                >
+                  読み込む
+                </button>
+              </div>
+              {codeNote ? <small>{codeNote}</small> : null}
             </div>
             <button className="sheet-btn quiet" onClick={() => setPresets(false)}>
               とじる
