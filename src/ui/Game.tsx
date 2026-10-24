@@ -693,7 +693,8 @@ export function Game({ level, deck, onExit }: { level: CpuLevel; deck: CardId[];
       if (e.kind === 'end') {
         const r = gameRef.current.result;
         addResult(r?.winner ?? null);
-        setTrophy(recordTrophies(level, r?.winner ?? null));
+        const tc = recordTrophies(level, r?.winner ?? null);
+        setTrophy(tc);
         const done = recordDaily({ won: r?.winner === 0, ...statsRef.current });
         setMissionsDone(done);
         const st = statsRef.current;
@@ -717,7 +718,9 @@ export function Game({ level, deck, onExit }: { level: CpuLevel; deck: CardId[];
             reserves: st.reserves,
           }),
         );
-        setReward(awardMatch(r?.winner ?? null, Math.random, done.length));
+        // アリーナ昇格のごほうび: 宝箱ゲージ +2（宝箱 1 つぶん）
+        const arenaBonus = tc.arenaAfter > tc.arenaBefore ? 2 : 0;
+        setReward(awardMatch(r?.winner ?? null, Math.random, done.length + arenaBonus));
         // 倒れる演出 → 勝敗の文字 → 余韻のあとに結果のポップアップ
         window.setTimeout(() => setResultShown(true), RESULT_DELAY_MS);
         // 決着の見せ場: 倒れた側のプレイヤー札で連続の爆発・画面の閃光・大きな揺れ
@@ -1764,7 +1767,7 @@ export function Game({ level, deck, onExit }: { level: CpuLevel; deck: CardId[];
                         {trophy.arenaAfter > trophy.arenaBefore ? (
                           <>
                             <b className="arena-up">アリーナ昇格！ {ARENAS[trophy.arenaAfter]!.name}</b>
-                            <small>宝箱からコスト {ARENAS[trophy.arenaAfter]!.cardCap} までのカードが出るように</small>
+                            <small>宝箱からコスト {ARENAS[trophy.arenaAfter]!.cardCap} までのカードが出るように・昇格のごほうびで宝箱ゲージ +2</small>
                           </>
                         ) : null}
                       </motion.div>
