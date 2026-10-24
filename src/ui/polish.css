@@ -2681,3 +2681,9 @@
   top: auto;
   bottom: -11%;
 }
+
+/* 「つぎ」のカードの四隅の台座が画面の左端で切れないよう余白を取る */
+.hand-row {
+  padding-left: 8px;
+  box-sizing: border-box;
+}
