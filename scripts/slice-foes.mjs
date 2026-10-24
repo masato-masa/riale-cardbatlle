@@ -6,15 +6,21 @@ import { fileURLToPath } from 'node:url';
 import sharp from 'sharp';
 
 const root = fileURLToPath(new URL('..', import.meta.url));
-const src = `${root}art-src/foes-sheet.png`;
-const names = ['poison', 'giant', 'combo', 'sniper', 'guard', 'sacrifice', 'hunter', 'clan', 'seal'];
+/** シートと並び。foes-sheet-2（2×2）: 城塞の将軍・呪術師・死霊使い・聖騎士。 */
+const SHEETS = {
+  'foes-sheet': { cols: 3, names: ['poison', 'giant', 'combo', 'sniper', 'guard', 'sacrifice', 'hunter', 'clan', 'seal'] },
+  'foes-sheet-2': { cols: 2, names: ['fortress', 'sorcerer', 'necro', 'paladin'] },
+};
+for (const [sheet, { cols, names }] of Object.entries(SHEETS)) {
+const src = `${root}art-src/${sheet}.png`;
 const { width } = await sharp(src).metadata();
-const cell = Math.floor(width / 3);
+const cell = Math.floor(width / cols);
 for (const [i, name] of names.entries()) {
   await sharp(src)
-    .extract({ left: (i % 3) * cell, top: Math.floor(i / 3) * cell, width: cell, height: cell })
+    .extract({ left: (i % cols) * cell, top: Math.floor(i / cols) * cell, width: cell, height: cell })
     .resize(240, 240)
     .webp({ quality: 88 })
     .toFile(`${root}src/assets/art/ui/foe-${name}.webp`);
   console.log(`foe-${name}.webp`);
+}
 }

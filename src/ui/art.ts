@@ -61,8 +61,8 @@ const FOE_KEY: Record<string, string> = {
   討伐: 'hunter',
   T一族: 'clan',
   封印: 'seal',
-  城塞: 'giant',
-  呪術: 'sacrifice',
+  城塞: 'fortress',
+  呪術: 'sorcerer',
 };
 export function foePortrait(deckName: string): string {
   const key = FOE_KEY[deckName];
