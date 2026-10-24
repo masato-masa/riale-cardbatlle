@@ -5,7 +5,7 @@ import type { CpuLevel } from '@/ai/cpu';
 import type { CardId } from '@/game/cards';
 import { CHEST_POINTS, isUnlockAll, loadNew, loadPoints, loadUnlocked, pickReward, setUnlockAll } from '@/storage/collection';
 import { loadLevel, loadName, loadRecord, resetProgress, saveLevel } from '@/storage/profile';
-import { CARDS } from '@/game/cards';
+import { CARDS, RIVAL_DECKS } from '@/game/cards';
 import { CHALLENGE_POINTS, challengeFor, isChallengeCleared } from '@/storage/challenge';
 import { loadDaily, MISSIONS } from '@/storage/daily';
 import { loadHistory, suggestLevel, summarize } from '@/storage/history';
@@ -120,6 +120,13 @@ export function Home({ deck, onStart, onDeck }: { deck: CardId[]; onStart: (leve
               <small>
                 {foePersona(chal).title}・{chal}デッキ・つよい
               </small>
+              <span className="result-foe-deck chal-deck" aria-label="相手のデッキ">
+                {(RIVAL_DECKS.find((d) => d.name === chal)?.deck ?? []).map((c, i) => (
+                  <span key={`${c}-${i}`} className="result-foe-card">
+                    <CardFace card={c} small />
+                  </span>
+                ))}
+              </span>
               <p>{chalDone ? 'きょうはもう達成しました。また明日、別の相手が来ます。' : `勝つと宝箱ゲージ +${CHALLENGE_POINTS}（1 日 1 回）。トロフィーは「つよい」と同じだけ増減します。`}</p>
             </div>
             <button
