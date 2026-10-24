@@ -1103,6 +1103,9 @@ button.ts-arena-name {
 .road {
   display: grid;
   gap: 8px;
+  /* シートの高さ（画面の 80%）を超えたらスクロール。低い画面で下のアリーナが切れないように */
+  min-height: 0;
+  overflow-y: auto;
 }
 
 .road-row {
