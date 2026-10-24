@@ -91,7 +91,7 @@ interface Popup {
   x: number;
   y: number;
   text: string;
-  tone: 'dmg' | 'face' | 'heal' | 'guard' | 'stun' | 'poison' | 'buff' | 'coin' | 'dodge';
+  tone: 'dmg' | 'dmgBig' | 'dmgHuge' | 'face' | 'heal' | 'guard' | 'stun' | 'poison' | 'buff' | 'coin' | 'dodge';
 }
 
 /** 画面の真ん中に大きく出す一言（割り込み！・パリィ！・上書き！）。 */
@@ -259,11 +259,23 @@ export function Game({ level, deck, onExit }: { level: CpuLevel; deck: CardId[];
     setGame(s);
   }, []);
 
+  const hitStopUntil = useRef(0);
+  /** 重い一撃で時間を止める（ms）。 */
+  const hitStop = useCallback((ms: number) => {
+    hitStopUntil.current = Math.max(hitStopUntil.current, performance.now() + ms);
+  }, []);
+
   // ---- 時間を進める（CPU もここで動く） ----
   useEffect(() => {
     let raf = 0;
     let last = performance.now();
     const frame = (now: number) => {
+      // ヒットストップ: 重い一撃のあと、ほんの一瞬だけ時間を止めて手応えを出す
+      if (now < hitStopUntil.current) {
+        last = now;
+        raf = requestAnimationFrame(frame);
+        return;
+      }
       const dt = Math.min(100, now - last) * DEV_SPEED;
       last = now;
       const cur = gameRef.current;
@@ -599,6 +611,7 @@ export function Game({ level, deck, onExit }: { level: CpuLevel; deck: CardId[];
           if (e.target.kind === 'player') {
             const el = heroEl(e.p);
             addPopup(el, `-${e.amount}`, 'face');
+            if (e.amount >= 4) hitStop(e.amount >= 7 ? 90 : 60);
             addBurst(el, 'face');
             shake(Math.min(9, 3 + e.amount));
             if (el) animate(el, { x: [0, -9, 9, -6, 6, -3, 0] }, { duration: 0.5 });
@@ -611,7 +624,8 @@ export function Game({ level, deck, onExit }: { level: CpuLevel; deck: CardId[];
               addBurst(el, 'guard');
               playBarrier();
             } else {
-              addPopup(el, `-${e.amount}`, e.guard === 'armor' ? 'guard' : 'dmg');
+              addPopup(el, `-${e.amount}`, e.guard === 'armor' ? 'guard' : e.amount >= 8 ? 'dmgHuge' : e.amount >= 5 ? 'dmgBig' : 'dmg');
+              if (e.amount >= 5) hitStop(e.amount >= 8 ? 90 : 55);
               const atkEl = attackEv?.kind === 'attack' ? unitEl(attackEv.uid) : null;
               const atkCard = atkEl?.getAttribute('data-card') as CardId | null;
               const atkAb = atkCard ? CARDS[atkCard].ab : null;

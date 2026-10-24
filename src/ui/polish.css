@@ -2790,3 +2790,17 @@
   font-size: 14px;
   animation: coin-pop 0.9s ease-in-out infinite;
 }
+
+/* ダメージの大きさで数字を変える: 5 以上は大きく金、8 以上は特大で赤い縁と光 */
+.popup-dmgBig {
+  font-size: 42px;
+  color: #ffe27a;
+  -webkit-text-stroke: 6px #8a1018;
+}
+
+.popup-dmgHuge {
+  font-size: 58px;
+  color: #fff;
+  -webkit-text-stroke: 7px #c4161e;
+  filter: drop-shadow(0 0 10px rgb(255 120 60 / 0.9));
+}
