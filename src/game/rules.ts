@@ -7,7 +7,7 @@ export const PLAYER_ATK = 0;
 /** 試合の長さ（ms）。 */
 export const MATCH_MS = 240_000;
 /** この時刻（ms）から、ユニットのクールタイムが 2 倍の速さで減る（コインは 2 倍にしない。膠着を防ぐため）。 */
-export const FAST_COOLDOWN_FROM_MS = 180_000;
+export const FAST_COOLDOWN_FROM_MS = 120_000;
 /** コイン 1 枚がたまるまでの時間（ms）。 */
 export const COIN_MS = 3000;
 export const COIN_MAX = 10;

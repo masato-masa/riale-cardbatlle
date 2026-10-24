@@ -65,11 +65,11 @@ describe('基準のスタッツ（能力なしはスタッツ合計がコスト�
 
   it('コスト 6 以上のユニット（コスト/クールタイム/攻撃/HP）', () => {
     const row = (id: CardId) => [CARDS[id].summon, CARDS[id].cd / 1000, CARDS[id].atk, CARDS[id].hp].join('/');
-    expect(row('veteran')).toBe('6/19/7/7');
-    expect(row('executioner')).toBe('7/24/4/8');
-    expect(row('strategist')).toBe('8/14/8/8');
-    expect(row('colossus')).toBe('9/19/7/10');
-    expect(row('archmage')).toBe('10/34/10/10');
+    expect(row('veteran')).toBe('6/24/7/7');
+    expect(row('executioner')).toBe('7/30/4/8');
+    expect(row('strategist')).toBe('8/20/8/8');
+    expect(row('colossus')).toBe('9/24/7/10');
+    expect(row('archmage')).toBe('10/30/10/10');
     expect(CARDS.veteran.ab).toEqual({});
     expect(CARDS.colossus.ab).toEqual({ blocker: true });
   });

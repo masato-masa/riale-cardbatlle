@@ -35,7 +35,7 @@ export function CardFace({
   atk?: number;
   small?: boolean;
   states?: CardState[];
-  /** 場のカード（登場待ちの表示も同じ）の持ち主。場に出たカードは召喚コストを出さない。自分（true）は攻撃力・HP を上、コスト・クールタイムを下に入れ替える。相手（false）は能力のアイコンを下に出す。 */
+  /** 場のカード（登場待ちの表示も同じ）の持ち主。場に出たカードは召喚コストとクールタイムの台座を出さない（クールタイムは輪で見せる）。自分（true）は攻撃力・HP を上、コスト・クールタイムを下に入れ替える。相手（false）は能力のアイコンを下に出す。 */
   mine?: boolean;
 }) {
   const def = CARDS[card];
@@ -85,7 +85,7 @@ export function CardFace({
           <i>{def.summon}</i>
         </span>
       ) : null}
-      {def.type === 'unit' ? (
+      {def.type === 'unit' && mine === undefined ? (
         <span className="pip pip-cd" aria-label={`クールタイム ${def.cd / 1000} 秒`}>
           <PipBg kind="cd" />
           <i>{def.cd / 1000}</i>

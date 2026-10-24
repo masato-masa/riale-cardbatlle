@@ -101,15 +101,15 @@ describe('クールタイム（カードごと）', () => {
     expect(h.players[0].field[0]!.readyAt).toBe(h.time);
   });
 
-  it('建築物・呪文の cd は 0。ユニットは 1 秒刻みで、平均はおよそ 20 秒（全カード +4 秒）', () => {
+  it('建築物・呪文の cd は 0。ユニットは はやめ 20・標準 24・おそめ 30 秒の 3 段階だけ', () => {
     const list = Object.values(CARDS).filter((c) => c.type === 'unit' && !c.token);
     for (const c of Object.values(CARDS)) {
       if (c.type !== 'unit') expect(c.cd).toBe(0);
-      else expect(c.cd % 1000).toBe(0);
+      else expect([20000, 24000, 30000]).toContain(c.cd);
     }
     const avg = list.reduce((n, c) => n + c.cd, 0) / list.length / 1000;
-    expect(avg).toBeGreaterThanOrEqual(18);
-    expect(avg).toBeLessThanOrEqual(22);
+    expect(avg).toBeGreaterThanOrEqual(22);
+    expect(avg).toBeLessThanOrEqual(26);
   });
 
   it('祈りは、そのカードの cd に掛かる。-30%、2 枚でも下限の 40%（3 枚でも 40% より短くならない）', () => {
