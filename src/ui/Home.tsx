@@ -5,7 +5,7 @@ import { createPortal } from 'react-dom';
 import type { CpuLevel } from '@/ai/cpu';
 import type { CardId } from '@/game/cards';
 import { CHEST_COST, CHEST_GAIN, hasLocked, isUnlockAll, loadNew, loadPoints, openChest, setUnlockAll } from '@/storage/collection';
-import { loadAvatar, loadBeaten, loadLevel, loadName, loadRecord, resetProgress, saveAvatar, saveLevel } from '@/storage/profile';
+import { loadAvatar, loadBeaten, loadLevel, loadName, loadRecord, loadRuleMode, resetProgress, RULE_MODE_NAME, saveAvatar, saveLevel, saveRuleMode, type RuleMode } from '@/storage/profile';
 import { CARDS, RIVAL_DECKS } from '@/game/cards';
 import { challengeFor, isChallengeCleared } from '@/storage/challenge';
 import { loadDaily, MISSIONS } from '@/storage/daily';
@@ -74,6 +74,7 @@ export function Home({ deck, onStart, onDeck }: { deck: CardId[]; onStart: (leve
   const dailyDone = daily.missions.filter((id) => (daily.progress[id] ?? 0) >= MISSIONS[id].goal).length;
   const [allOn, setAllOn] = useState(isUnlockAll);
   const [kit, setKitState] = useState(getKit);
+  const [ruleMode, setRuleMode] = useState(loadRuleMode);
   /** 「きろくをけす」を 1 回押した（もう 1 回で消す）。 */
   const [resetArmed, setResetArmed] = useState(false);
   const pick = (l: CpuLevel) => {
@@ -315,6 +316,28 @@ export function Home({ deck, onStart, onDeck }: { deck: CardId[]; onStart: (leve
         {dev ? (
           <Sheet key="dev" title="テスト用" onClose={() => { setDev(false); setResetArmed(false); }}>
             <div className="sheet-list">
+              {/* ルールの案の切り替え（操作のシンプルさを試す） */}
+              <div className="sheet-row static rule-row">
+                <span>ルール</span>
+                <span className="rule-pick" role="radiogroup" aria-label="ルールの案">
+                  {([1, 2, 3] as RuleMode[]).map((m) => (
+                    <button
+                      key={m}
+                      role="radio"
+                      aria-checked={ruleMode === m}
+                      className={`kit-btn${ruleMode === m ? ' is-on' : ''}`}
+                      onClick={() => {
+                        playUiTap();
+                        saveRuleMode(m);
+                        setRuleMode(m);
+                      }}
+                    >
+                      {m}
+                    </button>
+                  ))}
+                </span>
+              </div>
+              <p className="rule-note">{RULE_MODE_NAME[ruleMode]}</p>
               <div className="sheet-row static">
                 <span>全カード解放</span>
                 <button

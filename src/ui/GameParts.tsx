@@ -1,4 +1,5 @@
-import { abilityLines, CARDS, KEYWORDS, TYPE_NAME, WALL_TEXT, type CardId } from '@/game/cards';
+import { abilityLines, AIM_NAME, aimOf, CARDS, KEYWORDS, TYPE_NAME, WALL_TEXT, type CardId } from '@/game/cards';
+import { loadRuleMode } from '@/storage/profile';
 import { PLAYER_ATK, PLAYER_HP } from '@/game/rules';
 
 import { cardArt } from './art';
@@ -77,6 +78,12 @@ export function CardDetail({ card, hp }: { card: CardId; hp?: number }) {
         </p>
       ))}
       {abilityLines(card).length === 0 ? <p className="card-detail-text">能力なし</p> : null}
+      {/* 自動攻撃のルール（テスト用の案 2・3）では、カードの狙い方を出す */}
+      {def.type === 'unit' && !def.ab.cannotAttack && loadRuleMode() !== 1 ? (
+        <p className="card-detail-text">
+          <b className="kw">攻撃</b>：{AIM_NAME[aimOf(card)]}
+        </p>
+      ) : null}
       {def.flavor ? <p className="card-flavor">「{def.flavor}」</p> : null}
     </div>
   );

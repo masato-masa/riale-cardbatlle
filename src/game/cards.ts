@@ -776,6 +776,25 @@ function selfBuffText(atk: number, hp: number): string {
   return /^[A-Z]/.test(t) ? `自分の ${t}` : `自分の${t}`;
 }
 
+/** 自動攻撃（ルール案 2・3）での攻撃の狙い方。
+ *  unit: ユニット優先（場に敵カードがいれば近い順。同じなら HP の低い方→攻撃の低い方→先に出た方。一度狙ったら倒すまで）
+ *  player: プレイヤー優先（狙えないときはユニット優先と同じ）
+ *  weak: 弱った敵優先（HP が一番低い敵カード）
+ *  strong: 強敵優先（攻撃力が一番高い敵カード） */
+export type Aim = 'unit' | 'player' | 'weak' | 'strong';
+
+export const AIM_NAME: Record<Aim, string> = { unit: 'ユニット優先', player: 'プレイヤー優先', weak: '弱った敵優先', strong: '強敵優先' };
+
+/** カードの狙い方。能力から決める: 速攻・ステルス・プレイヤーへの追加ダメージ → プレイヤー優先、
+ *  狙い撃ち・遠隔・ユニットへの追加ダメージ・討伐 → 弱った敵優先、毒の牙 → 強敵優先、ほか → ユニット優先。 */
+export function aimOf(card: CardId): Aim {
+  const a = CARDS[card].ab;
+  if (a.haste || a.stealth || a.faceBonus) return 'player';
+  if (a.freeAim || a.ranged || a.unitBonus || a.onKill) return 'weak';
+  if (a.venom) return 'strong';
+  return 'unit';
+}
+
 /** 説明の中で黄色く出す言葉（基本能力の名前と状態の名前。ドラクエライバルズのキーワードと同じ扱い）。 */
 export const KEYWORDS: string[] = ['ブロッカー', '速攻', '結界', 'ステルス', '狙い撃ち', '連撃', '遠隔', '吸血', '鉄壁', '妨害耐性', '攻撃不能', '毒', '封印', 'T の一族'];
 

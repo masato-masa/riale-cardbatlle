@@ -69,7 +69,7 @@ export function saveLevel(level: CpuLevel): void {
 }
 
 /** 記録を消しても残す設定（音・振動・名前・難易度・テスト用の切り替え）。 */
-const KEEP_ON_RESET = new Set(['sound', 'bgm', 'haptics', 'sfx-kit', 'sfx-pick', 'speed', 'name', 'unlockall', 'level']);
+const KEEP_ON_RESET = new Set(['sound', 'bgm', 'haptics', 'sfx-kit', 'sfx-pick', 'speed', 'name', 'unlockall', 'level', 'rules']);
 
 /** テスト用: 記録（トロフィー・カード・宝箱・デッキ・戦績・ミッション・案内）を消して最初からにする。設定は残す。 */
 export function resetProgress(): void {
@@ -124,6 +124,35 @@ export function saveAvatar(avatar: string): void {
     // 保存できなくても、この場では効く
   }
   window.dispatchEvent(new Event('riale:avatar'));
+}
+
+const RULES_KEY = 'riale-cardbatlle:rules';
+
+/** ルールの案（テスト用で切り替え）。1: 手動で攻撃・反撃あり（いま）／2: 自動攻撃・反撃あり／3: 自動攻撃・反撃なし。 */
+export type RuleMode = 1 | 2 | 3;
+
+export const RULE_MODE_NAME: { [k in RuleMode]: string } = { 1: '案 1 手動で攻撃', 2: '案 2 自動攻撃', 3: '案 3 自動攻撃・反撃なし' };
+
+export function loadRuleMode(): RuleMode {
+  try {
+    const v = Number(localStorage.getItem(RULES_KEY));
+    return v === 2 || v === 3 ? v : 1;
+  } catch {
+    return 1;
+  }
+}
+
+export function saveRuleMode(mode: RuleMode): void {
+  try {
+    localStorage.setItem(RULES_KEY, String(mode));
+  } catch {
+    // 保存できなくても、この場では効く
+  }
+}
+
+/** 案をエンジンのルールに。 */
+export function rulesOf(mode: RuleMode): { auto: boolean; counter: boolean } {
+  return { auto: mode !== 1, counter: mode !== 3 };
 }
 
 const NAME_KEY = 'riale-cardbatlle:name';

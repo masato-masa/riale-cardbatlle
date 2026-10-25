@@ -688,7 +688,8 @@ function foresight(state: GameState, p: PlayerIndex, cands: Candidate[], t: Tuni
 }
 
 function choose(state: GameState, p: PlayerIndex, t: Tuning, rand: () => number): Action | null {
-  let cands = [...summonCandidates(state, p, t), ...attackCandidates(state, p, t)];
+  // 自動攻撃のルールでは攻撃はカードが自分で決めるので、CPU が選ぶのは召喚と呪文だけ
+  let cands = [...summonCandidates(state, p, t), ...(state.rules?.auto ? [] : attackCandidates(state, p, t))];
   foresight(state, p, cands, t);
   if (cands.length === 0) return null;
   const lethal = cands.filter((c) => c.lethal);

@@ -1473,3 +1473,21 @@ button.ts-chest:disabled {
   gap: 8px;
   width: min(280px, 80vw);
 }
+
+/* テスト用: ルールの案 */
+.rule-pick {
+  display: flex;
+  gap: 6px;
+}
+
+.rule-note {
+  margin: -2px 4px 4px;
+  color: var(--gold-1);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+a.sheet-row {
+  color: inherit;
+  text-decoration: none;
+}

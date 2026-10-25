@@ -1,7 +1,7 @@
 // ゲームの進行。純粋関数（同じ状態と操作から必ず同じ結果）。
 // 時間は tick で進め、召喚と攻撃は好きな時刻に差し込む。
 
-import { CARDS, needsTarget, requiresTarget, summonSide, type Abilities, type CardId } from './cards';
+import { aimOf, CARDS, needsTarget, requiresTarget, summonSide, type Abilities, type CardId } from './cards';
 import { makeRng, shuffle } from './rng';
 import {
   COIN_MAX,
@@ -145,7 +145,19 @@ export interface GameState {
   /** 溜め中の行動（選んだ順）。 */
   pending: Pending[];
   result: GameResult | null;
+  /** ルール（テスト用の切り替え）。無ければ案 1（手動で攻撃・反撃あり）。 */
+  rules?: Rules;
 }
+
+/** ルールの案。auto: ユニットはクールタイムが明けると、カードごとの狙い方（aimOf）で自動で攻撃する（手動の攻撃・予約は無い）。
+ *  counter: カード同士の攻撃で反撃（攻撃された側の攻撃力ぶんのダメージ）を受けるか。 */
+export interface Rules {
+  auto: boolean;
+  counter: boolean;
+}
+
+/** 案 1（いまの遊び方）。 */
+export const RULES_MANUAL: Rules = { auto: false, counter: true };
 
 export type Action =
   | { type: 'tick'; dt: number }
@@ -169,7 +181,7 @@ function makePlayer(deck: readonly CardId[], rand: () => number): PlayerState {
   };
 }
 
-export function createGame(decks: [readonly CardId[], readonly CardId[]], seed: number): GameState {
+export function createGame(decks: [readonly CardId[], readonly CardId[]], seed: number, rules: Rules = RULES_MANUAL): GameState {
   const rand = makeRng(seed);
   return {
     time: 0,
@@ -179,6 +191,7 @@ export function createGame(decks: [readonly CardId[], readonly CardId[]], seed: 
     events: [],
     pending: [],
     result: null,
+    rules,
   };
 }
 
@@ -385,6 +398,8 @@ interface Draft {
   pending: Pending[];
   /** 溜め中の攻撃の見直しの最中（入れ子にしない）。 */
   rechecking?: boolean;
+  /** カード同士の攻撃で反撃を受けるか（ルール）。 */
+  counter: boolean;
 }
 
 function draftOf(state: GameState): Draft {
@@ -400,6 +415,7 @@ function draftOf(state: GameState): Draft {
     nextUid: state.nextUid,
     events: [],
     pending: [...state.pending],
+    counter: state.rules?.counter ?? true,
   };
 }
 
@@ -615,6 +631,7 @@ function finish(state: GameState, d: Draft): GameState {
     // 決着したら溜め中の行動は捨てる
     pending: result ? [] : d.pending,
     result,
+    rules: state.rules,
   };
 }
 
@@ -640,6 +657,7 @@ function tick(state: GameState, dt: number): GameState {
     next = resolvePending(next);
     if (next.result) return next;
   }
+  if (next.rules?.auto) next = autoAim(next);
   if (next.players.some((pl) => pl.field.some((u) => u?.reserved))) next = runReservations(next);
   if (players.some((pl) => pl.field.some((u) => u && u.pulseAt !== null && u.pulseAt <= end))) {
     next = pulses(next);
@@ -707,6 +725,55 @@ function startCooldown(d: Draft, p: PlayerIndex, u: Unit): void {
     u.second = undefined;
     u.readyAt = d.time + cooldownOf(d.players[p], u.card);
   }
+}
+
+/** 自動攻撃（ルール案 2・3）: 攻撃できるユニットのターゲット（reserved）を、カードの狙い方で決める。
+ *  いまのターゲットが狙える敵カードなら倒すまで変えない。攻撃そのものは予約の仕組み（runReservations）が進める。 */
+function autoAim(state: GameState): GameState {
+  let changed = false;
+  const players = state.players.map((pl, p) => {
+    const foe = state.players[other(p as PlayerIndex)];
+    const field = pl.field.map((u, slot) => {
+      if (!u || CARDS[u.card].type !== 'unit' || abOf(u).cannotAttack) return u;
+      const target = chooseTarget(foe, u, slot);
+      if (u.reserved && target && sameTarget(u.reserved, target)) return u;
+      if (!u.reserved && !target) return u;
+      changed = true;
+      return { ...u, reserved: target };
+    });
+    return { ...pl, field };
+  }) as GameState['players'];
+  return changed ? { ...state, players } : state;
+}
+
+/** 自動攻撃の狙い。狙える相手（ブロッカー・壁・ステルス・狙い撃ちを考えた legal な相手）から、カードの狙い方で 1 つ選ぶ。 */
+export function chooseTarget(foe: PlayerState, u: Unit, slot: number): Target | null {
+  const legal = abOf(u).freeAim ? freeTargets(foe) : targetsAgainst(foe);
+  if (legal.length === 0) return null;
+  // 一度狙った敵カードは、倒すまで（狙える間は）変えない
+  if (u.reserved?.kind === 'unit' && legal.some((t) => sameTarget(t, u.reserved!))) return u.reserved;
+  // 封印されたカードは能力が無いので、ふつうのユニット優先
+  const aim = u.sealed ? 'unit' : aimOf(u.card);
+  const canFace = legal.some((t) => t.kind === 'player');
+  if (aim === 'player' && canFace) return { kind: 'player' };
+  const cards = legal.flatMap((t) => {
+    if (t.kind !== 'unit') return [];
+    const f = findUnit(foe, t.uid);
+    return f ? [{ u: f.unit, slot: f.slot }] : [];
+  });
+  if (cards.length === 0) return canFace ? { kind: 'player' } : null;
+  const atk = (v: Unit) => attackOf(foe, v);
+  const near = (v: { slot: number }) => Math.abs(v.slot - slot);
+  // 同じ優先度なら HP の低い方 → 攻撃の低い方 → 先に出た方（uid が小さい方）
+  const tie = (a: { u: Unit }, b: { u: Unit }) => a.u.hp - b.u.hp || atk(a.u) - atk(b.u) || a.u.uid - b.u.uid;
+  const order =
+    aim === 'weak'
+      ? (a: { u: Unit; slot: number }, b: { u: Unit; slot: number }) => a.u.hp - b.u.hp || near(a) - near(b) || tie(a, b)
+      : aim === 'strong'
+        ? (a: { u: Unit; slot: number }, b: { u: Unit; slot: number }) => atk(b.u) - atk(a.u) || near(a) - near(b) || tie(a, b)
+        : (a: { u: Unit; slot: number }, b: { u: Unit; slot: number }) => near(a) - near(b) || tie(a, b);
+  const best = [...cards].sort(order)[0]!;
+  return { kind: 'unit', uid: best.u.uid };
 }
 
 /** 攻撃の予約を進める。狙えなくなった予約は消し、クールタイムが明けた予約は攻撃（溜め）に変える。 */
@@ -848,13 +915,13 @@ function applyAttack(d: Draft, p: PlayerIndex, uid: number, target: Target): boo
   if (!hit) {
     dealtTotal += hurtPlayer(d, q, atk + (ab.faceBonus ?? 0));
     // プレイヤーも反撃する（攻撃力 PLAYER_ATK）。遠隔は受けない
-    if (!ab.ranged) hurtUnit(d, p, unit, PLAYER_ATK);
+    if (!ab.ranged && d.counter) hurtUnit(d, p, unit, PLAYER_ATK);
   } else {
     // 反撃は殴られる前の値で決まる（同時にぶつかる）。討伐は攻撃時だけで、反撃には乗らない
     const back = attackOf(foe, hit);
     dealtTotal += hurtUnit(d, q, hit, atk + (ab.unitBonus ?? 0));
     if (ab.splash) for (const v of units(foe)) if (v.uid !== hit.uid) dealtTotal += hurtUnit(d, q, v, ab.splash);
-    if (!ab.ranged) hurtUnit(d, p, unit, back);
+    if (!ab.ranged && d.counter) hurtUnit(d, p, unit, back);
     // 毒の牙: 攻撃した相手に毒を与える
     if (ab.venom && hit.hp > 0) poisonUnit(d, q, hit, ab.venom);
     // 討伐: 自分の攻撃で倒した（攻撃した本人が生きていて、相手が倒れた）
@@ -1047,10 +1114,11 @@ export function step(state: GameState, action: Action): GameState {
       return tick(state, action.dt);
     case 'summon':
       return summon(state, action.p, action.handIndex, action.slot, action.target);
+    // 自動攻撃のルールでは、手動の攻撃・予約は受け付けない（狙いは autoAim が決める）
     case 'attack':
-      return attack(state, action.p, action.uid, action.target);
+      return state.rules?.auto ? state : attack(state, action.p, action.uid, action.target);
     case 'reserve':
-      return reserve(state, action.p, action.uid, action.target);
+      return state.rules?.auto ? state : reserve(state, action.p, action.uid, action.target);
   }
 }
 

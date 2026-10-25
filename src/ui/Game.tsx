@@ -33,7 +33,7 @@ import {
 } from '@/game/engine';
 import { makeRng } from '@/game/rng';
 import { awardMatch, CHEST_COST, CHEST_GAIN, type MatchReward } from '@/storage/collection';
-import { addBeaten, addResult, isTutorialDone, loadAvatar, loadName, loadRecord, markTip, seenTips, setTutorialDone } from '@/storage/profile';
+import { addBeaten, addResult, isTutorialDone, loadAvatar, loadName, loadRecord, loadRuleMode, markTip, rulesOf, seenTips, setTutorialDone } from '@/storage/profile';
 import { hintsFor, type Hint } from '@/game/hints';
 import { clearChallenge } from '@/storage/challenge';
 import { MISSIONS, recordDaily, type MissionId } from '@/storage/daily';
@@ -239,9 +239,11 @@ export function Game({ level, deck, challenge, onExit }: { level: CpuLevel; deck
     return fixed ? { name: fixed.name, deck: fixed.deck } : rivalFor(s, loadTrophies());
   };
   const [rival, setRival] = useState(() => rivalOf(seed));
+  /** この対戦のルール（テスト用で切り替えた案。対戦を始めるたびに読む）。 */
+  const [RULES] = useState(() => rulesOf(loadRuleMode()));
   const decks: [CardId[], CardId[]] = [deck, rival.deck];
   const [game, setGame] = useState<GameState>(() => {
-    const g = createGame(decks, seed);
+    const g = createGame(decks, seed, RULES);
     if (DEV_RESULT === undefined) return g;
     const hp = (p: 0 | 1) => (DEV_RESULT === p ? 14 : DEV_RESULT === null ? 9 : 0);
     return { ...g, time: 200_000, players: [{ ...g.players[0], hp: hp(0) }, { ...g.players[1], hp: hp(1) }], result: { winner: DEV_RESULT, reason: DEV_RESULT === null ? 'time' : 'hp' } };
@@ -323,7 +325,7 @@ export function Game({ level, deck, challenge, onExit }: { level: CpuLevel; deck
     if (want('overwrite') && me.field.every((u) => !!u) && me.hand.some((c) => CARDS[c].type !== 'spell' && CARDS[c].summon <= me.coins))
       return show('overwrite');
     // 予約: クールタイムが長く残っていて、予約していないユニットがいる
-    if (want('reserve') && game.time > 15_000 && me.field.some((u) => u && CARDS[u.card].type === 'unit' && !u.reserved && u.readyAt - game.time > 4000))
+    if (!RULES.auto && want('reserve') && game.time > 15_000 && me.field.some((u) => u && CARDS[u.card].type === 'unit' && !u.reserved && u.readyAt - game.time > 4000))
       return show('reserve');
   }, [game, tut, tip, detail, menu]);
 
@@ -751,7 +753,8 @@ export function Game({ level, deck, challenge, onExit }: { level: CpuLevel; deck
             interruptChances: st.interruptChances,
             faceTaken: st.faceTaken,
             faceDealt: st.faceDamage,
-            reserves: st.reserves,
+            // 自動攻撃のルールには予約が無いので、予約の振り返りを出さない
+            reserves: RULES.auto ? 1 : st.reserves,
           }),
         );
         // アリーナ昇格のごほうび: 宝箱 1 つぶんのポイント
@@ -1071,6 +1074,8 @@ export function Game({ level, deck, challenge, onExit }: { level: CpuLevel; deck
     const { clientX: x, clientY: y } = e;
     if (press && !d) {
       if (Math.hypot(x - press.x0, y - press.y0) < DRAG_THRESHOLD_PX) return;
+      // 自動攻撃のルールでは、場のカードは自分で攻撃するのでドラッグしない（押せば説明は出る）
+      if (press.kind === 'unit' && RULES.auto) return;
       window.clearTimeout(press.timer);
       if (press.kind === 'hand') {
         setDrag(handDragAt(press.index, x, y));
@@ -1256,7 +1261,7 @@ export function Game({ level, deck, challenge, onExit }: { level: CpuLevel; deck
     setResultShown(false);
     const nextRival = rivalOf(next);
     setRival(nextRival);
-    commit(createGame([deck, nextRival.deck], next));
+    commit(createGame([deck, nextRival.deck], next, RULES));
   };
 
   /** 場のカードの状態アイコン。 */
