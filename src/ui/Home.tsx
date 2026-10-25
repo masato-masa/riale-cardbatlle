@@ -1,18 +1,20 @@
 import { AnimatePresence } from 'motion/react';
 import { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 
 import type { CpuLevel } from '@/ai/cpu';
 import type { CardId } from '@/game/cards';
-import { CHEST_POINTS, isUnlockAll, loadNew, loadPoints, loadUnlocked, pickReward, setUnlockAll } from '@/storage/collection';
+import { CHEST_COST, CHEST_GAIN, hasLocked, isUnlockAll, loadNew, loadPoints, openChest, setUnlockAll } from '@/storage/collection';
 import { loadAvatar, loadBeaten, loadLevel, loadName, loadRecord, resetProgress, saveAvatar, saveLevel } from '@/storage/profile';
 import { CARDS, RIVAL_DECKS } from '@/game/cards';
-import { CHALLENGE_POINTS, challengeFor, isChallengeCleared } from '@/storage/challenge';
+import { challengeFor, isChallengeCleared } from '@/storage/challenge';
 import { loadDaily, MISSIONS } from '@/storage/daily';
 import { loadHistory, suggestLevel, summarize } from '@/storage/history';
 import { ARENAS, arenaIndex, loadArenaSeen, loadBestTrophies, loadTrophies, saveArenaSeen } from '@/storage/trophy';
 
-import { ARENA_FLOOR_URLS, avatarUrl, CHEST_URL, COIN_URL, foePersona, foePortrait, HERO_ME_URL, ICON_URL } from './art';
+import { ARENA_FLOOR_URLS, avatarUrl, CHEST_URL, foePersona, foePortrait, HERO_ME_URL, ICON_URL } from './art';
 import { CardFace } from './CardFace';
+import { RewardChest } from './RewardChest';
 import { Sheet } from './Sheets';
 import { getKit, setKit } from './samples';
 import { playUiTap, playVoice, primeAudio } from './sound';
@@ -50,6 +52,16 @@ export function Home({ deck, onStart, onDeck }: { deck: CardId[]; onStart: (leve
   const [roadOpen, setRoadOpen] = useState(false);
   const [chalOpen, setChalOpen] = useState(false);
   const [avatarOpen, setAvatarOpen] = useState(false);
+  /** 宝箱ポイントと、いま開けた宝箱（ガチャ）の中身。 */
+  const [points, setPoints] = useState(loadPoints);
+  const [gacha, setGacha] = useState<{ key: number; card: CardId } | null>(null);
+  const openOne = () => {
+    const r = openChest();
+    if (!r) return;
+    playUiTap();
+    setPoints(r.points);
+    setGacha({ key: Date.now(), card: r.card });
+  };
   const [avatar, setAvatar] = useState(loadAvatar);
   const chal = challengeFor();
   const chalDone = isChallengeCleared();
@@ -93,7 +105,7 @@ export function Home({ deck, onStart, onDeck }: { deck: CardId[]; onStart: (leve
                 <img src={ICON_URL.arena} alt="" draggable={false} />
                 {ARENAS[ai]!.name}
               </b>
-              <p>宝箱からコスト {ARENAS[ai]!.cardCap} までのカードが出るようになり、出てくる相手デッキが増えました。</p>
+              <p>宝箱から出るカード: コスト {ARENAS[ai]!.cardCap} まで</p>
               {newFoes.length > 0 ? (
                 <span className="road-foes arena-up-foes" aria-label={`新しい相手: ${newFoes.join('・')}`}>
                   {newFoes.map((n) => (
@@ -121,7 +133,7 @@ export function Home({ deck, onStart, onDeck }: { deck: CardId[]; onStart: (leve
               const all = ['hero', ...RIVAL_DECKS.map((d) => d.name)];
               return (
                 <>
-                  <p className="card-detail-note">勝ったことのある相手の顔を、自分のアイコンにできます（{beaten.size}/{RIVAL_DECKS.length}）。</p>
+                  <p className="card-detail-note">勝った相手の顔が使える（{beaten.size}/{RIVAL_DECKS.length}）</p>
                   <div className="avatar-grid">
                     {all.map((a) => {
                       const open = a === 'hero' || beaten.has(a);
@@ -166,7 +178,7 @@ export function Home({ deck, onStart, onDeck }: { deck: CardId[]; onStart: (leve
                   </span>
                 ))}
               </span>
-              <p>{chalDone ? 'きょうはもう達成しました。また明日、別の相手が来ます。' : `勝つと宝箱ゲージ +${CHALLENGE_POINTS}（1 日 1 回）。トロフィーは「つよい」と同じだけ増減します。`}</p>
+              <p>{chalDone ? 'きょうは達成済み' : `勝つと宝箱ポイント +${CHEST_GAIN.challenge}（1 日 1 回）`}</p>
             </div>
             <button
               className="sheet-btn"
@@ -208,7 +220,7 @@ export function Home({ deck, onStart, onDeck }: { deck: CardId[]; onStart: (leve
                           ))}
                         </span>
                       ) : (
-                        <small className="road-need">これまでの相手すべてが出てくる</small>
+                        <small className="road-need">すべての相手</small>
                       )}
                     </div>
                   </div>
@@ -221,7 +233,7 @@ export function Home({ deck, onStart, onDeck }: { deck: CardId[]; onStart: (leve
           <Sheet key="stats" title="戦績（直近 50 試合）" onClose={() => setStatsOpen(false)}>
             {(() => {
               const s = summarize(loadHistory());
-              if (s.total.n === 0) return <p className="card-detail-note">まだ記録がありません。対戦すると、ここに勝率やよく出すカードが出ます。</p>;
+              if (s.total.n === 0) return <p className="card-detail-note">まだ記録がありません</p>;
               return (
                 <div className="sheet-list">
                   <div className="stat-row is-total">
@@ -297,7 +309,7 @@ export function Home({ deck, onStart, onDeck }: { deck: CardId[]; onStart: (leve
                 );
               })}
             </div>
-            <p className="card-detail-note">達成するたびに宝箱ゲージが 1 たまります。ミッションは毎日入れ替わります。</p>
+            <p className="card-detail-note">達成するたびに宝箱ポイント +{CHEST_GAIN.mission}</p>
           </Sheet>
         ) : null}
         {dev ? (
@@ -454,7 +466,6 @@ export function Home({ deck, onStart, onDeck }: { deck: CardId[]; onStart: (leve
           </div>
         </div>
         <h1 className="ts-logo">リアルカードバトル</h1>
-        <p className="ts-sub">コインでカードを出して、相手を倒そう</p>
 
         <button
           className="ts-deck"
@@ -486,20 +497,17 @@ export function Home({ deck, onStart, onDeck }: { deck: CardId[]; onStart: (leve
             </button>
           );
         })()}
-        {(() => {
-          // 次の宝箱の見通し（クラロワのホームの宝箱の枠）。勝てば 2 点で必ず開き、1 点たまっていれば負けても開く
-          if (pickReward(loadUnlocked(), () => 0) === null) return null;
-          const pts = loadPoints();
-          return (
-            <div className="ts-chest" aria-label={`宝箱ゲージ ${pts}/${CHEST_POINTS}`}>
-              <img className="ts-chest-icon" src={CHEST_URL} alt="" draggable={false} />
-              <span>{pts > 0 ? '次の 1 戦で宝箱が開く（負けても）' : '勝てば宝箱が開いて、新しいカード'}</span>
-              {Array.from({ length: CHEST_POINTS }, (_, i) => (
-                <img key={i} src={COIN_URL} alt="" draggable={false} className={`reward-coin${i < pts ? ' is-on' : ''}`} />
-              ))}
-            </div>
-          );
-        })()}
+        {hasLocked() ? (
+          // 宝箱（ガチャ）: たまった宝箱ポイントを払って開ける
+          <button className={`ts-chest${points >= CHEST_COST ? ' is-ready' : ''}`} disabled={points < CHEST_COST} onClick={openOne} aria-label={`宝箱を開ける（${points}pt）`}>
+            <img className="ts-chest-icon" src={CHEST_URL} alt="" draggable={false} />
+            <span>{points >= CHEST_COST ? '宝箱を開ける' : '宝箱'}</span>
+            <b>
+              {points}
+              <small> / {CHEST_COST}pt</small>
+            </b>
+          </button>
+        ) : null}
         <div className="ts-levels" role="radiogroup" aria-label="CPU のつよさ">
           {LEVELS.map((l) => (
             <button
@@ -518,6 +526,25 @@ export function Home({ deck, onStart, onDeck }: { deck: CardId[]; onStart: (leve
         </button>
         <TabBar active="battle" onDeck={onDeck} onBattle={() => undefined} onDev={() => setDev(true)} deckBadge={loadNew().size > 0} />
       </footer>
+      {gacha
+        ? createPortal(
+        // ホームの入れ物の中だと全面に広がらないので、ページの一番外側に出す
+        <div className="gacha" key="gacha" role="dialog" aria-label="宝箱">
+          <RewardChest key={gacha.key} cards={[gacha.card]} />
+          <div className="gacha-buttons">
+            {points >= CHEST_COST && hasLocked() ? (
+              <button className="sheet-btn" onClick={openOne}>
+                もう 1 つ開ける（{points}pt）
+              </button>
+            ) : null}
+            <button className="sheet-btn quiet" onClick={() => setGacha(null)}>
+              とじる
+            </button>
+          </div>
+        </div>,
+            document.body,
+          )
+        : null}
     </div>
   );
 }

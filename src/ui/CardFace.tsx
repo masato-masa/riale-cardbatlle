@@ -17,7 +17,7 @@ const STATE_LABEL: Record<CardState, string> = {
   disarm: '攻撃不能',
 };
 
-/** カードの面。左上 召喚コスト・右上 クールタイム（秒）・左下 攻撃力（赤）・右下 HP（緑）。
+/** カードの面。左上 召喚コスト・左下 攻撃力（赤）・右下 HP（緑）。クールタイムは面に出さない（説明で見る。ユーザー指定 2026-10-25）。
  *  建築物は攻撃力とクールタイムが無く（石の枠）、呪文は召喚コストだけ（紫の枠）。
  *  能力の文字は面に書かない（長押しの説明で見る）。場のカードだけ、上端に状態のアイコンを並べる。
  *  hp・atk を渡すと場のカードとして、減った HP を赤、上がった攻撃力を金の縁で出す。 */
@@ -76,12 +76,6 @@ function CardFaceView({
         <span className="pip pip-summon" aria-label="召喚コスト">
           <PipBg kind="coin" />
           <i>{def.summon}</i>
-        </span>
-      ) : null}
-      {def.type === 'unit' && mine === undefined ? (
-        <span className="pip pip-cd" aria-label={`クールタイム ${def.cd / 1000} 秒`}>
-          <PipBg kind="cd" />
-          <i>{def.cd / 1000}</i>
         </span>
       ) : null}
       {def.type === 'unit' ? (

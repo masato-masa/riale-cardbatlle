@@ -59,7 +59,7 @@ const SHEETS = {
   13: [...['hunter', 'slayer'].map((n) => `cards/${n}`), null, null, null, null, null, null, null],
   14: [...['vampire', 'plunderer'].map((n) => `cards/${n}`), null, null, null, null, null, null, null],
   15: [...['sentinel', 'swindler'].map((n) => `cards/${n}`), null, null, null, null, null, null, null],
-  16: ['spells/ambush', 'cards/militia', null, null, null, null, null, null, null],
+  // 16: 待ち伏せ・民兵（2026-10-25 にカードごと削除）
   17: [...['titan', 'overlord'].map((n) => `cards/${n}`), null, null, null, null, null, null, null],
   18: [...['scout', 'oldguard'].map((n) => `cards/${n}`), null, null, null, null, null, null, null],
   // 上の段だけ使う 3 列（上の段が縦長で、高さ 482px）。T一族の追加 3 人

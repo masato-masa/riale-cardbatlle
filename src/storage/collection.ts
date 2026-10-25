@@ -1,5 +1,5 @@
-// カードの解放（成長）。最初は一部のカードだけ持っていて、対戦するたびにたまる「ポイント」で
-// 宝箱が開き、持っていないカードが 1 枚増える。勝ち=2 点、引き分け・負け=1 点、2 点で宝箱 1 つ。
+// カードの解放（成長）。最初は一部のカードだけ持っていて、対戦などでたまる「宝箱ポイント」を払って、
+// ホームで宝箱を開ける（ガチャ）。開けると持っていないカードが 1 枚増える。
 // URL に ?unlockall を付けると全部使える（確認用）。localStorage に保存する。
 
 import { CARDS, STARTER_DECK, type CardId } from '@/game/cards';
@@ -7,11 +7,16 @@ import { CARDS, STARTER_DECK, type CardId } from '@/game/cards';
 import { ARENAS, arenaIndex, loadTrophies } from './trophy';
 
 const UNLOCK_KEY = 'riale-cardbatlle:unlocked';
-const POINTS_KEY = 'riale-cardbatlle:points';
+/** 以前の宝箱ゲージ（0〜1 点、2 点で自動で開いた）。読み込み時に新しいポイントへ移す。 */
+const OLD_POINTS_KEY = 'riale-cardbatlle:points';
+const POINTS_KEY = 'riale-cardbatlle:chest-points';
 const NEW_KEY = 'riale-cardbatlle:new';
 
-/** 点がここまでたまると宝箱が 1 つ開く。 */
-export const CHEST_POINTS = 2;
+/** 宝箱 1 つを開けるのに払うポイント。 */
+export const CHEST_COST = 20;
+
+/** 宝箱ポイントの入り方（1 勝で宝箱 1 つ分）。 */
+export const CHEST_GAIN = { win: 20, lose: 10, mission: 10, streak: 10, arenaUp: 20, challenge: 20 } as const;
 
 const ALL: CardId[] = (Object.keys(CARDS) as CardId[]).filter((id) => !CARDS[id].token);
 
@@ -66,12 +71,30 @@ function saveUnlocked(set: Set<CardId>): void {
   }
 }
 
+/** いまの宝箱ポイント。 */
 export function loadPoints(): number {
   try {
-    const v = Number(localStorage.getItem(POINTS_KEY));
-    return Number.isFinite(v) && v >= 0 ? Math.floor(v) % CHEST_POINTS : 0;
+    const raw = localStorage.getItem(POINTS_KEY);
+    if (raw === null) {
+      // 以前のゲージ（1 点 = 新しい 10pt）を一度だけ移す
+      const old = Number(localStorage.getItem(OLD_POINTS_KEY));
+      const moved = Number.isFinite(old) && old > 0 ? Math.floor(old) * 10 : 0;
+      savePoints(moved);
+      localStorage.removeItem(OLD_POINTS_KEY);
+      return moved;
+    }
+    const v = Number(raw);
+    return Number.isFinite(v) && v >= 0 ? Math.floor(v) : 0;
   } catch {
     return 0;
+  }
+}
+
+function savePoints(n: number): void {
+  try {
+    localStorage.setItem(POINTS_KEY, String(n));
+  } catch {
+    // 保存できなくても遊べる
   }
 }
 
@@ -122,34 +145,35 @@ export function markSeen(id: CardId): void {
 }
 
 export interface MatchReward {
-  /** この試合で得た点。 */
+  /** この試合で得た宝箱ポイント。 */
   gained: number;
-  /** 宝箱から出たカード（出なければ空）。 */
-  cards: CardId[];
-  /** いまたまっている点（宝箱の次のゲージ）。 */
+  /** いまの宝箱ポイント。 */
   points: number;
 }
 
-/** 決着を報告して、ポイントと宝箱の中身を更新する。winner は 0=自分 / 1=相手 / null=引き分け。bonus はデイリーミッションの達成ぶん。 */
-export function awardMatch(winner: 0 | 1 | null, rand: () => number = Math.random, bonus = 0): MatchReward {
-  const gained = (winner === 0 ? 2 : 1) + bonus;
-  let total = loadPoints() + gained;
+/** 決着を報告して、宝箱ポイントを足す。winner は 0=自分 / 1=相手 / null=引き分け。bonus はミッション・連勝・昇格・チャレンジのぶん（ポイント）。 */
+export function awardMatch(winner: 0 | 1 | null, bonus = 0): MatchReward {
+  const gained = (winner === 0 ? CHEST_GAIN.win : CHEST_GAIN.lose) + bonus;
+  const points = loadPoints() + gained;
+  savePoints(points);
+  return { gained, points };
+}
+
+/** まだ持っていないカードがあるか（無ければ宝箱は開けない）。 */
+export function hasLocked(): boolean {
+  return pickReward(loadUnlocked(), () => 0) !== null;
+}
+
+/** 宝箱を 1 つ開ける（CHEST_COST を払う）。足りない・全部持っているときは null。 */
+export function openChest(rand: () => number = Math.random): { card: CardId; points: number } | null {
+  const points = loadPoints();
+  if (points < CHEST_COST) return null;
   const unlocked = loadUnlocked();
-  const cards: CardId[] = [];
-  while (total >= CHEST_POINTS) {
-    total -= CHEST_POINTS;
-    const c = pickReward(unlocked, rand, ARENAS[arenaIndex(loadTrophies())]!.cardCap);
-    if (c) {
-      unlocked.add(c);
-      cards.push(c);
-    }
-  }
+  const card = pickReward(unlocked, rand, ARENAS[arenaIndex(loadTrophies())]!.cardCap);
+  if (!card) return null;
+  unlocked.add(card);
   if (!unlockAllByUrl()) saveUnlocked(unlocked);
-  if (cards.length > 0) saveNew(new Set([...loadNew(), ...cards]));
-  try {
-    localStorage.setItem(POINTS_KEY, String(total));
-  } catch {
-    // 保存できなくても遊べる
-  }
-  return { gained, cards, points: total };
+  saveNew(new Set([...loadNew(), card]));
+  savePoints(points - CHEST_COST);
+  return { card, points: points - CHEST_COST };
 }

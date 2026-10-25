@@ -1,4 +1,4 @@
-import { abilityLines, CARDS, KEYWORDS, STATUS_NOTES, TYPE_NAME, usageNote, WALL_TEXT, type CardId } from '@/game/cards';
+import { abilityLines, CARDS, KEYWORDS, TYPE_NAME, WALL_TEXT, type CardId } from '@/game/cards';
 import { PLAYER_ATK, PLAYER_HP } from '@/game/rules';
 
 import { cardArt } from './art';
@@ -77,12 +77,6 @@ export function CardDetail({ card, hp }: { card: CardId; hp?: number }) {
         </p>
       ))}
       {abilityLines(card).length === 0 ? <p className="card-detail-text">能力なし</p> : null}
-      {usageNote(card) ? <p className="card-detail-note">{usageNote(card)}</p> : null}
-      {STATUS_NOTES.filter((n) => abilityLines(card).join('').includes(n.slice(0, n.indexOf(':')))).map((n) => (
-        <p key={n} className="card-detail-note">
-          {n}
-        </p>
-      ))}
       {def.flavor ? <p className="card-flavor">「{def.flavor}」</p> : null}
     </div>
   );
@@ -105,9 +99,10 @@ export function HelpBody() {
       <li>毒を受けたカードは、攻撃するたびに 1 ダメージを受けます（毒は重なりません）。封印されると能力が使えません。</li>
       <li>妨害: 攻撃は溜めの間に中断できます。相手が攻撃を溜めているとき（線の真ん中に「！」）にブロッカーを出す、壁を完成させる、狙われたカードをチェンジで入れ替える、のどれでも攻撃は止まり、妨害された攻撃元はクールタイムが 5 秒増えます。「パリィ」の呪文でも弾けます。</li>
       <li>チェンジ: 自分のカードの上に召喚すると入れ替わります。場を離れるカードの「生贄時」の能力が起きます。</li>
+      <li>討伐: 自分の攻撃で敵ユニットを倒すこと（反撃や毒で倒したときは含みません）。</li>
       <li>相手の HP を 0 にしたら勝ち。4 分たったら HP の多い方の勝ちです。</li>
       <li>トロフィー: 勝つと増え、負けると減ります（強い相手ほど増える量も減る量も大きい）。一定数たまるとアリーナが上がり、床が変わって、出てくる相手と宝箱から出るカードが増えます。一度上がったアリーナから下がることはありません。最初のアリーナでは負けても減らず、次のアリーナまでは減り方が小さくなっています。</li>
-      <li>宝箱: 対戦ごとにゲージがたまり（勝ち 2・負けと引き分け 1）、2 で宝箱が開いて新しいカードが手に入ります。毎日のミッションの達成、3 連勝目からの勝利、アリーナの昇格でもゲージがたまります。</li>
+      <li>宝箱: 対戦で宝箱ポイントがたまり（勝ち 20・負けと引き分け 10）、ホームで 20pt 払うと宝箱を 1 つ開けて新しいカードが手に入ります。ミッション・3 連勝目からの勝利・アリーナの昇格・きょうのチャレンジでもたまります。</li>
     </ul>
   );
 }

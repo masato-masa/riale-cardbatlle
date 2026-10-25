@@ -10,7 +10,6 @@ import {
   requiresTarget,
   RIVAL_DECKS,
   summonSide,
-  usageNote,
   type CardId,
 } from '@/game/cards';
 import {
@@ -33,10 +32,10 @@ import {
   type Unit,
 } from '@/game/engine';
 import { makeRng } from '@/game/rng';
-import { awardMatch, CHEST_POINTS, type MatchReward } from '@/storage/collection';
+import { awardMatch, CHEST_COST, CHEST_GAIN, type MatchReward } from '@/storage/collection';
 import { addBeaten, addResult, isTutorialDone, loadAvatar, loadName, loadRecord, markTip, seenTips, setTutorialDone } from '@/storage/profile';
 import { hintsFor, type Hint } from '@/game/hints';
-import { CHALLENGE_POINTS, clearChallenge } from '@/storage/challenge';
+import { clearChallenge } from '@/storage/challenge';
 import { MISSIONS, recordDaily, type MissionId } from '@/storage/daily';
 import { pushHistory } from '@/storage/history';
 import { ARENAS, arenaIndex, loadTrophies, recordTrophies, rivalFor, type TrophyChange } from '@/storage/trophy';
@@ -45,7 +44,6 @@ import { COIN_MAX, FAST_COOLDOWN_FROM_MS, MATCH_MS, PLAYER_HP, SUMMON_WINDUP_MS,
 import { ARENA_FLOOR_URLS, avatarUrl, CHEST_URL, COIN_URL, foePersona, foePortrait, ICON_URL, HERO_ME_URL, preloadFx, RESULT_ART } from './art';
 import { setBgmTension, startBgm, stopBgm } from './bgm';
 import { CardFace, type CardState } from './CardFace';
-import { RewardChest } from './RewardChest';
 import { CardDetail, HelpBody, HeroBadge } from './GameParts';
 import { hapticImpact, hapticLose, hapticReady, hapticReject, hapticUseCard, hapticWin } from './haptics';
 import { Sheet } from './Sheets';
@@ -150,7 +148,7 @@ interface Zone {
 const PICK_LIMIT_MS = 6000;
 /** 決着から結果のポップアップまでの時間（ms）。やられた演出と勝敗の文字を見せる。 */
 const RESULT_DELAY_MS = 4200;
-/** この連勝数から、勝つたびに宝箱ゲージ +1。 */
+/** この連勝数から、勝つたびに宝箱ポイント +10。 */
 const STREAK_BONUS_FROM = 3;
 /** 相手の呪文のカードを見せておく時間（ms）。 */
 const FOE_CAST_MS = 1800;
@@ -259,17 +257,10 @@ export function Game({ level, deck, challenge, onExit }: { level: CpuLevel; deck
   const [pick, setPick] = useState<{ index: number; slot: number; card: CardId } | null>(null);
   /** 決着の演出（倒れる→勝敗の文字→余韻）のあと、結果のポップアップを出す。 */
   const [resultShown, setResultShown] = useState(false);
-  /** 試合の報酬（ポイントと宝箱から出たカード）。 */
+  /** 試合の報酬（宝箱ポイント）。宝箱はホームで開ける。 */
   const [reward, setReward] = useState<MatchReward | null>(null);
   /** 試合のトロフィーの増減。 */
   const [trophy, setTrophy] = useState<TrophyChange | null>(null);
-  /** 結果画面の宝箱は、ほかの項目が順に出たあとに出す（箱の揺れが始まるのもそこから）。 */
-  const [chestReady, setChestReady] = useState(false);
-  useEffect(() => {
-    if (!resultShown) return setChestReady(false);
-    const t = window.setTimeout(() => setChestReady(true), RESULT_STEP_START_MS + 3 * RESULT_STEP_MS + 200);
-    return () => window.clearTimeout(t);
-  }, [resultShown]);
   /** この試合で達成したデイリーミッション。 */
   const [missionsDone, setMissionsDone] = useState<MissionId[]>([]);
   /** 連勝ボーナスが付いたときの連勝数（付かなければ 0）。 */
@@ -396,6 +387,12 @@ export function Game({ level, deck, challenge, onExit }: { level: CpuLevel; deck
 
   useEffect(() => preloadFx(), []);
 
+  // 対戦中は画面全体を固定する（下へスワイプしても画面がずれない。iOS の引っぱりも止める）
+  useEffect(() => {
+    document.documentElement.classList.add('in-battle');
+    return () => document.documentElement.classList.remove('in-battle');
+  }, []);
+
   // ---- BGM ----
   useEffect(() => {
     startBgm('battle');
@@ -485,7 +482,7 @@ export function Game({ level, deck, challenge, onExit }: { level: CpuLevel; deck
     setHints(
       hintsFor({ won, coinCapMs: won ? 2000 : 40_000, matchMs: 200_000, myAttacksBlocked: 4, interrupts: won ? 3 : 0, interruptChances: 3, faceTaken: 16, faceDealt: 6, reserves: 0 }),
     );
-    setReward({ gained: won ? 5 : 2, cards: ['reaper'], points: 1 });
+    setReward({ gained: won ? 70 : 20, points: won ? 80 : 20 });
     setResultShown(true);
   }, []);
 
@@ -706,7 +703,6 @@ export function Game({ level, deck, challenge, onExit }: { level: CpuLevel; deck
         const eff = CARDS[e.card].ab.spell!;
         // 全体・遅延は相手の場ごと、再動は自分の場ごと光らせる。単体は使った側から弾を飛ばす。
         if (eff.kind === 'parry') addCallout(document.querySelector('.midline'), 'パリィ！', 'parry');
-        else if (eff.kind === 'ambush') addCallout(document.querySelector('.midline'), '待ち伏せ！', 'overwrite');
         else if (eff.kind === 'bolt' && e.target !== null) shoot(heroEl(e.p), unitEl(e.target), 'rock');
         else {
           const foeSide = eff.kind === 'blast' || eff.kind === 'freeze' || eff.kind === 'poisonAll' || eff.kind === 'sealAll';
@@ -729,7 +725,7 @@ export function Game({ level, deck, challenge, onExit }: { level: CpuLevel; deck
         const r = gameRef.current.result;
         addResult(r?.winner ?? null);
         setNewAvatar(r?.winner === 0 && addBeaten(rival.name));
-        // 連勝ボーナス: 3 連勝目から、勝つたびに宝箱ゲージ +1（もう 1 戦の動機）
+        // 連勝ボーナス: 3 連勝目から、勝つたびに宝箱ポイント（もう 1 戦の動機）
         const streak = r?.winner === 0 ? loadRecord().streak : 0;
         const streakPts = streak >= STREAK_BONUS_FROM ? 1 : 0;
         setStreakBonus(streakPts > 0 ? streak : 0);
@@ -758,12 +754,12 @@ export function Game({ level, deck, challenge, onExit }: { level: CpuLevel; deck
             reserves: st.reserves,
           }),
         );
-        // アリーナ昇格のごほうび: 宝箱ゲージ +2（宝箱 1 つぶん）
-        const arenaBonus = tc.arenaAfter > tc.arenaBefore ? 2 : 0;
-        // きょうのチャレンジ: その日初めて勝ったら宝箱ゲージ +2
+        // アリーナ昇格のごほうび: 宝箱 1 つぶんのポイント
+        const arenaBonus = tc.arenaAfter > tc.arenaBefore ? CHEST_GAIN.arenaUp : 0;
+        // きょうのチャレンジ: その日初めて勝ったら宝箱ポイント
         const chal = challenge !== undefined && r?.winner === 0 && clearChallenge();
         setChallengeWon(chal);
-        setReward(awardMatch(r?.winner ?? null, Math.random, done.length + arenaBonus + streakPts + (chal ? CHALLENGE_POINTS : 0)));
+        setReward(awardMatch(r?.winner ?? null, done.length * CHEST_GAIN.mission + arenaBonus + streakPts * CHEST_GAIN.streak + (chal ? CHEST_GAIN.challenge : 0)));
         // 倒れる演出 → 勝敗の文字 → 余韻のあとに結果のポップアップ
         window.setTimeout(() => setResultShown(true), RESULT_DELAY_MS);
         // 決着の見せ場: 倒れた側のプレイヤー札で連続の爆発・画面の閃光・大きな揺れ
@@ -1382,7 +1378,7 @@ export function Game({ level, deck, challenge, onExit }: { level: CpuLevel; deck
   const coinInt = Math.floor(me.coins);
   const coinFrac = me.coins - coinInt;
   const nextCard = me.queue[0];
-  const dragInfo = handDragCard ? (needsTarget(handDragCard) || CARDS[handDragCard].type === 'spell' ? usageNote(handDragCard) : abilityLines(handDragCard)[0]) ?? null : null;
+  const dragInfo = handDragCard ? abilityLines(handDragCard)[0] ?? null : null;
   const castReady = dragSpell && handDragCard && !requiresTarget(handDragCard) && handDrag?.onBoard;
 
   return (
@@ -1843,7 +1839,7 @@ export function Game({ level, deck, challenge, onExit }: { level: CpuLevel; deck
                         {trophy.arenaAfter > trophy.arenaBefore ? (
                           <>
                             <b className="arena-up">アリーナ昇格！ {ARENAS[trophy.arenaAfter]!.name}</b>
-                            <small>宝箱からコスト {ARENAS[trophy.arenaAfter]!.cardCap} までのカードが出るように・昇格のごほうびで宝箱ゲージ +2</small>
+                            <small>宝箱からコスト {ARENAS[trophy.arenaAfter]!.cardCap} までのカードが出る・宝箱ポイント +{CHEST_GAIN.arenaUp}</small>
                           </>
                         ) : null}
                       </motion.div>
@@ -1859,23 +1855,22 @@ export function Game({ level, deck, challenge, onExit }: { level: CpuLevel; deck
                     {missionsDone.length > 0 || streakBonus > 0 || challengeWon || newAvatar ? (
                       <motion.div className="result-missions" {...resultStep(2)}>
                         {newAvatar ? <span className="is-avatar">{foePersona(rival.name).name}の顔をアイコンに使えるようになりました</span> : null}
-                        {challengeWon ? <span className="is-challenge">きょうのチャレンジ達成！（宝箱ゲージ +{CHALLENGE_POINTS}）</span> : null}
-                        {streakBonus > 0 ? <span className="is-streak">{streakBonus} 連勝ボーナス！（宝箱ゲージ +1）</span> : null}
+                        {challengeWon ? <span className="is-challenge">きょうのチャレンジ達成！ +{CHEST_GAIN.challenge}pt</span> : null}
+                        {streakBonus > 0 ? <span className="is-streak">{streakBonus} 連勝ボーナス！ +{CHEST_GAIN.streak}pt</span> : null}
                         {missionsDone.map((id) => (
-                          <span key={id}>ミッション達成！ {MISSIONS[id].text}（宝箱ゲージ +1）</span>
+                          <span key={id}>ミッション達成！ {MISSIONS[id].text} +{CHEST_GAIN.mission}pt</span>
                         ))}
                       </motion.div>
                     ) : null}
                     {reward ? (
                       <motion.div className="result-reward" {...resultStep(3)}>
-                        <div className="reward-meter" aria-label={`宝箱ゲージ ${reward.points}/${CHEST_POINTS}`}>
+                        <div className="reward-meter" aria-label={`宝箱ポイント ${reward.points}`}>
                           <img className="reward-chest-icon" src={CHEST_URL} alt="" draggable={false} />
-                          <span className="reward-label">宝箱ゲージ +{reward.gained}</span>
-                          {Array.from({ length: CHEST_POINTS }, (_, i) => (
-                            <img key={i} src={COIN_URL} alt="" draggable={false} className={`reward-coin${i < reward.points || reward.cards.length > 0 ? ' is-on' : ''}`} />
-                          ))}
+                          <span className="reward-label">宝箱ポイント +{reward.gained}</span>
+                          <b className="reward-total">
+                            {reward.points}pt{reward.points >= CHEST_COST ? `（宝箱 ${Math.floor(reward.points / CHEST_COST)} 個）` : ''}
+                          </b>
                         </div>
-                        {reward.cards.length > 0 ? chestReady ? <RewardChest cards={reward.cards} /> : <div className="chest" aria-hidden="true" /> : null}
                       </motion.div>
                     ) : null}
                   </>

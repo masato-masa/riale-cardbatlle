@@ -16,8 +16,8 @@ describe('カードの面: 場のカードはコストを出さない', () => {
     }
   });
 
-  it('手札・一覧（mine なし）は召喚コストを出す', () => {
+  it('手札・一覧（mine なし）は召喚コストを出す。クールタイムはどこにも出さない', () => {
     expect(renderToStaticMarkup(createElement(CardFace, { card: 'craftsman' }))).toContain('pip-summon');
-    expect(renderToStaticMarkup(createElement(CardFace, { card: 'craftsman' }))).toContain('pip-cd');
+    expect(renderToStaticMarkup(createElement(CardFace, { card: 'craftsman' }))).not.toContain('pip-cd');
   });
 });

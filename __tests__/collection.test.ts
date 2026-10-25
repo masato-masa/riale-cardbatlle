@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 
-import { awardMatch, loadNew, loadPoints, loadUnlocked, markSeen, pickReward, START_CARDS } from '../src/storage/collection';
+import { awardMatch, CHEST_COST, CHEST_GAIN, loadNew, loadPoints, loadUnlocked, markSeen, openChest, pickReward, START_CARDS } from '../src/storage/collection';
 
 class MemStorage {
   private m = new Map<string, string>();
@@ -9,6 +9,9 @@ class MemStorage {
   }
   setItem(k: string, v: string) {
     this.m.set(k, v);
+  }
+  removeItem(k: string) {
+    this.m.delete(k);
   }
 }
 
@@ -21,23 +24,26 @@ describe('カードの解放', () => {
   it('最初は最初のカードだけ', () => {
     expect(loadUnlocked().size).toBe(new Set(START_CARDS).size);
   });
-  it('勝つと 2 点で宝箱が開き、新しいカードが 1 枚増える', () => {
-    const r = awardMatch(0, () => 0.1);
-    expect(r.cards.length).toBe(1);
-    expect(loadUnlocked().has(r.cards[0]!)).toBe(true);
-    expect(loadPoints()).toBe(0);
+  it('勝つと 20pt、負けると 10pt たまる。宝箱は自動では開かない', () => {
+    expect(awardMatch(0).gained).toBe(CHEST_GAIN.win);
+    expect(awardMatch(1).gained).toBe(CHEST_GAIN.lose);
+    expect(loadPoints()).toBe(CHEST_GAIN.win + CHEST_GAIN.lose);
+    expect(loadUnlocked().size).toBe(new Set(START_CARDS).size);
   });
-  it('負けは 1 点、2 回で宝箱', () => {
-    expect(awardMatch(1, () => 0.5).cards.length).toBe(0);
-    expect(loadPoints()).toBe(1);
-    expect(awardMatch(1, () => 0.5).cards.length).toBe(1);
+  it('20pt 払って宝箱を開けると、持っていないカードが 1 枚増えて NEW が付く。足りなければ開かない', () => {
+    expect(openChest(() => 0.1)).toBeNull();
+    awardMatch(0);
+    const r = openChest(() => 0.1)!;
+    expect(r.points).toBe(CHEST_GAIN.win - CHEST_COST);
+    expect(loadUnlocked().has(r.card)).toBe(true);
+    expect(loadNew().has(r.card)).toBe(true);
+    markSeen(r.card);
+    expect(loadNew().has(r.card)).toBe(false);
+    expect(openChest(() => 0.1)).toBeNull();
   });
-  it('宝箱から出たカードには NEW の印が付き、説明を開くと外れる', () => {
-    const r = awardMatch(0, () => 0.1);
-    const id = r.cards[0]!;
-    expect(loadNew().has(id)).toBe(true);
-    markSeen(id);
-    expect(loadNew().has(id)).toBe(false);
+  it('以前の宝箱ゲージ（1 点）は 10pt に移る', () => {
+    localStorage.setItem('riale-cardbatlle:points', '1');
+    expect(loadPoints()).toBe(10);
   });
   it('全部持っていれば何も出ない', () => {
     (globalThis as unknown as { location: { search: string } }).location = { search: '?unlockall' };

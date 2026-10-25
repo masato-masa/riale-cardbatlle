@@ -30,6 +30,15 @@ import { applyPreset, DECK_SLOTS, loadBook, saveBook } from '../src/storage/deck
 describe('デッキ 5 つの保存とコンセプトデッキ', () => {
   beforeEach(() => localStorage.clear());
 
+  it('削除したカードが入ったデッキは、その枠だけ最初のデッキのカードで埋める', () => {
+    const mine = ['recruit', 'footman', 'lancer', 'captain', 'medic', 'architect', 'veteran', 'ambush'];
+    localStorage.setItem('riale-cardbatlle:decks', JSON.stringify({ decks: [mine], active: 0 }));
+    const d = loadBook().decks[0]!;
+    expect(d).toHaveLength(8);
+    expect(d.slice(0, 7)).toEqual(mine.slice(0, 7));
+    expect(d).not.toContain('ambush');
+  });
+
   it('最初は 5 つとも最初のデッキ、使っているのは 1 番', () => {
     const b = loadBook();
     expect(b.decks.length).toBe(DECK_SLOTS);

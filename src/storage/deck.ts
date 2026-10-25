@@ -31,6 +31,13 @@ export interface DeckBook {
 
 function cutOld(deck: unknown): CardId[] | null {
   if (isValidDeck(deck)) return deck;
+  // 削除したカード（待ち伏せなど）が入っていたら、その枠だけ最初のデッキのカードで埋める（デッキ全体は戻さない）
+  if (Array.isArray(deck) && deck.length === DECK_SIZE) {
+    const kept = deck.filter((id): id is CardId => typeof id === 'string' && COLLECTION.includes(id as CardId));
+    const fill = STARTER_DECK.filter((id) => !kept.includes(id));
+    const fixed = [...new Set(kept), ...fill].slice(0, DECK_SIZE);
+    if (isValidDeck(fixed)) return fixed;
+  }
   // 10 枚だった頃の保存は、先頭の 8 枚を引き継ぐ
   if (Array.isArray(deck) && deck.length > DECK_SIZE) {
     const cut = deck.slice(0, DECK_SIZE);

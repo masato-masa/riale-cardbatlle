@@ -199,10 +199,10 @@ export function DeckScreen({ deck, onChange, onBack }: { deck: CardId[]; onChang
             ))}
           </div>
           {/* デッキの弱点の一言（ブロッカーが無いと割り込みも守りもできない） */}
-          {!deck.some((c) => CARDS[c].ab.blocker) ? <p className="deck-hint">ブロッカーが 0 枚です。相手の攻撃に割り込めず、プレイヤーを守れません。</p> : null}
+          {!deck.some((c) => CARDS[c].ab.blocker) ? <p className="deck-hint">ブロッカー 0 枚</p> : null}
           {/* 相手デッキ 17 種は平均コスト 2.5〜4.5・ユニット 5〜8 枚。そこから大きく外れたときだけ一言 */}
-          {averageCost(deck) >= 5.5 ? <p className="deck-hint">平均コストが高めです。序盤に出せるカードが少なく、先に押し込まれやすくなります。</p> : null}
-          {deck.filter((c) => CARDS[c].type === 'unit').length <= 4 ? <p className="deck-hint">ユニットが少なめです。攻撃できるのはユニットだけなので、相手の HP を削りにくくなります。</p> : null}
+          {averageCost(deck) >= 5.5 ? <p className="deck-hint">平均コストが高め</p> : null}
+          {deck.filter((c) => CARDS[c].type === 'unit').length <= 4 ? <p className="deck-hint">ユニットが少なめ</p> : null}
         </section>
 
         {/* 集めたカードの進み具合（クラロワのコレクションの「見つけたカード」） */}
@@ -278,7 +278,6 @@ export function DeckScreen({ deck, onChange, onBack }: { deck: CardId[]; onChang
             >
               まだ持っていない（{COLLECTION.length - unlocked.size} 枚）{showLocked ? ' ▲' : ' ▼'}
             </button>
-            {showLocked ? <p className="locked-note">対戦するとたまる宝箱で、1 枚ずつ手に入ります。</p> : null}
             <div className="collection-grid" hidden={!showLocked}>
               {lockedList.map((id) => (
                 <button
@@ -378,9 +377,7 @@ export function DeckScreen({ deck, onChange, onBack }: { deck: CardId[]; onChang
             <CardDetail card={open.card} />
             {open.locked ? (
               <p className="card-detail-note">
-                {unlockArena(open.card)
-                  ? `🔒 まだ持っていません。アリーナ「${unlockArena(open.card)}」に上がると、宝箱から出るようになります。`
-                  : '🔒 まだ持っていません。対戦でたまる宝箱から手に入ります。'}
+                {unlockArena(open.card) ? `🔒 未獲得（${unlockArena(open.card)}から）` : '🔒 未獲得'}
               </p>
             ) : null}
             {open.inDeck ? (

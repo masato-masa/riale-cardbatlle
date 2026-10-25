@@ -1,7 +1,7 @@
 // 対戦の履歴（直近 50 試合）。戦績の画面で、難易度別・相手デッキ別の勝率と、よく出すカードを見せる。localStorage に入れる。
 
 import type { CpuLevel } from '@/ai/cpu';
-import type { CardId } from '@/game/cards';
+import { CARDS, type CardId } from '@/game/cards';
 
 const KEY = 'riale-cardbatlle:history';
 const KEEP = 50;
@@ -77,7 +77,8 @@ export function summarize(list: MatchRecord[]): Summary {
   const names = [...new Set(list.map((r) => r.rival))];
   const byRival = names.map((n) => rateOf(n, list.filter((r) => r.rival === n))).sort((a, b) => b.n - a.n);
   const counts = new Map<CardId, number>();
-  for (const r of list) for (const [c, k] of Object.entries(r.played)) counts.set(c as CardId, (counts.get(c as CardId) ?? 0) + (k ?? 0));
+  // 削除したカード（待ち伏せなど）が記録に残っていても数えない
+  for (const r of list) for (const [c, k] of Object.entries(r.played)) if (c in CARDS) counts.set(c as CardId, (counts.get(c as CardId) ?? 0) + (k ?? 0));
   const topCards = [...counts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 5).map(([card, count]) => ({ card, count }));
   const avgSec = list.length ? Math.round(list.reduce((n, r) => n + r.sec, 0) / list.length) : 0;
   return { total: rateOf('全体', list), byLevel, byRival, topCards, avgSec };

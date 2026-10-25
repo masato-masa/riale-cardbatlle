@@ -3657,3 +3657,26 @@ img.result-star.is-lit {
   content-visibility: auto;
   contain-intrinsic-size: auto 120px;
 }
+
+/* 対戦中は画面を固定（スワイプで画面全体がずれない）。シートの中だけは縦にスクロールできる */
+html.in-battle,
+html.in-battle body {
+  overflow: hidden;
+  overscroll-behavior: none;
+  height: 100%;
+}
+
+html.in-battle body {
+  position: fixed;
+  inset: 0;
+  touch-action: none;
+}
+
+html.in-battle .sheet,
+html.in-battle .sheet-list,
+html.in-battle .help-list,
+html.in-battle .card-detail,
+html.in-battle .result {
+  touch-action: pan-y;
+  overscroll-behavior: contain;
+}

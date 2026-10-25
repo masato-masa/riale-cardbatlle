@@ -262,23 +262,6 @@ describe('討伐時', () => {
   });
 });
 
-describe('待ち伏せ（呪文）', () => {
-  it('民兵をすぐ出して、溜め中の攻撃を割り込みで止める', () => {
-    const { s, a } = attacking('knight', 'recruit');
-    let n = withHand(s, 1, ['ambush']);
-    n = step(n, { type: 'summon', p: 1, handIndex: 0, slot: -1 });
-    expect(cancels(n)[0]!.reason).toBe('blocked');
-    expect(n.players[1].field.some((u) => u?.card === 'militia')).toBe(true);
-    expect(unitOf(n, 0, a.uid)!.hp).toBe(CARDS.knight.hp);
-  });
-  it('空き枠が無いと使えない', () => {
-    let s = fresh();
-    for (let i = 0; i < 3; i++) [s] = place(s, 0, i, 'recruit');
-    s = withHand(s, 0, ['ambush']);
-    expect(summonBlock(s, 0, 0, -1)).toBe('slot');
-  });
-});
-
 describe('妨害（クールタイム +5 秒）と妨害耐性', () => {
   it('チェンジでかわされた攻撃元も +5 秒', () => {
     let s = fresh();

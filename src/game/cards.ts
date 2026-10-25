@@ -110,8 +110,6 @@ export type CardId =
   | 'plunderer'
   | 'sentinel'
   | 'swindler'
-  | 'ambush'
-  | 'militia'
   | 'titan'
   | 'overlord'
   | 'scout'
@@ -224,9 +222,7 @@ export type SpellEffect =
   /** 敵ユニット全員を封印 */
   | { kind: 'sealAll' }
   /** 相手の溜め中の攻撃をすべて中断させ、その攻撃元のクールタイムを延ばす（溜めなしですぐ効く）。 */
-  | { kind: 'parry'; ms: number }
-  /** 空いている枠に民兵（ブロッカー）を即座に出す。溜め中の攻撃は割り込まれて中断する（溜めなしですぐ効く）。 */
-  | { kind: 'ambush' };
+  | { kind: 'parry'; ms: number };
 
 export interface Abilities {
   /** ブロッカー: 相手はブロッカーしか攻撃できない */
@@ -375,8 +371,6 @@ const EPITHET: Partial<Record<CardId, string>> = {
   colossus: '不動の巨人',
   archmage: '終焉の大魔導',
   apprentice: '駆けつけた若者',
-  ambush: '待ち伏せの号令',
-  militia: '伏せていた民兵',
   titan: '城門を背負う巨神兵',
   overlord: '血に濡れた覇王',
   scout: '捨て駒の斥候',
@@ -490,8 +484,6 @@ const FLAVOR: Partial<Record<CardId, string>> = {
   colossus: '……通さぬ。',
   archmage: '終わらせましょう。敵も、味方も。',
   apprentice: '俺だって戦える！ 戦わせてくれ！',
-  ambush: '今だ！ 伏せていた者たち、立ち上がれ！',
-  militia: '通さんぞ！ ここは俺たちの場所だ！',
   titan: '一歩も引かぬ。この門が、我が墓標だ。',
   overlord: '倒した数だけ、俺の国は大きくなる。',
   scout: '先に行く。後は、頼んだぞ。',
@@ -608,7 +600,6 @@ export const CARDS: Record<CardId, CardDef> = {
   colossus: unit('colossus', 'グラム', 9, 7, 10, CD_STD, { blocker: true }),
   archmage: unit('archmage', 'オルガ', 10, 10, 10, CD_SLOW, { onSummon: { kind: 'wipe' } }),
   apprentice: { ...unit('apprentice', '志願兵', 1, 1, 1, CD_FAST), token: true },
-  militia: { ...unit('militia', '民兵', 1, 1, 3, CD_FAST, { blocker: true }), token: true },
 
   // ---- 基礎スタッツ（能力なし）: コスト 1〜5 は 攻撃/HP がコスト・コスト+1（どちらかが +1）、コスト 7 以上は コスト+1 / コスト+1 ----
   recruit: unit('recruit', 'アルト', 1, 1, 2, CD_FAST),
@@ -675,7 +666,6 @@ export const CARDS: Record<CardId, CardDef> = {
   phoenix: unit('phoenix', 'フェン', 4, 4, 4, CD_SLOW, { onReplaced: { kind: 'heal', amount: 6 } }),
   usurper: unit('usurper', 'クロウ', 3, 3, 3, CD_SLOW, { onOverwrite: { kind: 'buff', atk: 2, hp: 2 } }),
   conqueror: unit('conqueror', 'レグ', 5, 4, 4, CD_STD, { onOverwrite: { kind: 'refund' } }),
-  ambush: spell('ambush', '待ち伏せ', 2, { kind: 'ambush' }),
   parry: spell('parry', 'パリィ', 1, { kind: 'parry', ms: 5000 }),
   trickster: unit('trickster', 'ピエロ', 3, 3, 2, CD_FAST, { stealth: true, onOverwrite: { kind: 'haste' } }),
   monarch: unit('monarch', 'ロデリク', 6, 6, 6, CD_SLOW, { onReplaced: { kind: 'coin', amount: 5 } }),
@@ -723,7 +713,7 @@ export const RIVAL_DECKS: { name: string; deck: CardId[] }[] = [
   { name: '巨人', deck: ['recruit', 'bulwark', 'stalwart', 'captain', 'taxman', 'champion', 'ogre', 'forge'] },
   { name: '連撃', deck: ['herald', 'twin', 'bloody', 'duelist', 'knight', 'bloodknight', 'raider', 'stalwart'] },
   { name: '狙撃', deck: ['guard', 'marksman', 'herald', 'sniper', 'priest', 'wall', 'festival', 'recruit'] },
-  { name: '割り込み', deck: ['guard', 'shieldmaid', 'warder', 'diehard', 'ambusher', 'knight', 'oldguard', 'ambush'] },
+  { name: '割り込み', deck: ['guard', 'shieldmaid', 'warder', 'diehard', 'ambusher', 'knight', 'oldguard', 'sentinel'] },
   { name: '生贄', deck: ['offering', 'tactician', 'heir', 'footman', 'usurper', 'sniper', 'conqueror', 'craftsman'] },
   { name: '討伐', deck: ['herald', 'hunter', 'avenger', 'scout', 'slayer', 'riposte', 'trickster', 'monarch'] },
   { name: 'T一族', deck: ['kleen', 'kvav', 'kboyan', 'kroda', 'kdera', 'tmassa', 'tzarashi', 'tkisuke'] },
@@ -786,19 +776,8 @@ function selfBuffText(atk: number, hp: number): string {
   return /^[A-Z]/.test(t) ? `自分の ${t}` : `自分の${t}`;
 }
 
-/** 状態の説明（説明シートの下に出す）。 */
-export const STATUS_NOTES: string[] = [
-  '討伐: 自分の攻撃で敵ユニットを倒すこと（反撃や毒で倒したときは含まない）',
-  '妨害: 攻撃の溜め中に、相手のブロッカーが出る・壁ができる・狙われたカードがチェンジで入れ替わると、その攻撃は中断される。妨害された攻撃元は、クールタイムが 5 秒増える',
-  'チェンジ: 自分のカードの上に召喚すると入れ替わる。入れ替わって場を離れるカードの「生贄時」の能力が起きる',
-  '生贄: チェンジで入れ替わって場を離れること',
-  '毒: 攻撃するたびに 1 ダメージを受ける（重ならない）',
-  '封印: 能力がすべて無効になる',
-  '攻撃不能: しばらく、または能力で、攻撃できない',
-];
-
 /** 説明の中で黄色く出す言葉（基本能力の名前と状態の名前。ドラクエライバルズのキーワードと同じ扱い）。 */
-export const KEYWORDS: string[] = ['ブロッカー', '速攻', '結界', 'ステルス', '狙い撃ち', '連撃', '遠隔', '吸血', '鉄壁', '妨害耐性', '攻撃不能', '毒', '封印'];
+export const KEYWORDS: string[] = ['ブロッカー', '速攻', '結界', 'ステルス', '狙い撃ち', '連撃', '遠隔', '吸血', '鉄壁', '妨害耐性', '攻撃不能', '毒', '封印', 'T の一族'];
 
 /** 能力の説明（長押しの説明・ドラッグ中の案内）。ドラクエライバルズの書き方にそろえる:
  *  キーワード（ブロッカー・速攻・結界）はそのまま、時機のある能力は「登場時：」「攻撃時：」「死亡時：」
@@ -807,7 +786,7 @@ export const KEYWORDS: string[] = ['ブロッカー', '速攻', '結界', 'ス�
 export function abilityLines(card: CardId): string[] {
   const a = CARDS[card].ab;
   const lines: string[] = [];
-  if (a.clan) lines.push(`一族：${a.clan}（場の ${a.clan} 一族で効果が変わる）`);
+  if (a.clan) lines.push(`${a.clan} の一族`);
   if (a.blocker) lines.push('ブロッカー（相手はブロッカーしか攻撃できない）');
   if (a.haste) lines.push('速攻（召喚してすぐ攻撃できる）');
   if (a.barrier) lines.push('結界（最初に受けるダメージを 0 にする）');
@@ -824,14 +803,14 @@ export function abilityLines(card: CardId): string[] {
   if (s?.kind === 'buffAlly') lines.push(`登場時：味方ユニット 1 体の${buffText(s.atk, s.hp)}`);
   if (s?.kind === 'buffAllies') lines.push(`登場時：自分のほかのユニット全員の${buffText(s.atk, s.hp)}`);
   if (s?.kind === 'poison') lines.push(`登場時：敵ユニット 1 体に毒を与える`);
-  if (s?.kind === 'buffClan') lines.push(`登場時：場のほかの ${a.clan} 一族全員の${buffText(s.atk, s.hp)}`);
-  if (s?.kind === 'clanBurst') lines.push(`登場時：場の ${a.clan} 一族（自分を含む）1 体につき、敵プレイヤーに ${s.per} ダメージ`);
+  if (s?.kind === 'buffClan') lines.push(`登場時：場のほかの ${a.clan} の一族全員の${buffText(s.atk, s.hp)}`);
+  if (s?.kind === 'clanBurst') lines.push(`登場時：場の ${a.clan} の一族（自分を含む）1 体につき、敵プレイヤーに ${s.per} ダメージ`);
   if (s?.kind === 'seal') lines.push('登場時：敵ユニット 1 体を封印する（能力を無効にする）');
   if (s?.kind === 'disarm') lines.push(`登場時：敵ユニット 1 体を ${s.ms / 1000} 秒間、攻撃不能にする`);
-  if (a.clanAtk) lines.push(`場にほかの ${a.clan} 一族がいるとき：攻撃力 +${a.clanAtk}`);
-  if (a.clanArmor) lines.push(`場にほかの ${a.clan} 一族がいるとき：受けるダメージ -${a.clanArmor}`);
-  if (a.clanRally) lines.push(`場にいる間：ほかの ${a.clan} 一族の攻撃力 +${a.clanRally}`);
-  if (a.clanDouble) lines.push(`場にほかの ${a.clan} 一族が ${a.clanDouble} 体以上いるとき：連撃（1 回のクールタイムで 2 回攻撃）`);
+  if (a.clanAtk) lines.push(`場にほかの ${a.clan} の一族がいるとき：攻撃力 +${a.clanAtk}`);
+  if (a.clanArmor) lines.push(`場にほかの ${a.clan} の一族がいるとき：受けるダメージ -${a.clanArmor}`);
+  if (a.clanRally) lines.push(`場にいる間：ほかの ${a.clan} の一族の攻撃力 +${a.clanRally}`);
+  if (a.clanDouble) lines.push(`場にほかの ${a.clan} の一族が ${a.clanDouble} 体以上いるとき：連撃（1 回のクールタイムで 2 回攻撃）`);
   if (a.freeAim) lines.push('狙い撃ち（ブロッカー・壁を無視して、好きな相手を攻撃できる）');
   if (a.doubleStrike) lines.push('連撃（1 回のクールタイムで 2 回攻撃する）');
   if (a.cannotAttack) lines.push('攻撃不能（このカードは攻撃できない。守り専用）');
@@ -885,23 +864,8 @@ export function abilityLines(card: CardId): string[] {
   if (sp?.kind === 'buffAll') lines.push(`味方ユニット全員の${buffText(sp.atk, sp.hp)}`);
   if (sp?.kind === 'poisonAll') lines.push(`敵ユニット全員に毒を与える`);
   if (sp?.kind === 'sealAll') lines.push('敵ユニット全員を封印する（能力を無効にする）');
-  if (sp?.kind === 'ambush') lines.push('空いている枠に民兵（ブロッカー）をすぐ出す。溜め中の敵の攻撃は割り込まれて中断する');
   if (sp?.kind === 'parry') lines.push(`溜め中の敵の攻撃をすべて中断させ、攻撃元のクールタイム +${sp.ms / 1000} 秒（すぐ効く）`);
   return lines;
-}
-
-/** 使い方の補足（説明の下に小さく出す）。 */
-export function usageNote(card: CardId): string | null {
-  const def = CARDS[card];
-  if (needsTarget(card)) {
-    if (def.type === 'spell') return '敵カードの上へドラッグして使う';
-    return summonSide(card) === 'ally'
-      ? '場へ置いたあと、効かせる味方ユニットをタップする（選べる味方がいなければ、そのまま置ける）'
-      : '場へ置いたあと、効かせる敵カードをタップする（選ばないと置けない）';
-  }
-  if (def.type === 'spell') return '盤面へドラッグして使う';
-  if (def.type === 'building') return '攻撃しない。場にあるだけで効く';
-  return null;
 }
 
 /** 壁の説明（ヘルプと案内で使う）。 */

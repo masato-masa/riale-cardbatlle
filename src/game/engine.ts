@@ -344,7 +344,6 @@ export function summonBlock(
   if (pl.coins < CARDS[card].summon) return 'coins';
   if (CARDS[card].type === 'spell') {
     // パリィ: 相手の溜め中の攻撃が無ければ使えない
-    if (CARDS[card].ab.spell?.kind === 'ambush' && freeSlot(state, p) < 0) return 'slot';
     if (CARDS[card].ab.spell?.kind === 'parry' && !state.pending.some((x) => x.kind === 'attack' && x.p === other(p))) return 'noattack';
     if (requiresTarget(card) && (target === undefined || !pickable(state.players[other(p)], target))) return 'target';
     return null;
@@ -768,13 +767,6 @@ function castSpell(state: GameState, p: PlayerIndex, handIndex: number, target?:
   pl.queue = [...rest, card];
   pl.coins -= CARDS[card].summon;
   const effect = CARDS[card].ab.spell!;
-  if (effect.kind === 'ambush') {
-    d.events.push({ kind: 'spell', p, card, target: null });
-    const empty = pl.field.findIndex((u) => !u);
-    if (empty >= 0) place(d, p, 'militia', empty, true);
-    sweepDead(d);
-    return finish(state, d);
-  }
   if (effect.kind === 'parry') {
     // パリィ: 溜めなしですぐ効く。相手の溜め中の攻撃をすべて弾いて、攻撃元を足止めする
     d.events.push({ kind: 'spell', p, card, target: null });
