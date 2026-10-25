@@ -45,7 +45,8 @@ export const MODE_BALANCE: Record<BalanceMode, ModeBalance> = {
       warlord: { summon: 8 },
     },
     // 狙い撃ち（ブロッカー・壁を越えられる）は、プレイヤーを狙わせると強みが活きる（弱った敵優先だと狙撃デッキが 0%）
-    aim: { sniper: 'player', marksman: 'player' },
+    // ポラン（1 コスト・速攻）はプレイヤー優先だと毎試合 4 回近く顔を殴り、安いユニットを並べる死霊デッキが 90% 勝った
+    aim: { sniper: 'player', marksman: 'player', herald: 'unit' },
   },
   // 案 3（自動攻撃・反撃なし）: 鐘楼（クールタイム短縮）が半分のクールタイムとかさなって強すぎ、入れ替え向けのステルス持ちが弱い
   3: {
