@@ -787,7 +787,16 @@ export const AIM_NAME: Record<Aim, string> = { unit: 'ユニット優先', playe
 
 /** カードの狙い方。能力から決める: 速攻・ステルス・プレイヤーへの追加ダメージ → プレイヤー優先、
  *  狙い撃ち・遠隔・ユニットへの追加ダメージ・討伐 → 弱った敵優先、毒の牙 → 強敵優先、ほか → ユニット優先。 */
+let AIM_OVERRIDE: Partial<Record<CardId, Aim>> = {};
+
+/** 案ごとの狙い方の上書き（balance.ts の applyRuleBalance が入れる）。 */
+export function setAimOverrides(map: Partial<Record<CardId, Aim>>): void {
+  AIM_OVERRIDE = map;
+}
+
 export function aimOf(card: CardId): Aim {
+  const over = AIM_OVERRIDE[card];
+  if (over) return over;
   const a = CARDS[card].ab;
   if (a.haste || a.stealth || a.faceBonus) return 'player';
   if (a.freeAim || a.ranged || a.unitBonus || a.onKill) return 'weak';

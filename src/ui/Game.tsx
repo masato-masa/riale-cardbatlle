@@ -332,8 +332,9 @@ export function Game({ level, deck, challenge, onExit }: { level: CpuLevel; deck
   // ---- 初回の案内の進行 ----
   const placed = game.players[0].field.some((u) => !!u);
   useEffect(() => {
-    if (tut === 1 && placed) setTut(2);
-  }, [tut, placed]);
+    // 自動攻撃のルールでは攻撃のドラッグが無いので、攻撃の段を飛ばす
+    if (tut === 1 && placed) setTut(RULES.auto ? 3 : 2);
+  }, [tut, placed, RULES.auto]);
   useEffect(() => {
     if (tut !== 3) return;
     const t = window.setTimeout(() => {
@@ -1545,7 +1546,7 @@ export function Game({ level, deck, challenge, onExit }: { level: CpuLevel; deck
       ) : null}
 
       {/* 溜め中の行動: 攻撃元から対象へ矢印、対象に縮んでいく照準。範囲の呪文は場ごと光らせる */}
-      {tut !== null && !intro && !game.result && menu === null ? <Tutorial step={tut} onNext={() => setTut(1)} /> : null}
+      {tut !== null && !intro && !game.result && menu === null ? <Tutorial step={tut} auto={RULES.auto} onNext={() => setTut(1)} /> : null}
       {tip !== null && !intro && !game.result && menu === null ? <Tip id={tip} onClose={() => setTip(null)} /> : null}
       <AnimatePresence>
         {foeCast ? (

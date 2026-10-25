@@ -69,7 +69,7 @@ export function Tip({ id, onClose }: { id: TipId; onClose: () => void }) {
 /** 案内の帯を出しておく時間。 */
 const TIP_MS = 7000;
 
-export function Tutorial({ step, onNext }: { step: TutorialStep; onNext: () => void }) {
+export function Tutorial({ step, auto, onNext }: { step: TutorialStep; auto?: boolean; onNext: () => void }) {
   const [path, setPath] = useState<{ from: { x: number; y: number }; to: { x: number; y: number } } | null>(null);
   useEffect(() => {
     const read = () => {
@@ -81,7 +81,8 @@ export function Tutorial({ step, onNext }: { step: TutorialStep; onNext: () => v
     const id = window.setInterval(read, 400);
     return () => window.clearInterval(id);
   }, [step]);
-  const t = TEXT[step];
+  // 自動攻撃のルール（テスト用の案 2・3）では、場のカードが自分で攻撃する
+  const t = auto && step === 3 ? { title: 'その調子！', body: '場のカードは自分で攻撃します。相手の HP を 0 にしたら勝ち。' } : TEXT[step];
   return (
     <div className="tutorial" aria-live="polite">
       {path ? (

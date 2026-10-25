@@ -1,6 +1,7 @@
 // プレイヤーの戦績と、最後に選んだ難易度。localStorage に入れる（読めなければ初期値）。
 
 import type { CpuLevel } from '@/ai/cpu';
+import { applyRuleBalance, type BalanceMode } from '@/game/balance';
 
 const RECORD_KEY = 'riale-cardbatlle:record';
 const LEVEL_KEY = 'riale-cardbatlle:level';
@@ -129,7 +130,7 @@ export function saveAvatar(avatar: string): void {
 const RULES_KEY = 'riale-cardbatlle:rules';
 
 /** ルールの案（テスト用で切り替え）。1: 手動で攻撃・反撃あり（いま）／2: 自動攻撃・反撃あり／3: 自動攻撃・反撃なし。 */
-export type RuleMode = 1 | 2 | 3;
+export type RuleMode = BalanceMode;
 
 export const RULE_MODE_NAME: { [k in RuleMode]: string } = { 1: '案 1 手動で攻撃', 2: '案 2 自動攻撃', 3: '案 3 自動攻撃・反撃なし' };
 
@@ -148,6 +149,8 @@ export function saveRuleMode(mode: RuleMode): void {
   } catch {
     // 保存できなくても、この場では効く
   }
+  // カードの数値もその案のものに
+  applyRuleBalance(mode);
 }
 
 /** 案をエンジンのルールに。 */

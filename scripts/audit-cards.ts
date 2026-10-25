@@ -5,8 +5,14 @@ import { createBrain, cpuStep } from '../src/ai/cpu';
 import { CARDS, type CardId } from '../src/game/cards';
 import { createGame, step, type Action, type PlayerIndex } from '../src/game/engine';
 import { makeRng } from '../src/game/rng';
+import { applyRuleBalance } from '../src/game/balance';
+import { rulesOf, type RuleMode } from '../src/storage/profile';
 
 const N = Number(process.argv[2] ?? 600);
+// MODE=2 や MODE=3 で、ルールの案ごとに測る（その案のカードの数値とルールで）
+const MODE = (Number(process.env.MODE ?? 1) || 1) as RuleMode;
+applyRuleBalance(MODE);
+const RULES = rulesOf(MODE);
 const pool = (Object.keys(CARDS) as CardId[]).filter((id) => !CARDS[id].token);
 const score = new Map<CardId, { n: number; s: number }>();
 
@@ -21,7 +27,7 @@ for (let g = 0; g < N; g++) {
     return a.slice(0, 10);
   };
   const decks: [CardId[], CardId[]] = [deck(), deck()];
-  let state = createGame(decks, g + 1);
+  let state = createGame(decks, g + 1, RULES);
   const brains = [createBrain(), createBrain()];
   const rands = [makeRng(g * 2 + 1), makeRng(g * 2 + 2)];
   while (!state.result) {

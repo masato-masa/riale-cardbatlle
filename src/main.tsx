@@ -5,6 +5,11 @@ import { MotionConfig } from 'motion/react';
 import { App } from './App';
 // ホーム画面に追加の合図（beforeinstallprompt）は読み込み直後に来るので、最初に聞き始める
 import './ui/install';
+import { applyRuleBalance } from './game/balance';
+import { loadRuleMode } from './storage/profile';
+
+// テスト用で選んだルールの案の、カードの数値を最初に重ねる（画面に出る数値も対戦もその案のもの）
+applyRuleBalance(loadRuleMode());
 
 // 端末の「動きを減らす」設定に、アプリ全体で従う。
 // reducedMotion="user" は transform と opacity の動きだけを止め、
