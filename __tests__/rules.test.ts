@@ -115,4 +115,12 @@ describe('ルール案 2・3（自動攻撃）', () => {
       expect(unitOf(s, 0, me.uid)!.hp < CARDS.lancer.hp).toBe(hurt);
     }
   });
+
+  it('クールタイムの倍率: 0.5 なら攻撃のあとのクールタイムが半分', () => {
+    let s = fresh({ auto: true, counter: true, cdScale: 0.5 });
+    let me: Unit;
+    [s, me] = place(s, 0, 0, 'lancer', 0);
+    s = tick(s, 50);
+    expect(unitOf(s, 0, me.uid)!.readyAt).toBe(s.time + Math.round(CARDS.lancer.cd * 0.5));
+  });
 });

@@ -154,6 +154,8 @@ export interface GameState {
 export interface Rules {
   auto: boolean;
   counter: boolean;
+  /** クールタイムの倍率（自動攻撃は操作が少ないぶん 0.5。無ければ 1）。 */
+  cdScale?: number;
 }
 
 /** 案 1（いまの遊び方）。 */
@@ -321,10 +323,10 @@ export function isLegalTarget(state: GameState, p: PlayerIndex, target: Target, 
 }
 
 /** そのカードのクールタイム（カードごとの値。祈りで縮む。最短で 40%）。 */
-export function cooldownOf(player: PlayerState, card: CardId): number {
+export function cooldownOf(player: PlayerState, card: CardId, scale = 1): number {
   let cut = 0;
   for (const u of player.field) if (u) cut += abOf(u).cooldownCut ?? 0;
-  return Math.round(CARDS[card].cd * COOLDOWN_SCALE * Math.max(0.4, 1 - cut));
+  return Math.round(CARDS[card].cd * COOLDOWN_SCALE * scale * Math.max(0.4, 1 - cut));
 }
 
 /** 登場時に敵を選ぶカード（狙撃・足止・破壊）で、いま選べる敵。足止・破壊はユニットだけ。 */
@@ -400,6 +402,8 @@ interface Draft {
   rechecking?: boolean;
   /** カード同士の攻撃で反撃を受けるか（ルール）。 */
   counter: boolean;
+  /** クールタイムの倍率（ルール）。 */
+  cdScale: number;
 }
 
 function draftOf(state: GameState): Draft {
@@ -416,6 +420,7 @@ function draftOf(state: GameState): Draft {
     events: [],
     pending: [...state.pending],
     counter: state.rules?.counter ?? true,
+    cdScale: state.rules?.cdScale ?? 1,
   };
 }
 
@@ -600,7 +605,7 @@ function place(d: Draft, p: PlayerIndex, card: CardId, slot: number, token: bool
     card,
     hp: CARDS[card].hp,
     // 登場したときのクールタイムは半分（2 回目の攻撃からそのユニットのクールタイム）。速攻はなし
-    readyAt: ab.haste ? d.time : d.time + Math.round(cooldownOf(d.players[p], card) / 2),
+    readyAt: ab.haste ? d.time : d.time + Math.round(cooldownOf(d.players[p], card, d.cdScale) / 2),
     barrier: !!ab.barrier,
     stealth: !!ab.stealth,
     pulseAt: ab.pulse ? d.time + ab.pulse.everyMs : null,
@@ -723,7 +728,7 @@ function startCooldown(d: Draft, p: PlayerIndex, u: Unit): void {
     u.readyAt = d.time;
   } else {
     u.second = undefined;
-    u.readyAt = d.time + cooldownOf(d.players[p], u.card);
+    u.readyAt = d.time + cooldownOf(d.players[p], u.card, d.cdScale);
   }
 }
 

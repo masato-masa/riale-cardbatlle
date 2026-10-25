@@ -151,8 +151,9 @@ export function saveRuleMode(mode: RuleMode): void {
 }
 
 /** 案をエンジンのルールに。 */
-export function rulesOf(mode: RuleMode): { auto: boolean; counter: boolean } {
-  return { auto: mode !== 1, counter: mode !== 3 };
+export function rulesOf(mode: RuleMode): { auto: boolean; counter: boolean; cdScale: number } {
+  // 自動攻撃（案 2・3）は操作が少ないぶん、クールタイムを半分に（ユーザー指定 2026-10-25）
+  return { auto: mode !== 1, counter: mode !== 3, cdScale: mode === 1 ? 1 : 0.5 };
 }
 
 const NAME_KEY = 'riale-cardbatlle:name';

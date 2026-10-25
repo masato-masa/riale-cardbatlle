@@ -1,5 +1,5 @@
 import { abilityLines, AIM_NAME, aimOf, CARDS, KEYWORDS, TYPE_NAME, WALL_TEXT, type CardId } from '@/game/cards';
-import { loadRuleMode } from '@/storage/profile';
+import { loadRuleMode, rulesOf } from '@/storage/profile';
 import { PLAYER_ATK, PLAYER_HP } from '@/game/rules';
 
 import { cardArt } from './art';
@@ -62,7 +62,7 @@ export function CardDetail({ card, hp }: { card: CardId; hp?: number }) {
             <dt>攻撃力</dt>
             <dd>{def.atk}</dd>
             <dt>クールタイム</dt>
-            <dd>{def.cd / 1000} 秒</dd>
+            <dd>{(def.cd * rulesOf(loadRuleMode()).cdScale) / 1000} 秒</dd>
           </>
         ) : null}
         {def.type !== 'spell' ? (
