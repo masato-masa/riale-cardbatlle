@@ -14,7 +14,9 @@ const VERBOSE = process.argv.includes('--decks');
 
 for (const mode of MODES) {
   applyRuleBalance(mode);
-  const rules = rulesOf(mode);
+  // 試しに倍率を変えて測る: --cd=0.4 --coin=1.2
+  const arg = (k: string) => process.argv.find((a) => a.startsWith(`--${k}=`))?.split('=')[1];
+  const rules = { ...rulesOf(mode), ...(arg('cd') ? { cdScale: Number(arg('cd')) } : {}), ...(arg('coin') ? { coinScale: Number(arg('coin')) } : {}) };
   let games = 0;
   let sec = 0;
   let timeouts = 0;

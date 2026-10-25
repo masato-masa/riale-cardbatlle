@@ -156,6 +156,8 @@ export interface Rules {
   counter: boolean;
   /** クールタイムの倍率（自動攻撃は操作が少ないぶん 0.5。無ければ 1）。 */
   cdScale?: number;
+  /** コインのたまる速さの倍率（無ければ 1）。 */
+  coinScale?: number;
 }
 
 /** 案 1（いまの遊び方）。 */
@@ -645,7 +647,7 @@ function finish(state: GameState, d: Draft): GameState {
 function tick(state: GameState, dt: number): GameState {
   if (state.result || dt <= 0) return state;
   const end = Math.min(MATCH_MS, state.time + dt);
-  const base = (end - state.time) * coinRate(state.time);
+  const base = (end - state.time) * coinRate(state.time) * (state.rules?.coinScale ?? 1);
   const players = state.players.map((pl) => ({
     ...pl,
     coins: Math.min(COIN_MAX, pl.coins + base * coinBoostOf(pl)),

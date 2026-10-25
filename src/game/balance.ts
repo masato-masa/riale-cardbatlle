@@ -73,6 +73,15 @@ export const MODE_BALANCE: Record<BalanceMode, ModeBalance> = {
   },
 };
 
+/** 案ごとのルールの数値（クールタイム・コインのたまる速さの倍率）。カードと同じく案ごとに調整する。 */
+export const MODE_RULES: Record<BalanceMode, { cdScale: number; coinScale: number }> = {
+  1: { cdScale: 1, coinScale: 1 },
+  // 自動攻撃は操作が少ないぶん、クールタイム半分（ユーザー指定 2026-10-25）
+  2: { cdScale: 0.5, coinScale: 1 },
+  // 案 3: コイン 1.25 倍で、相手デッキの偏り 31〜81% → 30〜75%、試合 135 → 146 秒、妨害 1.4 → 1.7 回（案 2 は倍率を振っても偏りが縮まず 1 のまま）
+  3: { cdScale: 0.5, coinScale: 1.25 },
+};
+
 /** 案 1 の数値（上書きを外すときに戻す）。 */
 const BASE: Partial<Record<CardId, Stats>> = {};
 

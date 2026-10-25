@@ -1,7 +1,7 @@
 // プレイヤーの戦績と、最後に選んだ難易度。localStorage に入れる（読めなければ初期値）。
 
 import type { CpuLevel } from '@/ai/cpu';
-import { applyRuleBalance, type BalanceMode } from '@/game/balance';
+import { applyRuleBalance, MODE_RULES, type BalanceMode } from '@/game/balance';
 
 const RECORD_KEY = 'riale-cardbatlle:record';
 const LEVEL_KEY = 'riale-cardbatlle:level';
@@ -154,9 +154,9 @@ export function saveRuleMode(mode: RuleMode): void {
 }
 
 /** 案をエンジンのルールに。 */
-export function rulesOf(mode: RuleMode): { auto: boolean; counter: boolean; cdScale: number } {
-  // 自動攻撃（案 2・3）は操作が少ないぶん、クールタイムを半分に（ユーザー指定 2026-10-25）
-  return { auto: mode !== 1, counter: mode !== 3, cdScale: mode === 1 ? 1 : 0.5 };
+export function rulesOf(mode: RuleMode): { auto: boolean; counter: boolean; cdScale: number; coinScale: number } {
+  // クールタイム・コインの倍率は balance.ts で案ごとに決める
+  return { auto: mode !== 1, counter: mode !== 3, ...MODE_RULES[mode] };
 }
 
 const NAME_KEY = 'riale-cardbatlle:name';

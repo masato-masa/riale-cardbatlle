@@ -94,7 +94,7 @@ export function HelpBody() {
     <ul className="help-list">
       {loadRuleMode() !== 1 ? (
         <li>
-          <b className="kw">いまのルール</b>：場のカードはクールタイムが明けると、カードごとの狙い方（説明の「攻撃」）で自分で攻撃します。クールタイムは半分。{loadRuleMode() === 3 ? '攻撃したカードは反撃を受けません。' : ''}
+          <b className="kw">いまのルール</b>：場のカードはクールタイムが明けると、カードごとの狙い方（説明の「攻撃」）で自分で攻撃します。クールタイム ×{rulesOf(loadRuleMode()).cdScale}{rulesOf(loadRuleMode()).coinScale !== 1 ? `・コインのたまる速さ ×${rulesOf(loadRuleMode()).coinScale}` : ''}。{loadRuleMode() === 3 ? '攻撃したカードは反撃を受けません。' : ''}
         </li>
       ) : null}
       <li>コインは時間でたまります（最大 10）。残り 2 分からは、ユニットのクールタイムが 2 倍の速さで減ります。</li>
