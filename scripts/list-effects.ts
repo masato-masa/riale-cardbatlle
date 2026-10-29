@@ -1,4 +1,4 @@
-// 効果ごとに、持っているカードを一覧にして docs/effects.md を作る。使い方: npx tsx scripts/list-effects.ts
+// 効果ごとに、持っているカードを一覧にして Obsidian Vault の Projects/riale-cardbatlle/effects.md を作る。使い方: npx tsx scripts/list-effects.ts
 import { writeFileSync } from 'node:fs';
 
 import { abilityLines, CARDS, type CardId } from '../src/game/cards';
@@ -78,5 +78,7 @@ const spells = ids.filter((i) => CARDS[i].type === 'spell');
 md += `# 呪文（${spells.length}）\n\n${spells.map(name).join('、')}\n\n`;
 const none = ids.filter((i) => CARDS[i].type === 'unit' && abilityLines(i).length === 0);
 md += `# 能力なし（基礎スタッツ）（${none.length}）\n\n${none.map(name).join('、')}\n`;
-writeFileSync('docs/effects.md', md);
+const vault = process.env.OBSIDIAN_VAULT ?? 'C:/claude/claude-obsidian';
+const front = `---\ndate: ${new Date().toISOString().slice(0, 10)}\ntags: [project-doc, riale-cardbatlle, generated]\nproject: riale-cardbatlle\nrelated: [[riale-cardbatlle]]\n---\n\n`;
+writeFileSync(`${vault}/Projects/riale-cardbatlle/effects.md`, front + md);
 console.log(md.split('\n# 1.')[0]);
