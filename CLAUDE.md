@@ -13,7 +13,7 @@
 - ゲーム性（`src/game/`）はオリジナルのまま。**画面 UI と操作性はクラロワ／ドラクエライバルズを真似る**。
 - 画面改善は聞かずに自走して回す（検査→`Obsidian:Projects/riale-cardbatlle/backlog.md`→実装→検査）。検査基準はクラロワ／ライバルズと同じに見えるか。
 - 素材は ChatGPT で作ってよい（`art-src/` に一枚絵、`scripts/slice-*.mjs` で `src/assets/art/` へ）。
-- 共通 UI（`src/ui/shared/`）は `node C:\claude\shared-ui\sync.mjs` が配る生成物。直接編集しない。
+- `src/ui/shared/` は昔 shared-ui から配られた写しだが、**今はこのゲームのもの**（shared-ui はパズルゲーム限定で、ここへは配らない。2026-10-31）。
 - ブラウザで試すときは URL に `?mute` を付ける（例: `http://localhost:5190/riale-cardbatlle/?mute`）。
 - ルールの数値は `src/game/rules.ts`、カードは `src/game/cards.ts` だけに書く。
   変えたら `npm run simulate` で試合の長さと勝率を測り直す。
