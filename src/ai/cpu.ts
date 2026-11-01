@@ -26,13 +26,30 @@ import { COIN_MAX, FIELD_SLOTS, MATCH_MS, PLAYER_HP, SUMMON_WINDUP_MS } from '..
 
 export type CpuLevel = 'easy' | 'normal' | 'hard';
 
+/** CPU の性格。強さ（CpuLevel）とは別の軸で、何を好むかの重みだけを変える（見えない情報は使わない）。
+ *  rush: 早く出して顔を叩く／guard: ブロッカーと割り込みで受ける／hoard: コインを溜めて大物／
+ *  whim: 上の 3 つを 30 秒ごとに乗り換える（どれから始めるかは試合ごと）／plain: 重みを変えない。 */
+export type CpuPersona = 'rush' | 'guard' | 'hoard' | 'whim' | 'plain';
+
+/** 相手の名前の下に出す一言。 */
+export const PERSONA_LABEL: Record<CpuPersona, string> = {
+  rush: 'せっかち',
+  guard: 'しんちょう',
+  hoard: 'ためこみ',
+  whim: 'きまぐれ',
+  plain: 'ばんのう',
+};
+
 export interface CpuBrain {
   /** この時刻（ms）まで考えない。 */
   nextThinkAt: number;
+  persona: CpuPersona;
+  /** きまぐれの乗り換えの起点（0〜2）。 */
+  whimFrom: number;
 }
 
-export function createBrain(): CpuBrain {
-  return { nextThinkAt: 1200 };
+export function createBrain(persona: CpuPersona = 'plain', seed = 0): CpuBrain {
+  return { nextThinkAt: 1200, persona, whimFrom: Math.abs(seed) % 3 };
 }
 
 interface Tuning {
@@ -67,12 +84,55 @@ interface Tuning {
   react: number;
   /** 攻撃を予約する度合い（0 なら使わない）。 */
   reserve: number;
+  /** 性格: 安いカードほど足す点（コスト 1〜2 で満額、3.5 で 0、5 以上で同じだけ引く。負なら逆に安いカードを渋る）。 */
+  tempo: number;
+  /** 性格: コスト 5 以上のカードに、5 を超えた 1 ごとに足す点。 */
+  big: number;
+  /** 性格: 攻撃（予約でない今の攻撃）に足す点。前に出たがる度合い。 */
+  push: number;
+  /** 性格: 手札のブロッカーで割り込めるだけのコインを残す度合い（ブロッカー以外にコインを使って残りが足りなくなる操作への罰）。 */
+  keep: number;
+}
+
+/** 性格の重み。mul は TUNING に掛ける倍率、add は足す値。 */
+interface Lean {
+  mul: Partial<Record<'face' | 'trade' | 'defend' | 'react' | 'save' | 'reserve', number>>;
+  add: Partial<Record<'idle' | 'spellBias' | 'tempo' | 'big' | 'push' | 'keep', number>>;
+}
+
+// 重みは scripts/audit-persona.ts で「初期デッキ（normal）対 アリーナの相手（normal）」を測って決めた（RC-9）。
+// せっかち: 攻撃を急ぎ（push）、相打ちもいとわない（trade 低め）。しんちょう: 割り込み・ブロッカーを重く見て、
+// 割り込めるだけのコインを残し（keep）、攻撃は控えめ。ためこみ: 安いカードを渋って大物へ貯める（idle・big・save）。
+export const LEANS: Record<Exclude<CpuPersona, 'whim'>, Lean> = {
+  plain: { mul: {}, add: {} },
+  rush: { mul: { face: 1.5, trade: 0.75 }, add: { push: 0.8, idle: -0.2 } },
+  guard: { mul: { trade: 1.4, defend: 2.5, react: 2.5 }, add: { push: -0.4, keep: 2 } },
+  hoard: { mul: { save: 3 }, add: { idle: 1.0, tempo: -1.0, big: 0.8 } },
+};
+
+const WHIM_ORDER: Exclude<CpuPersona, 'whim' | 'plain'>[] = ['rush', 'guard', 'hoard'];
+/** きまぐれが乗り換える間隔（ms）。 */
+export const WHIM_MS = 30_000;
+
+/** いまの性格（きまぐれは時刻で乗り換える）。 */
+export function moodOf(brain: CpuBrain, time: number): Exclude<CpuPersona, 'whim'> {
+  if (brain.persona !== 'whim') return brain.persona;
+  return WHIM_ORDER[(brain.whimFrom + Math.floor(time / WHIM_MS)) % WHIM_ORDER.length]!;
+}
+
+function lean(t: Tuning, persona: Exclude<CpuPersona, 'whim'>): Tuning {
+  const l = LEANS[persona];
+  if (persona === 'plain') return t;
+  const out = { ...t };
+  for (const [k, v] of Object.entries(l.mul)) out[k as keyof typeof l.mul] *= v!;
+  for (const [k, v] of Object.entries(l.add)) out[k as keyof typeof l.add] += v!;
+  return out;
 }
 
 const TUNING: Record<CpuLevel, Tuning> = {
-  easy: { thinkMin: 1600, thinkSpan: 800, noise: 5.5, second: 0.1, missLethal: 0.35, random: 0.25, idle: 0.5, face: 0.6, trade: 0.4, defend: 0.3, skill: 0.6, save: 0, spellBias: 9, foresee: 0, react: 0.3, reserve: 0 },
-  normal: { thinkMin: 600, thinkSpan: 400, noise: 2.0, second: 0.6, missLethal: 0.05, random: 0.04, idle: 0.4, face: 1.0, trade: 0.9, defend: 0.8, skill: 0.8, save: 0.5, spellBias: 0, foresee: 0.6, react: 0.9, reserve: 0.6 },
-  hard: { thinkMin: 200, thinkSpan: 100, noise: 0.5, second: 0.7, missLethal: 0, random: 0, idle: 0.0, face: 1.0, trade: 1.0, defend: 1.2, skill: 0.9, save: 1.0, spellBias: -1, foresee: 1.0, react: 1.3, reserve: 1.0 },
+  easy: { thinkMin: 1600, thinkSpan: 800, noise: 5.5, second: 0.1, missLethal: 0.35, random: 0.25, idle: 0.5, face: 0.6, trade: 0.4, defend: 0.3, skill: 0.6, save: 0, spellBias: 9, foresee: 0, react: 0.3, reserve: 0, tempo: 0, big: 0, push: 0, keep: 0 },
+  normal: { thinkMin: 600, thinkSpan: 400, noise: 2.0, second: 0.6, missLethal: 0.05, random: 0.04, idle: 0.4, face: 1.0, trade: 0.9, defend: 0.8, skill: 0.8, save: 0.5, spellBias: 0, foresee: 0.6, react: 0.9, reserve: 0.6, tempo: 0, big: 0, push: 0, keep: 0 },
+  hard: { thinkMin: 200, thinkSpan: 100, noise: 0.5, second: 0.7, missLethal: 0, random: 0, idle: 0.0, face: 1.0, trade: 1.0, defend: 1.2, skill: 0.9, save: 1.0, spellBias: -1, foresee: 1.0, react: 1.3, reserve: 1.0, tempo: 0, big: 0, push: 0, keep: 0 },
 };
 
 /** カードの価値を測る基準のクールタイム（ms）。ユニットの平均あたり。 */
@@ -180,6 +240,14 @@ function savePenalty(me: PlayerState, cost: number, self: CardId | null, t: Tuni
   const wait = Math.min(1, 1.2 - (big - me.coins) / 8);
   const calm = Math.max(0, 1 - press);
   return Math.min(3, cost * 0.7) * (0.4 + big * 0.08) * wait * calm * t.save;
+}
+
+/** しんちょう: 手札のブロッカーを割り込みに出せるコインを残す。cost を使うと届かなくなるなら罰（場にブロッカーがいれば要らない）。 */
+function keepPenalty(me: PlayerState, cost: number, t: Tuning): number {
+  if (me.field.some((u) => u && isBlocker(u.card))) return 0;
+  const need = me.hand.reduce((m, c) => (isBlocker(c) && CARDS[c].type !== 'spell' ? Math.min(m, CARDS[c].summon) : m), Infinity);
+  if (!Number.isFinite(need) || me.coins - cost >= need) return 0;
+  return t.keep;
 }
 
 interface Candidate {
@@ -471,6 +539,10 @@ function summonCandidates(state: GameState, p: PlayerIndex, t: Tuning): Candidat
     const bigger = me.hand.some((c) => CARDS[c].summon > d.summon + 1 && CARDS[c].summon <= me.coins + 2.2 && CARDS[c].summon > me.coins);
     if (bigger && d.summon <= 2) s -= 1.2;
     s -= savePenalty(me, d.summon, card, t, press);
+    // 性格: せっかちは出すこと自体を好み、ためこみは安いカードを渋って大物を好む
+    if (t.tempo) s += t.tempo * Math.max(-1, Math.min(1, (3.5 - d.summon) / 2));
+    if (t.big && d.summon >= 5) s += (d.summon - 4) * t.big;
+    if (t.keep && !isBlocker(card)) s -= keepPenalty(me, d.summon, t);
 
     // 増収: 早く出すほど元が取れる
     if (ab.coinBoost) s += ab.coinBoost * 14 * early * t.skill;
@@ -619,6 +691,7 @@ function attackCandidates(state: GameState, p: PlayerIndex, t: Tuning): Candidat
       }
     }
   }
+  if (t.push) for (const c of out) c.score += t.push;
   for (const c of bestRes.values()) out.push(c);
   return out;
 }
@@ -717,7 +790,7 @@ export function cpuStep(
   rand: () => number,
 ): { brain: CpuBrain; actions: Action[] } {
   if (state.result || state.time < brain.nextThinkAt) return { brain, actions: [] };
-  const t = TUNING[level];
+  const t = lean(TUNING[level], moodOf(brain, state.time));
   const actions: Action[] = [];
   const first = choose(state, p, t, rand);
   if (first) {

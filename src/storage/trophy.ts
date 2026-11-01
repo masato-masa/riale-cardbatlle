@@ -1,7 +1,7 @@
 // トロフィーとアリーナ（クラロワ型の成長）。勝敗でトロフィーが増減し、閾値でアリーナが上がる。
 // アリーナが上がると、出てくる相手デッキの幅が広がる。localStorage に入れる（読めなければ 0）。
 
-import type { CpuLevel } from '@/ai/cpu';
+import type { CpuLevel, CpuPersona } from '@/ai/cpu';
 import { RIVAL_DECKS } from '@/game/cards';
 
 const KEY = 'riale-cardbatlle:trophies';
@@ -18,15 +18,17 @@ export interface Arena {
   cardCap: number;
   /** 負けたときに減る量の倍率。序盤は小さく（クラロワの序盤と同じく、負けてもほとんど減らない）。 */
   lossScale: number;
+  /** 相手の CPU の性格（打ち方の癖）。強さ（難易度）とは別。 */
+  persona: CpuPersona;
 }
 
 export const ARENAS: Arena[] = [
   // 最初のアリーナは、初期デッキ（normal の CPU で代用）が 5〜6 割勝てる相手だけ。商人は normal だと初期デッキに 78% 勝つので 2 つ目から
-  { name: 'はじまりの広場', from: 0, pool: ['毒', '巨人', '連撃'], tint: 'none', cardCap: 4, lossScale: 0 },
-  { name: '砂の闘技場', from: 150, pool: ['商人', '毒', '巨人', '連撃', '割り込み', '奇襲'], tint: 'none', cardCap: 6, lossScale: 0.5 },
-  { name: '城門前', from: 400, pool: ['毒', '巨人', '連撃', '割り込み', '狙撃', '生贄', '討伐', '奇襲', '鉄壁'], tint: 'none', cardCap: 7, lossScale: 0.75 },
-  { name: '王の間', from: 800, pool: ['巨人', '連撃', '割り込み', '狙撃', '生贄', '討伐', 'T一族', '封印', '城塞', '呪術', '死霊', '聖騎士', '鉄壁', '工房'], tint: 'none', cardCap: 8, lossScale: 1 },
-  { name: '伝説の頂', from: 1300, pool: RIVAL_DECKS.map((d) => d.name), tint: 'none', cardCap: 10, lossScale: 1 },
+  { name: 'はじまりの広場', from: 0, pool: ['毒', '巨人', '連撃'], tint: 'none', cardCap: 4, lossScale: 0, persona: 'rush' },
+  { name: '砂の闘技場', from: 150, pool: ['商人', '毒', '巨人', '連撃', '割り込み', '奇襲'], tint: 'none', cardCap: 6, lossScale: 0.5, persona: 'guard' },
+  { name: '城門前', from: 400, pool: ['毒', '巨人', '連撃', '割り込み', '狙撃', '生贄', '討伐', '奇襲', '鉄壁'], tint: 'none', cardCap: 7, lossScale: 0.75, persona: 'hoard' },
+  { name: '王の間', from: 800, pool: ['巨人', '連撃', '割り込み', '狙撃', '生贄', '討伐', 'T一族', '封印', '城塞', '呪術', '死霊', '聖騎士', '鉄壁', '工房'], tint: 'none', cardCap: 8, lossScale: 1, persona: 'whim' },
+  { name: '伝説の頂', from: 1300, pool: RIVAL_DECKS.map((d) => d.name), tint: 'none', cardCap: 10, lossScale: 1, persona: 'plain' },
 ];
 
 /** そのコストのカードが宝箱から出始めるアリーナ。 */

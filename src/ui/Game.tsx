@@ -1,7 +1,7 @@
 import { animate, AnimatePresence, motion } from 'motion/react';
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react';
 
-import { cpuStep, createBrain, type CpuLevel } from '@/ai/cpu';
+import { cpuStep, createBrain, PERSONA_LABEL, type CpuLevel, type CpuPersona } from '@/ai/cpu';
 import {
   abilityLines,
   CARDS,
@@ -239,6 +239,9 @@ export function Game({ level, deck, challenge, onExit }: { level: CpuLevel; deck
     return fixed ? { name: fixed.name, deck: fixed.deck } : rivalFor(s, loadTrophies());
   };
   const [rival, setRival] = useState(() => rivalOf(seed));
+  /** 相手の性格（アリーナで決まる。打ち方の癖で、強さとは別）。 */
+  const personaNow = (): CpuPersona => ARENAS[arenaIndex(loadTrophies())]!.persona;
+  const [persona, setPersona] = useState(personaNow);
   /** この対戦のルール（テスト用で切り替えた案。対戦を始めるたびに読む）。 */
   const [RULES] = useState(() => rulesOf(loadRuleMode()));
   const decks: [CardId[], CardId[]] = [deck, rival.deck];
@@ -249,7 +252,7 @@ export function Game({ level, deck, challenge, onExit }: { level: CpuLevel; deck
     return { ...g, time: 200_000, players: [{ ...g.players[0], hp: hp(0) }, { ...g.players[1], hp: hp(1) }], result: { winner: DEV_RESULT, reason: DEV_RESULT === null ? 'time' : 'hp' } };
   });
   const gameRef = useRef(game);
-  const brainRef = useRef(createBrain());
+  const brainRef = useRef(createBrain(persona, seed));
   const randRef = useRef(makeRng(seed ^ 0x9e3779b9));
   /** 長押しで開いたカードの説明。開いている間は止める。 */
   const [detail, setDetail] = useState<{ card: CardId; hp?: number } | null>(null);
@@ -1246,7 +1249,9 @@ export function Game({ level, deck, challenge, onExit }: { level: CpuLevel; deck
   const restart = () => {
     const next = (seed * 1103515245 + 12345) >>> 1;
     seenEvent.current = 0;
-    brainRef.current = createBrain();
+    const nextPersona = personaNow();
+    setPersona(nextPersona);
+    brainRef.current = createBrain(nextPersona, next);
     randRef.current = makeRng(next ^ 0x9e3779b9);
     cdFrom.current.clear();
     setStunned(new Set());
@@ -1411,7 +1416,7 @@ export function Game({ level, deck, challenge, onExit }: { level: CpuLevel; deck
               {overtime ? <b className="clock-double">×2</b> : null}
             </span>
             <div className={foeCls.join(' ')} data-player={1} data-drop={foeKey}>
-              <HeroBadge hp={foe.hp} label={foePersona(rival.name).name} portrait={foePortrait(rival.name)} />
+              <HeroBadge hp={foe.hp} label={foePersona(rival.name).name} note={PERSONA_LABEL[persona]} portrait={foePortrait(rival.name)} />
             </div>
             <span className="hero-coins">
               <img src={COIN_URL} alt="" />

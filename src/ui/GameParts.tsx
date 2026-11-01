@@ -16,14 +16,17 @@ function highlight(line: string): React.ReactNode[] {
   return head ? [<b key="t" className="kw">{head}</b>, ...body] : body;
 }
 
-export function HeroBadge({ hp, label, portrait }: { hp: number; label: string; portrait: string }) {
+export function HeroBadge({ hp, label, portrait, note }: { hp: number; label: string; portrait: string; note?: string }) {
   const ratio = hp / PLAYER_HP;
   return (
     <span className={`hero-badge${ratio <= 0.3 ? ' is-low' : ''}`}>
       <span className="hero-portrait" aria-hidden="true">
         <img src={portrait} alt="" draggable={false} />
       </span>
-      <span className="hero-label">{label}</span>
+      <span className="hero-label">
+        {label}
+        {note ? <small className="hero-note">{note}</small> : null}
+      </span>
       {PLAYER_ATK > 0 ? (
         <span className="hero-atk" aria-label={`攻撃力 ${PLAYER_ATK}（攻撃されたら反撃する）`}>
           {PLAYER_ATK}
