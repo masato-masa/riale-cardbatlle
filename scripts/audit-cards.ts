@@ -14,7 +14,7 @@ const MODE = (Number(process.env.MODE ?? 1) || 1) as RuleMode;
 applyRuleBalance(MODE);
 const RULES = rulesOf(MODE);
 const pool = (Object.keys(CARDS) as CardId[]).filter((id) => !CARDS[id].token);
-const score = new Map<CardId, { n: number; s: number }>();
+const score = new Map<CardId, { n: number; s: number; plays: number }>();
 
 for (let g = 0; g < N; g++) {
   const rng = makeRng(1000 + g);
@@ -36,20 +36,32 @@ for (let g = 0; g < N; g++) {
       if (state.result) break;
       const r = cpuStep(state, p, brains[p]!, 'hard', rands[p]!);
       brains[p] = r.brain;
-      for (const a of r.actions as Action[]) state = step(state, a);
+      for (const a of r.actions as Action[]) {
+        // 出した枚数（手札から出る前に数える。出せなかった試みも含むので、実際に場へ出たかは見ない近似）
+        const before = state;
+        const cid = a.type === 'summon' ? before.players[a.p].hand[a.handIndex] : undefined;
+        state = step(state, a);
+        if (cid && state !== before) {
+          const t = score.get(cid) ?? { n: 0, s: 0, plays: 0 };
+          t.plays++;
+          score.set(cid, t);
+        }
+      }
     }
   }
   const w = state.result!.winner;
   for (const p of [0, 1]) {
     const pts = w === null ? 0.5 : w === p ? 1 : 0;
     for (const c of decks[p]!) {
-      const t = score.get(c) ?? { n: 0, s: 0 };
+      const t = score.get(c) ?? { n: 0, s: 0, plays: 0 };
       t.n++;
       t.s += pts;
       score.set(c, t);
     }
   }
 }
-const rows = [...score.entries()].map(([id, t]) => ({ id, name: CARDS[id].name, cost: CARDS[id].summon, win: (t.s / t.n) * 100, n: t.n }));
+const rows = [...score.entries()].map(([id, t]) => ({ id, name: CARDS[id].name, cost: CARDS[id].summon, win: (t.s / t.n) * 100, n: t.n, use: t.plays / t.n }));
 rows.sort((a, b) => b.win - a.win);
-for (const r of rows) console.log(`${r.id.padEnd(12)} ${r.name.padEnd(8, '　')} コスト${r.cost} 勝率${r.win.toFixed(1)}%  (${r.n})`);
+for (const r of rows) console.log(`${r.id.padEnd(12)} ${r.name.padEnd(8, '　')} コスト${r.cost} 勝率${r.win.toFixed(1)}%  (${r.n})  出す回数/試合 ${r.use.toFixed(2)}`);
+const uses = rows.map((r) => r.use).sort((a, b) => a - b);
+console.log(`勝率の幅 ${rows[rows.length - 1]!.win.toFixed(1)}〜${rows[0]!.win.toFixed(1)} / 標準偏差 ${Math.sqrt(rows.reduce((a, r) => a + (r.win - 50) ** 2, 0) / rows.length).toFixed(2)} / 40%未満${rows.filter((r) => r.win < 40).length}枚 60%超${rows.filter((r) => r.win > 60).length}枚 / 出す回数 中央${uses[uses.length >> 1]!.toFixed(2)} 0.3未満${uses.filter((u) => u < 0.3).length}枚`);

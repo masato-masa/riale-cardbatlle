@@ -227,19 +227,31 @@ function deathCost(u: Unit): number {
 /** 手札に高いカード（コスト 5 以上）があって、まだ払えないが待てば届くとき、ほかの操作に使うコインへの罰。
  *  安いカードを出し続けると、大きなカードがいつまでも出せない。押されていない間は、あえて我慢して貯める。
  *  届くまでが遠い（最大 6 枚ぶん = 約 24 秒）ほど弱く、押されている（press が高い）ほど弱い。 */
+/** 貯めて狙う先のカードを、あと何枚ぶんまで遠くても見るか（コスト 8〜10 のカードも対象にする）。 */
+const SAVE_REACH = 8;
+/** コスト 8 以上を狙うときの我慢の強さ（倍率）。 */
+const HEAVY_SAVE = 5;
+
+/** あと少しで届く高いカード（コスト 8 以上）が手札にあるか。上限間際の「腐らせない」で安いカードを出して、あと 0.5 枚で届くのを逃さないため。 */
+function nearBig(me: PlayerState, self: CardId | null): boolean {
+  return me.hand.some((c) => c !== self && CARDS[c].summon >= 8 && CARDS[c].summon > me.coins && CARDS[c].summon <= COIN_MAX);
+}
+
 function savePenalty(me: PlayerState, cost: number, self: CardId | null, t: Tuning, press = 0): number {
   if (t.save <= 0) return 0;
   let big = 0;
   for (const c of me.hand) {
     const sc = CARDS[c].summon;
-    if (c === self || sc < 5 || sc <= me.coins || sc > me.coins + 6) continue;
+    if (c === self || sc < 5 || sc <= me.coins || sc > me.coins + SAVE_REACH) continue;
     big = Math.max(big, sc);
   }
   if (big === 0 || me.coins - cost >= big) return 0;
   // 目標が大きいほど、使うコインが多いほど強く我慢する
   const wait = Math.min(1, 1.2 - (big - me.coins) / 8);
   const calm = Math.max(0, 1 - press);
-  return Math.min(3, cost * 0.7) * (0.4 + big * 0.08) * wait * calm * t.save;
+  // コスト 8 以上は貯めきるまで長いので、押されていない間は安い手をもっと強く我慢する（出さずに腐らせない）
+  const heavy = big >= 8 ? HEAVY_SAVE : 1;
+  return Math.min(3 * heavy, cost * 0.7 * heavy) * (0.4 + big * 0.08) * wait * calm * t.save;
 }
 
 /** しんちょう: 手札のブロッカーを割り込みに出せるコインを残す。cost を使うと届かなくなるなら罰（場にブロッカーがいれば要らない）。 */
@@ -362,7 +374,7 @@ function spellCandidates(state: GameState, p: PlayerIndex, handIndex: number, ca
   const foeFighters = foeAll.filter((u) => CARDS[u.card].type === 'unit');
   // 使うコインのぶんの基本の損（安いほど気軽に使う）。コインが余っているときは緩める。
   let base = -cost * 0.25 - savePenalty(me, cost, card, t, pressure(me, state.players[other(p)])) + t.spellBias;
-  if (me.coins >= COIN_MAX - 0.5) base += 1.2;
+  if (me.coins >= COIN_MAX - 0.5 && !nearBig(me, card)) base += 1.2;
   const out: Candidate[] = [];
   if (sp.kind === 'bolt') {
     for (const u of foeUnits) {
@@ -512,7 +524,7 @@ function summonCandidates(state: GameState, p: PlayerIndex, t: Tuning): Candidat
     }
     // コインが余っているほど急いで出す、枠が空いているほど出す
     s += (me.coins - d.summon) * 0.05 + (FIELD_SLOTS - filled) * 0.25;
-    if (me.coins >= COIN_MAX - 0.5) s += 1.5; // 上限で腐らせない
+    if (me.coins >= COIN_MAX - 0.5 && !nearBig(me, card)) s += 1.5; // 上限で腐らせない（高いカードに届く間際は貯める）
     // 割り込み: 相手の溜め中の攻撃を見て、間に合う（登場が攻撃の命中より前）ならブロッカーで止める。止めた攻撃元はクールタイムが延びる
     if (isBlocker(card) && myBlockers === 0) {
       for (const x of state.pending) {
