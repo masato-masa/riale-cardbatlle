@@ -3696,3 +3696,132 @@ html.in-battle .result {
   overflow: hidden;
   text-overflow: ellipsis;
 }
+
+/* ---- RC-13: 実機幅（375×812）での押しやすさ・重なり・閉じ方 ----
+   押せる範囲は 44px 以上にする。見た目を変えたくないものは ::after で当たり判定だけ広げる */
+.ts-arena-name {
+  position: relative;
+  margin-bottom: 6px;
+}
+
+.ts-arena-name::after {
+  content: '';
+  position: absolute;
+  inset: -16px -6px -8px;
+}
+
+.ts-daily {
+  min-height: 44px;
+  margin-top: 2px;
+  padding-block: 0;
+  font-size: 13px;
+  position: relative;
+}
+
+.ts-daily::after {
+  content: '';
+  position: absolute;
+  inset: 0 -2px;
+}
+
+.ts-levels .ts-level {
+  padding-block: 13px;
+}
+
+.menu-btn {
+  width: 44px;
+  height: 44px;
+  left: 0;
+  bottom: 8px;
+}
+
+/* デッキ画面の小さな押し具: 幅 360px 以上で 44px に（それより狭い画面は下の詰め込みを優先） */
+@media (min-width: 360px) {
+  .slot-chips {
+    gap: 4px;
+  }
+
+  .slot-chips .slot-chip {
+    position: relative;
+    width: 40px;
+    height: 44px;
+  }
+
+  .slot-chip::after,
+  .band-chip::after {
+    content: '';
+    position: absolute;
+  }
+
+  .slot-chip::after {
+    inset: -2px -4px; /* 枠線 2px の外まで */
+  }
+
+  .band-chip {
+    position: relative;
+  }
+
+  .dk .band-chips {
+    min-height: 44px;
+    align-items: center;
+  }
+
+  .dk .band-chip {
+    height: 40px;
+  }
+
+  .band-chip::after {
+    inset: -4px;
+  }
+
+  .preset-btn {
+    height: 44px;
+  }
+}
+
+/* シートの右上の ×（外側タップ以外の閉じ方） */
+.sheet {
+  position: relative;
+}
+
+.sheet-x {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  z-index: 2;
+  width: 44px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 50%;
+  background: none;
+  color: #ffe28a;
+  font: inherit;
+  font-size: 28px;
+  font-weight: 800;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.sheet-x:active {
+  background: rgb(255 255 255 / 0.12);
+}
+
+/* 結果: アリーナ昇格・ミッション達成などで縦に長いとき、固定のボタンが「相手のデッキを見る」に重なっていた。
+   2 つのボタンを横に並べて高さを詰める */
+@media (max-height: 880px) {
+  .result-card:has(.arena-up) .result-buttons,
+  .result-card:has(.result-missions span:nth-child(3)) .result-buttons {
+    grid-template-columns: 1.4fr 1fr;
+    gap: 8px;
+  }
+
+  .result-card:has(.arena-up) .res-btn,
+  .result-card:has(.arena-up) .res-btn.is-gold,
+  .result-card:has(.result-missions span:nth-child(3)) .res-btn,
+  .result-card:has(.result-missions span:nth-child(3)) .res-btn.is-gold {
+    height: 48px;
+    font-size: 18px;
+  }
+}

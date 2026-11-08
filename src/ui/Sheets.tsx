@@ -47,6 +47,18 @@ export function Sheet({
         animate={{ opacity: 1, y: 0, transition: { type: 'spring', stiffness: 440, damping: 40 } }}
         exit={{ opacity: 0, y: '14%', pointerEvents: 'none', transition: { duration: 0.18, ease: 'easeIn' } }}
       >
+        {/* 外側をタップしないと閉じられないと気づけない人のために、いつも右上に ×（RC-13） */}
+        <button
+          type="button"
+          className="sheet-x"
+          aria-label="閉じる"
+          onClick={() => {
+            playUiTap();
+            onClose();
+          }}
+        >
+          ×
+        </button>
         <h2 className="sheet-title">{title}</h2>
         {subtitle ? <p className="sheet-subtitle">{subtitle}</p> : null}
         {children}
