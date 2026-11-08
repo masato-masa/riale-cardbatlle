@@ -25,7 +25,7 @@ export interface Arena {
 export const ARENAS: Arena[] = [
   // 最初のアリーナは、初期デッキ（normal の CPU で代用）が 5〜6 割勝てる相手だけ。商人は normal だと初期デッキに 78% 勝つので 2 つ目から
   { name: 'はじまりの広場', from: 0, pool: ['毒', '巨人', '連撃'], tint: 'none', cardCap: 4, lossScale: 0, persona: 'rush' },
-  { name: '砂の闘技場', from: 150, pool: ['商人', '毒', '巨人', '連撃', '割り込み', '奇襲'], tint: 'none', cardCap: 6, lossScale: 0.5, persona: 'guard' },
+  { name: '砂の闘技場', from: 150, pool: ['商人', '毒', '巨人', '連撃', '割り込み'], tint: 'none', cardCap: 6, lossScale: 0.5, persona: 'guard' },
   { name: '城門前', from: 400, pool: ['毒', '巨人', '連撃', '割り込み', '狙撃', '生贄', '討伐', '奇襲', '鉄壁'], tint: 'none', cardCap: 7, lossScale: 0.75, persona: 'hoard' },
   { name: '王の間', from: 800, pool: ['巨人', '連撃', '割り込み', '狙撃', '生贄', '討伐', 'T一族', '封印', '城塞', '呪術', '死霊', '聖騎士', '鉄壁', '工房'], tint: 'none', cardCap: 8, lossScale: 1, persona: 'whim' },
   { name: '伝説の頂', from: 1300, pool: RIVAL_DECKS.map((d) => d.name), tint: 'none', cardCap: 10, lossScale: 1, persona: 'plain' },

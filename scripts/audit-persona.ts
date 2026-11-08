@@ -12,6 +12,7 @@ const args = process.argv.slice(2);
 const N = Number(args.find((x) => /^\d+$/.test(x)) ?? 40);
 const level = (args.find((x) => x.startsWith('level='))?.slice(6) ?? 'normal') as CpuLevel;
 const verbose = args.includes('--lows');
+const showDecks = args.includes('--decks');
 const only = args.find((x) => x.startsWith('arena='))?.slice(6).split(',').map(Number);
 // 重みの試し: lean.rush='{"mul":{"face":1.5},"add":{"tempo":1}}' のように上書きできる
 for (const x of args.filter((y) => y.startsWith('lean.'))) {
@@ -34,6 +35,8 @@ interface Tally {
   coinSum: number;
   coinN: number;
   blockers: number;
+  /** デッキごとの相手の得点・試合数（--decks で表示）。 */
+  perDeck: Map<string, { score: number; games: number }>;
   /** 相手が割り込んだ回数・プレイヤーの顔に与えたダメージ。 */
   interrupts: number;
   faceDmg: number;
@@ -41,7 +44,7 @@ interface Tally {
 }
 
 function run(pool: string[], persona: CpuPersona): Tally {
-  const t: Tally = { games: 0, foeScore: 0, ms: 0, timeouts: 0, plays: new Map(), costSum: 0, playN: 0, firstPlayMs: 0, faceHits: 0, coinSum: 0, coinN: 0, blockers: 0, interrupts: 0, faceDmg: 0, attacks: 0 };
+  const t: Tally = { games: 0, foeScore: 0, ms: 0, timeouts: 0, plays: new Map(), perDeck: new Map(), costSum: 0, playN: 0, firstPlayMs: 0, faceHits: 0, coinSum: 0, coinN: 0, blockers: 0, interrupts: 0, faceDmg: 0, attacks: 0 };
   for (const { name, deck } of RIVAL_DECKS.filter((d) => pool.includes(d.name))) {
     const used = t.plays.get(name) ?? new Map<CardId, number>();
     t.plays.set(name, used);
@@ -95,6 +98,10 @@ function run(pool: string[], persona: CpuPersona): Tally {
         }
       }
       t.games++;
+      const pd = t.perDeck.get(name) ?? { score: 0, games: 0 };
+      t.perDeck.set(name, pd);
+      pd.games++;
+      pd.score += st.result.winner === foe ? 1 : st.result.winner === null ? 0.5 : 0;
       t.ms += st.time;
       if (st.result.reason === 'time') t.timeouts++;
       if (st.result.winner === foe) t.foeScore++;
@@ -134,6 +141,7 @@ for (const [ai, a] of ARENAS.entries()) {
   for (const pz of list) {
     const t = run(a.pool, pz);
     const u = usage(t);
+    if (showDecks) console.log('  デッキ別: ' + [...t.perDeck].map(([n, d]) => `${n} ${pct(d.score / d.games)}`).join(' / '));
     console.log(
       [
         a.name,
