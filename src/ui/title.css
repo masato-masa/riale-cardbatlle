@@ -915,7 +915,7 @@ body {
   display: grid;
   justify-items: center;
   gap: 2px;
-  font-size: 10px;
+  font-size: 11px;
   text-align: center;
 }
 
@@ -1021,7 +1021,7 @@ body {
 .ts-arena-next {
   margin-top: -2px;
   color: #e9e1ff;
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 700;
   -webkit-text-stroke: 2px rgb(18 8 30 / 0.85);
   paint-order: stroke fill;
@@ -1163,7 +1163,7 @@ button.ts-arena-name {
   border-radius: 999px;
   background: linear-gradient(#ffd84a, #d79a06);
   color: #4a2a00;
-  font-size: 10px;
+  font-size: 11px;
 }
 
 .road-need {
@@ -1429,7 +1429,7 @@ button.ts-chest:disabled {
 }
 
 .ts-chest b small {
-  font-size: 10px;
+  font-size: 11px;
   color: #cdbfa0;
 }
 

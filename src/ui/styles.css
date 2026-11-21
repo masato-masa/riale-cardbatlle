@@ -13,6 +13,9 @@
 
 body {
   overscroll-behavior: none;
+  /* ダブルタップ拡大と長押しメニューを止める（連打・長押しの操作が途切れないように） */
+  touch-action: manipulation;
+  -webkit-touch-callout: none;
   user-select: none;
   -webkit-user-select: none;
 }
