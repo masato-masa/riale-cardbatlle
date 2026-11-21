@@ -3832,3 +3832,32 @@ html.in-battle .result {
     font-size: 18px;
   }
 }
+
+/* 結果画面の簡素化: 主役（勝敗・トロフィー・宝箱）を大きく、副情報は「くわしく見る」の中へ */
+.result-more {
+  display: grid;
+  gap: 10px;
+  width: 100%;
+}
+.result-more-open {
+  min-height: 27px;
+  justify-self: center;
+  position: relative;
+  margin: 0;
+  padding: 4px 14px;
+  border: 0;
+  background: none;
+  color: #ffe28a;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 800;
+  text-decoration: underline;
+}
+.result-more-open::after {
+  content: '';
+  position: absolute;
+  inset: -10px -10px;
+}
+.result-trophy .trophy-delta {
+  font-size: 30px;
+}

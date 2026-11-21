@@ -279,6 +279,7 @@ export function Game({ level, deck, challenge, onExit }: { level: CpuLevel; deck
   /** きょうのチャレンジに、この試合で初めて勝った。 */
   const [challengeWon, setChallengeWon] = useState(false);
   /** 結果画面で相手のデッキを広げている。 */
+  const [moreOpen, setMoreOpen] = useState(false);
   const [foeDeckOpen, setFoeDeckOpen] = useState(false);
   /** 相手が溜め始めた呪文（ライバルズのように、何を使ったかをしばらく見せる）。 */
   const [foeCast, setFoeCast] = useState<{ id: number; card: CardId } | null>(null);
@@ -1817,6 +1818,47 @@ export function Game({ level, deck, challenge, onExit }: { level: CpuLevel; deck
                         />
                       ))}
                     </div>
+                    {trophy ? (
+                      <motion.div className="result-trophy" {...resultStep(0)}>
+                        <span className={`trophy-delta${trophy.after > trophy.before ? ' is-up' : trophy.after < trophy.before ? ' is-down' : ''}`}>
+                          トロフィー {trophy.after >= trophy.before ? '+' : ''}{trophy.after - trophy.before}
+                        </span>
+                        <small>{trophy.before} → {trophy.after}</small>
+                        {game.result.winner === 1 && trophy.after === trophy.before ? (
+                          <small>
+                            {ARENAS[trophy.arenaBefore]!.lossScale === 0
+                              ? `${ARENAS[trophy.arenaBefore]!.name}では、負けてもトロフィーは減りません`
+                              : 'アリーナの下限なので、これ以上は減りません'}
+                          </small>
+                        ) : null}
+                        {trophy.arenaAfter > trophy.arenaBefore ? (
+                          <>
+                            <b className="arena-up">アリーナ昇格！ {ARENAS[trophy.arenaAfter]!.name}</b>
+                          </>
+                        ) : null}
+                      </motion.div>
+                    ) : null}
+                    {reward ? (
+                      <motion.div className="result-reward" {...resultStep(3)}>
+                        <div className="reward-meter" aria-label={`宝箱ポイント ${reward.points}`}>
+                          <img className="reward-chest-icon" src={CHEST_URL} alt="" draggable={false} />
+                          <span className="reward-label">宝箱ポイント +{reward.gained}</span>
+                          <b className="reward-total">
+                            {reward.points}pt{reward.points >= CHEST_COST ? `（宝箱 ${Math.floor(reward.points / CHEST_COST)} 個）` : ''}
+                          </b>
+                        </div>
+                      </motion.div>
+                    ) : null}
+                    {hints.length > 0 && game.result.winner !== 0 ? (
+                      <motion.div className="result-hints" {...resultStep(1)}>
+                        <b>ふりかえり</b>
+                        {hints.map((h) => (
+                          <p key={h.id}>{h.text}</p>
+                        ))}
+                      </motion.div>
+                    ) : null}
+                    {moreOpen ? (
+                      <div className="result-more">
                     <div className="result-duel">
                       <span className="result-side is-me">
                         <span className="result-medal">
@@ -1834,28 +1876,7 @@ export function Game({ level, deck, challenge, onExit }: { level: CpuLevel; deck
                         <b>{foe.hp}</b>
                       </span>
                     </div>
-                    {trophy ? (
-                      <motion.div className="result-trophy" {...resultStep(0)}>
-                        <span className={`trophy-delta${trophy.after > trophy.before ? ' is-up' : trophy.after < trophy.before ? ' is-down' : ''}`}>
-                          トロフィー {trophy.after >= trophy.before ? '+' : ''}{trophy.after - trophy.before}
-                        </span>
-                        <small>{trophy.before} → {trophy.after}</small>
-                        {game.result.winner === 1 && trophy.after === trophy.before ? (
-                          <small>
-                            {ARENAS[trophy.arenaBefore]!.lossScale === 0
-                              ? `${ARENAS[trophy.arenaBefore]!.name}では、負けてもトロフィーは減りません`
-                              : 'アリーナの下限なので、これ以上は減りません'}
-                          </small>
-                        ) : null}
-                        {trophy.arenaAfter > trophy.arenaBefore ? (
-                          <>
-                            <b className="arena-up">アリーナ昇格！ {ARENAS[trophy.arenaAfter]!.name}</b>
-                            <small>宝箱からコスト {ARENAS[trophy.arenaAfter]!.cardCap} までのカードが出る・宝箱ポイント +{CHEST_GAIN.arenaUp}</small>
-                          </>
-                        ) : null}
-                      </motion.div>
-                    ) : null}
-                    {hints.length > 0 ? (
+                    {hints.length > 0 && game.result.winner === 0 ? (
                       <motion.div className={`result-hints${game.result.winner === 0 ? ' is-good' : ''}`} {...resultStep(1)}>
                         <b>{game.result.winner === 0 ? 'よかった点' : 'ふりかえり'}</b>
                         {hints.map((h) => (
@@ -1873,23 +1894,24 @@ export function Game({ level, deck, challenge, onExit }: { level: CpuLevel; deck
                         ))}
                       </motion.div>
                     ) : null}
-                    {reward ? (
-                      <motion.div className="result-reward" {...resultStep(3)}>
-                        <div className="reward-meter" aria-label={`宝箱ポイント ${reward.points}`}>
-                          <img className="reward-chest-icon" src={CHEST_URL} alt="" draggable={false} />
-                          <span className="reward-label">宝箱ポイント +{reward.gained}</span>
-                          <b className="reward-total">
-                            {reward.points}pt{reward.points >= CHEST_COST ? `（宝箱 ${Math.floor(reward.points / CHEST_COST)} 個）` : ''}
-                          </b>
-                        </div>
-                      </motion.div>
+                      </div>
                     ) : null}
                   </>
                 );
               })()}
+              <button
+                className="result-more-open"
+                aria-expanded={moreOpen}
+                onClick={() => {
+                  playUiTap();
+                  setMoreOpen(!moreOpen);
+                }}
+              >
+                {moreOpen ? 'とじる' : 'くわしく見る'}
+              </button>
               {/* 相手のデッキ（次の作戦のために、対戦後に中身を見せる） */}
-              {foeDeckOpen ? <small className="result-foe-title">{foePersona(rival.name).name}の{rival.name}デッキ</small> : null}
-              {foeDeckOpen ? (
+              {moreOpen && foeDeckOpen ? <small className="result-foe-title">{foePersona(rival.name).name}の{rival.name}デッキ</small> : null}
+              {moreOpen && foeDeckOpen ? (
                 <div className="result-foe-deck" aria-label={`${foePersona(rival.name).name}の${rival.name}デッキ`}>
                   {rival.deck.map((c, i) => (
                     <span key={`${c}-${i}`} className="result-foe-card">
@@ -1897,7 +1919,7 @@ export function Game({ level, deck, challenge, onExit }: { level: CpuLevel; deck
                     </span>
                   ))}
                 </div>
-              ) : (
+              ) : moreOpen ? (
                 <button
                   className="result-foe-open"
                   onClick={() => {
@@ -1907,7 +1929,7 @@ export function Game({ level, deck, challenge, onExit }: { level: CpuLevel; deck
                 >
                   {foePersona(rival.name).name}の{rival.name}デッキを見る
                 </button>
-              )}
+              ) : null}
               <div className="result-buttons">
                 <button
                   className="res-btn is-gold"
