@@ -717,7 +717,7 @@ export const RIVAL_DECKS: { name: string; deck: CardId[] }[] = [
   { name: '生贄', deck: ['offering', 'tactician', 'heir', 'footman', 'usurper', 'sniper', 'conqueror', 'craftsman'] },
   { name: '討伐', deck: ['herald', 'hunter', 'avenger', 'scout', 'slayer', 'riposte', 'trickster', 'monarch'] },
   { name: 'T一族', deck: ['kleen', 'kvav', 'kboyan', 'kroda', 'kdera', 'tmassa', 'tzarashi', 'tkisuke'] },
-  { name: '封印', deck: ['informer', 'warder', 'binder', 'blockader', 'knight', 'herald', 'shieldmaid', 'quarry'] },
+  { name: '封印', deck: ['steadfast', 'warder', 'guard', 'blockader', 'knight', 'herald', 'shieldmaid', 'quarry'] },
   // 砦と鍛冶場を立てて、大型で押す。ブロッカーは 2 枚（ロイ・バーナ）。ブロッカーを減らすと hard 相手に 15% 以下まで落ちた
   { name: '城塞', deck: ['recruit', 'guard', 'fortress', 'forge', 'champion', 'ogre', 'stalwart', 'taxman'] },
   // 投石・大地割り・戦の号令の呪文 3 枚で場を崩して押す
