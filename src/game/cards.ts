@@ -704,7 +704,7 @@ export const CARDS: Record<CardId, CardDef> = {
 export const STARTER_DECK: CardId[] = ['herald', 'guard', 'double', 'taxman', 'knight', 'quarry', 'veteran', 'executioner'];
 
 /** CPU のデッキ（8 枚固定）。 */
-export const RIVAL_DECK: CardId[] = ['herald', 'usurer', 'banker', 'guard', 'hunter', 'sniper', 'cathedral', 'strategist'];
+export const RIVAL_DECK: CardId[] = ['herald', 'usurer', 'banker', 'guard', 'hunter', 'veteran', 'cathedral', 'strategist'];
 
 /** CPU のデッキ（テーマ別。試合ごとに 1 つ選ぶ。どれも 8 枚）。 */
 export const RIVAL_DECKS: { name: string; deck: CardId[] }[] = [
