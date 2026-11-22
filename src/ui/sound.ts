@@ -24,6 +24,17 @@ const BORROW: Record<string, [VoiceName, number]> = {
 
 type PlayName = VoiceName | 'pickup' | 'stun' | 'reject';
 
+/**
+ * 声ごとの音量補正（dB）。各 wav の「鳴っている部分の RMS」を目標 -24dBFS へ 6 割だけ寄せる
+ * （役割ごとの大小は残す。完全に平らにすると、勝ちと UI タップの重みの差が消える）。
+ * 測定: king-puzzle の scripts/audit-sfx.mjs <このリポジトリの src/assets/sfx>。
+ * 補正前は -20.1〜-28.6dB で幅 8.5dB → 補正後は約 3.4dB。クリップなし（summonSmall はピーク -0.4dBFS なので -1.0dB）。
+ */
+const VOICE_TRIM_DB: Record<VoiceName, number> = {
+  barrier: 1.0, battleStart: -1.7, death: 0.8, heal: 1.1, hitBlocker: -0.1, hitPlayer: -1.5, hitUnit: -0.2, horn: 0,
+  lose: -0.2, ready: 1.0, select: 1.7, spellCast: 1.0, summonBig: -1.5, summonSmall: -1.0, tap: 2.8, win: -2.3,
+};
+
 /** 呼び出し全体を try/catch で包む。鳴らせなくても例外は外に出さない。 */
 function play(name: PlayName, force = false, variant?: number): void {
   if (!isSoundEnabled()) return;
@@ -40,7 +51,7 @@ function play(name: PlayName, force = false, variant?: number): void {
     src.buffer = buf;
     src.playbackRate.value = 1;
     const amp = g.ctx.createGain();
-    amp.gain.value = dbToGain(trimDb);
+    amp.gain.value = dbToGain(trimDb + (VOICE_TRIM_DB[voice] ?? 0));
     src.connect(amp);
     amp.connect(g.sfxBus);
     src.start(g.ctx.currentTime + 0.005);
