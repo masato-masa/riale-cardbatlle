@@ -59,7 +59,6 @@ export function RewardChest({ cards }: { cards: CardId[] }) {
               <div className="reward-face">
                 <CardFace card={c} />
               </div>
-              <span>{CARDS[c].name}</span>
             </motion.div>
           ))
         : null}
