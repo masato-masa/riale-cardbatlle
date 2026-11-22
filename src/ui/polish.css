@@ -1986,7 +1986,7 @@
   align-items: center;
   gap: 6px;
   color: #ffe28a;
-  font-size: 12px;
+  font-size: 15px;
   font-weight: 800;
 }
 
@@ -3080,8 +3080,8 @@ img.result-star.is-lit {
 
 /* 宝箱ゲージ: 宝箱の絵と、たまった点を金貨の絵で（たまっていない点はくすませる） */
 .reward-chest-icon {
-  width: 28px;
-  height: 28px;
+  width: 36px;
+  height: 36px;
   object-fit: contain;
   filter: drop-shadow(0 1px 1px rgb(0 0 0 / 0.5));
 }
