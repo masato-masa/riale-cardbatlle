@@ -206,6 +206,8 @@ export function DeckScreen({ deck, onChange, onBack }: { deck: CardId[]; onChang
         </section>
 
         {/* 集めたカードの進み具合（クラロワのコレクションの「見つけたカード」） */}
+        {/* 全部集めたら出さない（もう伝える進みが無い） */}
+        {unlocked.size < COLLECTION.length ? (
         <div className="collect-progress" aria-label={`集めたカード ${Math.min(unlocked.size, COLLECTION.length)} / ${COLLECTION.length}`}>
           <span>集めたカード</span>
           <span className="mission-bar" aria-hidden="true">
@@ -215,6 +217,7 @@ export function DeckScreen({ deck, onChange, onBack }: { deck: CardId[]; onChang
             {Math.min(unlocked.size, COLLECTION.length)}/{COLLECTION.length}
           </b>
         </div>
+        ) : null}
 
         <div className="band-chips" role="tablist" aria-label="コストで絞る">
           {['すべて', '1〜2', '3〜4', '5〜6', '7〜'].map((label, i) => (
