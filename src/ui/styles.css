@@ -101,6 +101,13 @@ body {
   justify-self: end;
 }
 
+/* 幅 320px: 右のコインが 2px 画面の外に出ていたので、すき間を詰める（RC-31） */
+@media (max-width: 340px) {
+  .arena-top {
+    gap: 3px;
+  }
+}
+
 .clock {
   justify-self: start;
   display: inline-flex;

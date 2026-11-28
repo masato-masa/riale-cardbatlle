@@ -577,6 +577,19 @@ body {
   .ts-fan {
     display: none;
   }
+
+  /* 568px でも 1 画面に収める（RC-31: 591px あって 23px スクロールし、タブの文字が切れていた） */
+  .ts-bottom {
+    gap: 8px;
+  }
+
+  .ts-battle {
+    height: 60px;
+  }
+
+  .tab {
+    height: 56px;
+  }
 }
 
 /* ---- サウンドテスト（?sounds） ---- */
